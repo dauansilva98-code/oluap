@@ -226,77 +226,87 @@
               window.location.reload(); 
           };
 
+          // FUNÇÃO DE VALIDAÇÃO E ENVIO BLINDADA
           const validateAndSubmit = async () => {
-            const isV1 = formMode === 'standard';
-            const req = isV1 
-              ? ["v1_razao", "v1_cnpj", "v1_responsavel", "v1_email", "v1_phone", "v1_segmento", "v1_tempoOperacao", "v1_numFuncionarios", "v1_controleFinanceiro", "v1_fatMedio", "v1_fat12", "v1_mixFaturamento", "v1_numVendas", "v1_lucra", "v1_custosDiretos", "v1_taxaRecebimento", "v1_folha", "v1_prolabore", "v1_mkt", "v1_estrutura", "v1_saldo", "v1_reserva", "v1_descricaoDividas", "v1_desafio", "v1_objetivo"]
-              : ["g_razao", "g_cnpj", "g_responsavel", "g_email", "g_phone", "g_oqueVende", "g_tempoExistencia", "g_pessoas", "g_faturamento", "g_mixFaturamento", "g_meioVenda", "g_frequencia", "g_sobrePreco", "g_produtoLucrativo", "g_aluguel", "g_gastoFunc", "g_prolabore", "g_custosDiretos", "g_taxaMaquininha", "g_outrosFixos", "g_raloDinheiro", "g_descricaoDividas", "g_contasEmDia", "g_misturaContas", "g_folegoCaixa", "g_desafio", "g_futuro"];
-
-            const errs = {};
-            let hasErr = false;
-            let errorMessage = "Existem campos obrigatórios não preenchidos.";
-
-            req.forEach(f => {
-              if (!formData[f] || formData[f].toString().trim() === "") { errs[f] = true; hasErr = true; }
-            });
-
-            const email = isV1 ? formData.v1_email : formData.g_email;
-            const cnpj = isV1 ? formData.v1_cnpj : formData.g_cnpj;
-
-            if (email && !isValidEmail(email)) {
-                errs[isV1 ? 'v1_email' : 'g_email'] = true;
-                hasErr = true;
-                errorMessage = "O e-mail informado é inválido. Inclua @ e um domínio válido.";
-            }
-
-            if (cnpj && !isValidCNPJ(cnpj)) {
-                errs[isV1 ? 'v1_cnpj' : 'g_cnpj'] = true;
-                hasErr = true;
-                errorMessage = "O CNPJ deve conter 14 dígitos válidos.";
-            }
-
-            if (hasErr) {
-              setFieldErrors(errs);
-              setFormError(errorMessage);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-              return;
-            }
-
             setIsSubmitting(true);
-            setFormError("Salvando formulário...");
-            setFieldErrors({});
-
-            // Prepara os dados pro Supabase
-            const payload = {
-              user_id: user.id,
-              client_name: isV1 ? formData.v1_razao : formData.g_razao,
-              cnpj: isV1 ? maskCNPJ(formData.v1_cnpj) : maskCNPJ(formData.g_cnpj),
-              status: "⏳ Em análise",
-              internal_status: "pending",
-              form_type: isV1 ? 'Estruturado' : 'Guiado',
-              data: formData
-            };
+            setFormError(""); 
 
             try {
-                // Insere no banco
+                if (!user) {
+                    throw new Error("Conexão perdida. Por favor, recarregue a página e tente novamente.");
+                }
+
+                const isV1 = formMode === 'standard';
+                const req = isV1 
+                  ? ["v1_razao", "v1_cnpj", "v1_responsavel", "v1_email", "v1_phone", "v1_segmento", "v1_tempoOperacao", "v1_numFuncionarios", "v1_controleFinanceiro", "v1_fatMedio", "v1_fat12", "v1_mixFaturamento", "v1_numVendas", "v1_lucra", "v1_custosDiretos", "v1_taxaRecebimento", "v1_folha", "v1_prolabore", "v1_mkt", "v1_estrutura", "v1_saldo", "v1_reserva", "v1_descricaoDividas", "v1_desafio", "v1_objetivo"]
+                  : ["g_razao", "g_cnpj", "g_responsavel", "g_email", "g_phone", "g_oqueVende", "g_tempoExistencia", "g_pessoas", "g_faturamento", "g_mixFaturamento", "g_meioVenda", "g_frequencia", "g_sobrePreco", "g_produtoLucrativo", "g_aluguel", "g_gastoFunc", "g_prolabore", "g_custosDiretos", "g_taxaMaquininha", "g_outrosFixos", "g_raloDinheiro", "g_descricaoDividas", "g_contasEmDia", "g_misturaContas", "g_folegoCaixa", "g_desafio", "g_futuro"];
+
+                const errs = {};
+                let hasErr = false;
+                let errorMessage = "Existem campos obrigatórios não preenchidos.";
+
+                req.forEach(f => {
+                  if (!formData[f] || formData[f].toString().trim() === "") { errs[f] = true; hasErr = true; }
+                });
+
+                const email = isV1 ? formData.v1_email : formData.g_email;
+                const cnpj = isV1 ? formData.v1_cnpj : formData.g_cnpj;
+
+                if (email && !isValidEmail(email)) {
+                    errs[isV1 ? 'v1_email' : 'g_email'] = true;
+                    hasErr = true;
+                    errorMessage = "O e-mail informado é inválido. Inclua @ e um domínio válido.";
+                }
+
+                if (cnpj && !isValidCNPJ(cnpj)) {
+                    errs[isV1 ? 'v1_cnpj' : 'g_cnpj'] = true;
+                    hasErr = true;
+                    errorMessage = "O CNPJ deve conter 14 dígitos válidos.";
+                }
+
+                if (hasErr) {
+                  setFieldErrors(errs);
+                  setFormError(errorMessage);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  throw new Error("Validação falhou."); // Para a execução aqui
+                }
+
+                setFormError("Salvando formulário...");
+                setFieldErrors({});
+
+                const payload = {
+                    user_id: user.id,
+                    client_name: isV1 ? formData.v1_razao : formData.g_razao,
+                    cnpj: maskCNPJ(isV1 ? formData.v1_cnpj : formData.g_cnpj),
+                    status: "⏳ Em análise",
+                    internal_status: "pending",
+                    form_type: isV1 ? 'Estruturado' : 'Guiado',
+                    data: formData
+                };
+
+                // Tenta enviar pro Supabase
                 const { error } = await supabase.from('diagnosticos').insert([payload]);
                 
-                if (error) throw error;
+                if (error) {
+                    throw new Error("Erro do servidor: " + error.message); 
+                }
 
-                // Limpa formulário
+                // Se chegou aqui, deu tudo certo!
                 const reset = Object.keys(formData).reduce((a, k) => ({...a, [k]: ""}), {});
                 setFormData(reset); 
                 
-                // Atualiza a tela
                 await fetchDiagnostics(user.id);
                 setFormMode(null);
                 setView('dashboard');
-            } catch (e) {
-                console.error(e);
-                setFormError("Erro de conexão ao salvar. Tente novamente.");
+                
+            } catch (err) {
+                console.error("Erro no envio:", err);
+                if (err.message !== "Validação falhou.") {
+                    setFormError("Erro ao salvar: " + err.message);
+                }
+            } finally {
+                setIsSubmitting(false); // GARANTE que o botão sempre destrave
             }
-            
-            setIsSubmitting(false);
           };
 
           const handleViewResult = (submission) => {
@@ -346,7 +356,7 @@
                       <InputField label="Razão Social da Empresa" value={formData.v1_razao} onChange={v => setFormData({...formData, v1_razao: v})} error={fieldErrors.v1_razao} readOnly={readOnly} />
                       <InputField label="CNPJ" value={formData.v1_cnpj} onChange={v => setFormData({...formData, v1_cnpj: v})} error={fieldErrors.v1_cnpj} readOnly={readOnly} maskType="cnpj" />
                       <div className="md:col-span-2">
-                         <InputField label="Nome do Responsável" value={formData.v1_responsavel} onChange={v => setFormData({...formData, v1_responsavel: v})} error={fieldErrors.v1_responsavel} readOnly={readOnly} />
+                        <InputField label="Nome do Responsável" value={formData.v1_responsavel} onChange={v => setFormData({...formData, v1_responsavel: v})} error={fieldErrors.v1_responsavel} readOnly={readOnly} />
                       </div>
                       <InputField label="Email de Contato" value={formData.v1_email} onChange={v => setFormData({...formData, v1_email: v})} error={fieldErrors.v1_email} readOnly={readOnly} icon={Mail} />
                       <InputField label="Celular / WhatsApp" value={formData.v1_phone} onChange={v => setFormData({...formData, v1_phone: v})} error={fieldErrors.v1_phone} readOnly={readOnly} icon={Phone} maskType="phone" />
@@ -432,7 +442,6 @@
                   </>
                 ) : (
                   <>
-                    {/* FORMULÁRIO GUIADO (NÃO SEI MEUS NÚMEROS) */}
                     <SectionHeading icon={Building2} title="1. Identificação da Empresa" color="text-[#ff7b00]" />
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
                       <InputField label="Razão Social da Empresa" value={formData.g_razao} onChange={v => setFormData({...formData, g_razao: v})} error={fieldErrors.g_razao} readOnly={readOnly} />
@@ -667,7 +676,7 @@
                           <p className="text-[#137789] font-bold uppercase text-[9px] tracking-[0.2em]">{formMode === 'standard' ? 'Preencha com dados reais para um diagnóstico preciso' : 'Responda com valores aproximados para clareza inicial'}</p>
                         </header>
 
-                        {formError && <div className="mb-8 p-4 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-red-100"><AlertTriangle size={14} className="shrink-0"/> <span>{formError}</span></div>}
+                        {formError && <div className={`mb-8 p-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${formError === 'Salvando formulário...' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-red-50 text-red-600 border-red-100'}`}><AlertTriangle size={14} className="shrink-0"/> <span>{formError}</span></div>}
 
                         {renderFormFields(false)}
 
