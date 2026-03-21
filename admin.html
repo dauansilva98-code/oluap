@@ -7,6 +7,10 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
+
     <script type="importmap">
       {
         "imports": {
@@ -20,6 +24,29 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Suavizando a barra de rolagem */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+
+        /* AJUSTES PROFISSIONAIS PARA O PDF */
+        @media print {
+            @page { margin: 1cm; size: auto; }
+            body { background-color: white !important; color: black !important; font-size: 11px !important; }
+            .print-hidden { display: none !important; }
+            .print-show { display: flex !important; }
+            /* Evita que blocos quebrem no meio da página */
+            .break-avoid { break-inside: avoid; page-break-inside: avoid; }
+            /* Remove sombras e ajusta bordas para impressão limpa */
+            .shadow-xl, .shadow-sm { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+            .bg-slate-50 { background-color: #f8fafc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .max-w-5xl { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        }
+    </style>
 </head>
 <body class="bg-[#f8fafc] text-[#05121b]">
     <div id="root"></div>
@@ -31,7 +58,7 @@
           LayoutDashboard, Users, LogOut, ShieldCheck, 
           FileText, Building2, ArrowLeft, BarChart2, Mail, Phone, User, CheckCircle, ChevronRight, ChevronLeft,
           Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote,
-          X, Printer, MessageCircle, Send, Download, RefreshCw
+          X, Printer, MessageCircle, Send, Download, RefreshCw, Upload, FileBox
         } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP ---
@@ -41,7 +68,7 @@
 
         // --- COMPONENTES DE FORMULÁRIO MODO LEITURA ---
         const ReadOnlyInput = ({ label, value, subLabel, icon: Icon }) => (
-            <div className="space-y-1.5 w-full text-left">
+            <div className="space-y-1.5 w-full text-left break-avoid">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</label>
                 {subLabel && <p className="text-[9px] text-slate-400 mb-1">{subLabel}</p>}
                 <div className="relative">
@@ -52,15 +79,15 @@
         );
 
         const ReadOnlyTextArea = ({ label, value, subLabel }) => (
-            <div className="space-y-1.5 w-full text-left">
+            <div className="space-y-1.5 w-full text-left break-avoid">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</label>
                 {subLabel && <p className="text-[9px] text-slate-400 mb-1">{subLabel}</p>}
-                <textarea value={value || ""} readOnly className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-xl font-bold text-slate-500 text-xs outline-none cursor-default resize-none h-24"></textarea>
+                <textarea value={value || ""} readOnly className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-xl font-bold text-slate-500 text-xs outline-none cursor-default resize-none h-auto min-h-[6rem] whitespace-pre-wrap"></textarea>
             </div>
         );
 
         const ReadOnlySectionHeading = ({ icon: Icon, title }) => (
-            <div className="flex items-center gap-2 pt-8 pb-4 border-b border-slate-100 mb-6 mt-4">
+            <div className="flex items-center gap-2 pt-8 pb-4 border-b border-slate-100 mb-6 mt-4 break-avoid">
                 <Icon size={18} className="text-[#ff7b00]" />
                 <h3 className="text-sm font-black uppercase tracking-wide text-[#05121b]">{title}</h3>
             </div>
@@ -73,7 +100,11 @@
           // Dados Brutos
           const [diagnostics, setDiagnostics] = useState([]); // Fila (pending)
           const [derivedClients, setDerivedClients] = useState([]); // Base (completed)
+          const [allDiagnostics, setAllDiagnostics] = useState([]); // Todos para as estatísticas
           
+          // Dados Estatísticos
+          const [stats, setStats] = useState({ clients: 0, completed: 0, healthy: 0, warning: 0, critical: 0, structured: 0, guided: 0 });
+
           // Dados Filtrados
           const [filteredDiagnostics, setFilteredDiagnostics] = useState([]);
           const [filteredClients, setFilteredClients] = useState([]);
@@ -93,8 +124,8 @@
 
           // Estados de Filtro (Base de Clientes)
           const [clientSearchTerm, setClientSearchTerm] = useState("");
-          const [clientStatusFilter, setClientStatusFilter] = useState("todos"); // 'todos', 'healthy', 'warning', 'critical'
-          const [clientTypeFilter, setClientTypeFilter] = useState("todos"); // 'todos', 'Estruturado', 'Guiado'
+          const [clientStatusFilter, setClientStatusFilter] = useState("todos");
+          const [clientTypeFilter, setClientTypeFilter] = useState("todos");
           const [clientDateFrom, setClientDateFrom] = useState("");
           const [clientDateTo, setClientDateTo] = useState("");
 
@@ -114,10 +145,9 @@
             fetchData();
           }, []);
 
-          // Aplica os filtros na Fila de Espera (Apenas 'pending')
+          // Aplica os filtros na Fila de Espera
           useEffect(() => {
-              let filtered = diagnostics; // 'diagnostics' já vem filtrado com pending da função fetchData
-
+              let filtered = diagnostics;
               if (filterSearch.trim() !== "") {
                   const lower = filterSearch.toLowerCase();
                   filtered = filtered.filter(d => 
@@ -128,21 +158,16 @@
                       (d.telefone && d.telefone.includes(lower))
                   );
               }
-
-              if (filterDateFrom) {
-                  filtered = filtered.filter(d => new Date(d.created_at) >= new Date(filterDateFrom));
-              }
-
+              if (filterDateFrom) filtered = filtered.filter(d => new Date(d.created_at) >= new Date(filterDateFrom));
               if (filterDateTo) {
                   const toDate = new Date(filterDateTo);
                   toDate.setHours(23, 59, 59, 999);
                   filtered = filtered.filter(d => new Date(d.created_at) <= toDate);
               }
-
               setFilteredDiagnostics(filtered);
           }, [filterSearch, filterDateFrom, filterDateTo, diagnostics]);
 
-          // Aplica filtros na Base de Clientes (Apenas 'completed')
+          // Aplica filtros na Base de Clientes
           useEffect(() => {
               let filtered = derivedClients;
 
@@ -158,19 +183,14 @@
               }
 
               if (clientStatusFilter !== "todos") {
-                  // Filtra pelo status do diagnóstico mais recente
                   filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.health_status === clientStatusFilter);
               }
 
               if (clientTypeFilter !== "todos") {
-                   // Filtra pelo tipo do diagnóstico mais recente
                   filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.form_type === clientTypeFilter);
               }
 
-              if (clientDateFrom) {
-                  filtered = filtered.filter(c => new Date(c.firstDate) >= new Date(clientDateFrom));
-              }
-
+              if (clientDateFrom) filtered = filtered.filter(c => new Date(c.firstDate) >= new Date(clientDateFrom));
               if (clientDateTo) {
                   const toDate = new Date(clientDateTo);
                   toDate.setHours(23, 59, 59, 999);
@@ -178,7 +198,7 @@
               }
 
               setFilteredClients(filtered);
-              setCurrentPage(1); // Volta para a primeira página
+              setCurrentPage(1); 
           }, [clientSearchTerm, clientStatusFilter, clientTypeFilter, clientDateFrom, clientDateTo, derivedClients]);
 
           const clearFilters = () => {
@@ -198,51 +218,45 @@
           const fetchData = async () => {
             const { data: diags, error } = await supabase.from('diagnosticos').select('*').order('created_at', { ascending: false });
             if (diags) {
-                // Fila de Espera = Apenas Pending
+                setAllDiagnostics(diags);
                 const pendingDiags = diags.filter(d => d.internal_status === 'pending');
                 setDiagnostics(pendingDiags);
                 
-                // Base de Clientes = Apenas quem tem histórico Completed
                 const clientsMap = {};
                 diags.forEach(d => {
                     const cnpj = d.cnpj || "N/A";
                     if (!clientsMap[cnpj]) {
                         clientsMap[cnpj] = { 
-                            name: d.client_name, 
-                            razao: d.razao_social || d.client_name, 
-                            email: d.email || "", 
-                            phone: d.telefone || "", 
-                            cnpj: d.cnpj, 
-                            submissionCount: 0, 
-                            firstDate: d.created_at,
-                            generalNotes: d.client_general_notes || "",
-                            history: [],
-                            latestSubmission: null
+                            name: d.client_name, razao: d.razao_social || d.client_name, email: d.email || "", phone: d.telefone || "", 
+                            cnpj: d.cnpj, submissionCount: 0, firstDate: d.created_at, generalNotes: d.client_general_notes || "",
+                            history: [], latestSubmission: null
                         };
                     }
-                    
-                    // Adiciona na Base de Clientes apenas se for concluído
                     if (d.internal_status === 'completed') {
                         clientsMap[cnpj].submissionCount++;
                         clientsMap[cnpj].history.push(d);
-                        
-                        // Atualiza latestSubmission para ajudar no filtro
                         if (!clientsMap[cnpj].latestSubmission || new Date(d.created_at) > new Date(clientsMap[cnpj].latestSubmission.created_at)) {
                             clientsMap[cnpj].latestSubmission = d;
                         }
                     }
-
-                    if (new Date(d.created_at) < new Date(clientsMap[cnpj].firstDate)) {
-                        clientsMap[cnpj].firstDate = d.created_at;
-                    }
-                    if (d.client_general_notes) {
-                         clientsMap[cnpj].generalNotes = d.client_general_notes;
-                    }
+                    if (new Date(d.created_at) < new Date(clientsMap[cnpj].firstDate)) clientsMap[cnpj].firstDate = d.created_at;
+                    if (d.client_general_notes) clientsMap[cnpj].generalNotes = d.client_general_notes;
                 });
 
-                // Remove clientes que não tem nenhuma análise concluída da Base de Clientes
                 const clientsArray = Object.values(clientsMap).filter(c => c.submissionCount > 0);
                 setDerivedClients(clientsArray);
+
+                // --- CALCULA DADOS (ESTATÍSTICAS) ---
+                const completedDiags = diags.filter(d => d.internal_status === 'completed');
+                setStats({
+                    clients: clientsArray.length,
+                    completed: completedDiags.length,
+                    healthy: completedDiags.filter(d => d.health_status === 'healthy').length,
+                    warning: completedDiags.filter(d => d.health_status === 'warning').length,
+                    critical: completedDiags.filter(d => d.health_status === 'critical').length,
+                    structured: diags.filter(d => d.form_type === 'Estruturado').length,
+                    guided: diags.filter(d => d.form_type === 'Guiado').length
+                });
 
                 if (selectedClient) {
                     const updatedClient = clientsMap[selectedClient.cnpj];
@@ -251,21 +265,17 @@
             }
           };
 
-          // Lógica de Paginação
+          // Paginação
           const indexOfLastClient = currentPage * clientsPerPage;
           const indexOfFirstClient = indexOfLastClient - clientsPerPage;
           const currentClients = filteredClients.slice(indexOfFirstClient, indexOfLastClient);
           const totalPages = Math.ceil(filteredClients.length / clientsPerPage);
-
           const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
           const goDashboard = () => { setView('dashboard'); setSelectedClient(null); setSelectedSubmission(null); };
           const goClients = () => { setView('clients'); setSelectedClient(null); setSelectedSubmission(null); };
           const openClientProfile = (client) => { 
-              setSelectedClient(client); 
-              setGeneralClientNotes(client.generalNotes);
-              setView('client_profile'); 
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              setSelectedClient(client); setGeneralClientNotes(client.generalNotes); setView('client_profile'); window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
           const handleAdminAnalyze = (submission) => {
@@ -276,53 +286,33 @@
             setInternalAnalysisNotes(submission.internal_analysis_notes || "");
             setHealthStatus(submission.health_status || "");
             setWhatsAppNum(submission.telefone || "");
-
             setView('review');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
           const handleSaveAnalysis = async () => {
-            if(!healthStatus) {
-                alert("Por favor, selecione a Classificação de Saúde Financeira antes de salvar.");
-                return;
-            }
-
+            if(!healthStatus) { alert("Por favor, selecione a Classificação de Saúde Financeira antes de salvar."); return; }
             setSaveStatus("Salvando...");
             const { error } = await supabase.from('diagnosticos').update({
-                analysis: adminAnalysis,
-                chart_data_input: chartDataInput,
-                internal_analysis_notes: internalAnalysisNotes,
-                health_status: healthStatus,
-                status: "✅ Concluído",
-                internal_status: "completed"
+                analysis: adminAnalysis, chart_data_input: chartDataInput, internal_analysis_notes: internalAnalysisNotes,
+                health_status: healthStatus, status: "✅ Concluído", internal_status: "completed"
             }).eq('id', selectedSubmission.id);
 
             if (!error) {
                 setSaveStatus("Salvo com sucesso!");
                 await fetchData();
-                // Redireciona para Base de Clientes após salvar
-                setTimeout(() => {
-                    setSaveStatus("");
-                    goClients();
-                }, 1500);
-            } else {
-                setSaveStatus("Erro ao salvar.");
-            }
+                setTimeout(() => { setSaveStatus(""); goClients(); }, 1500);
+            } else setSaveStatus("Erro ao salvar.");
           };
 
           const handleSaveClientNotes = async () => {
               setClientNotesSaveStatus("Salvando...");
-              const { error } = await supabase.from('diagnosticos')
-                  .update({ client_general_notes: generalClientNotes })
-                  .eq('cnpj', selectedClient.cnpj);
-
+              const { error } = await supabase.from('diagnosticos').update({ client_general_notes: generalClientNotes }).eq('cnpj', selectedClient.cnpj);
               if (!error) {
                   setClientNotesSaveStatus("Observação Salva!");
                   await fetchData();
                   setTimeout(() => setClientNotesSaveStatus(""), 3000);
-              } else {
-                  setClientNotesSaveStatus("Erro ao salvar.");
-              }
+              } else setClientNotesSaveStatus("Erro ao salvar.");
           };
 
           const handleCopyDataForAI = () => {
@@ -343,10 +333,7 @@
           const handleSendWhatsApp = (phoneStr) => {
               const numToUse = phoneStr || whatsAppNum;
               const cleanPhone = numToUse.replace(/\D/g, '');
-              if (!cleanPhone) {
-                  alert("Por favor, insira um número de celular válido.");
-                  return;
-              }
+              if (!cleanPhone) { alert("Por favor, insira um número de celular válido."); return; }
               const message = encodeURIComponent(`Olá! Seu diagnóstico financeiro da OLUAP já está disponível. Acesse o painel para visualizar seus resultados detalhados.`);
               window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
           };
@@ -358,38 +345,24 @@
               window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
           };
 
-          const handlePrintPDF = () => {
-              window.print();
-          };
+          const handlePrintPDF = () => window.print();
 
           const downloadCSV = () => {
               if (filteredClients.length === 0) return;
-              
               const headers = ["Razao Social", "CNPJ", "Nome", "Email", "Telefone", "Data de Cadastro", "Total de Diagnosticos"];
-              
               const csvRows = filteredClients.map(c => [
-                  `"${c.razao || ''}"`,
-                  `"${c.cnpj || ''}"`,
-                  `"${c.name || ''}"`,
-                  `"${c.email || ''}"`,
-                  `"${c.phone || ''}"`,
-                  `"${new Date(c.firstDate).toLocaleDateString()}"`,
-                  `"${c.submissionCount}"`
+                  `"${c.razao || ''}"`, `"${c.cnpj || ''}"`, `"${c.name || ''}"`, `"${c.email || ''}"`, `"${c.phone || ''}"`, `"${new Date(c.firstDate).toLocaleDateString()}"`, `"${c.submissionCount}"`
               ].join(","));
-
               const csvContent = [headers.join(","), ...csvRows].join("\n");
-              
               const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
               const link = document.createElement("a");
-              const url = URL.createObjectURL(blob);
-              link.setAttribute("href", url);
+              link.setAttribute("href", URL.createObjectURL(blob));
               link.setAttribute("download", `oluap_clientes_${new Date().toISOString().slice(0,10)}.csv`);
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
           };
 
-          // --- BADGES DA TABELA ---
           const getDiagnosticoBadge = (health_status) => {
               switch(health_status) {
                   case 'healthy': return <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100">Saudável</span>;
@@ -399,51 +372,192 @@
               }
           };
 
-          // Renderização do Formulário (Leitura)
+          // Renderização do Formulário (Leitura Completa + Anexos)
           const renderClientForm = () => {
               const isV1 = selectedSubmission?.form_type === 'Estruturado';
               const fd = clientFormData;
 
-              if (isV1) {
-                  return (
-                      <div className="space-y-6">
-                          <ReadOnlySectionHeading icon={Building2} title="1. Identificação da Empresa" />
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                              <ReadOnlyInput label="Razão Social da Empresa" value={fd.v1_razao} />
-                              <ReadOnlyInput label="CNPJ" value={fd.v1_cnpj} />
-                              <div className="md:col-span-2"><ReadOnlyInput label="Nome do Responsável" value={fd.v1_responsavel} /></div>
-                              <ReadOnlyInput label="Email de Contato" value={fd.v1_email} icon={Mail} />
-                              <ReadOnlyInput label="Celular / WhatsApp" value={fd.v1_phone} icon={Phone} />
-                          </div>
-                          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-center">
-                              <p className="text-xs font-bold text-slate-400">... (Restante das Respostas do Formulário) ...</p>
+              return (
+                  <div className="space-y-6 break-avoid">
+                      {isV1 ? (
+                          <>
+                              {/* 1. IDENTIFICAÇÃO */}
+                              <ReadOnlySectionHeading icon={Building2} title="1. Identificação da Empresa" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Razão Social da Empresa" value={fd.v1_razao} />
+                                  <ReadOnlyInput label="CNPJ" value={fd.v1_cnpj} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Nome do Responsável" value={fd.v1_responsavel} /></div>
+                                  <ReadOnlyInput label="Email de Contato" value={fd.v1_email} icon={Mail} />
+                                  <ReadOnlyInput label="Celular / WhatsApp" value={fd.v1_phone} icon={Phone} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Segmento de Atuação" value={fd.v1_segmento} /></div>
+                                  <ReadOnlyInput label="Tempo de Operação" value={fd.v1_tempoOperacao} />
+                                  <ReadOnlyInput label="Número de Funcionários" value={fd.v1_numFuncionarios} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Controle Financeiro" value={fd.v1_controleFinanceiro} /></div>
+                              </div>
+
+                              {/* 2. RECEITAS */}
+                              <ReadOnlySectionHeading icon={Landmark} title="2. Performance de Vendas (Receita)" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Faturamento Médio Mensal" value={fd.v1_fatMedio} />
+                                  <ReadOnlyInput label="Faturamento 12 Meses" value={fd.v1_fat12} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Mix de Faturamento (Prod/Serv)" value={fd.v1_mixFaturamento} /></div>
+                                  <ReadOnlyInput label="Número Médio Vendas/Mês" value={fd.v1_numVendas} />
+                                  <ReadOnlyInput label="Gera Lucro?" value={fd.v1_lucra} />
+                                  <ReadOnlyInput label="Lucro Mensal" value={fd.v1_lucroMensal} />
+                                  <ReadOnlyInput label="Impostos %" value={fd.v1_impostos} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Meios de Recebimento" value={fd.v1_meios} /></div>
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Inadimplência" value={fd.v1_inadimplencia} /></div>
+                              </div>
+
+                              {/* 3. CUSTOS DIRETOS */}
+                              <ReadOnlySectionHeading icon={Wallet} title="3. Custos Diretos" />
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Custo Mercadorias/Serviços" value={fd.v1_custosDiretos} />
+                                  <ReadOnlyInput label="Taxas Maquininha/Boleto" value={fd.v1_taxaRecebimento} />
+                                  <ReadOnlyInput label="Comissões" value={fd.v1_comissoes} />
+                              </div>
+
+                              {/* 4. ESTRUTURA OPERACIONAL */}
+                              <ReadOnlySectionHeading icon={Target} title="4. Estrutura Operacional" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Folha de Pagamento" value={fd.v1_folha} />
+                                  <ReadOnlyInput label="Pró-labore" value={fd.v1_prolabore} />
+                                  <ReadOnlyInput label="Marketing" value={fd.v1_mkt} />
+                                  <ReadOnlyInput label="Aluguel/Estrutura" value={fd.v1_estrutura} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Outras Despesas Fixas" value={fd.v1_outrasFixas} /></div>
+                              </div>
+
+                              {/* 5. DÍVIDAS */}
+                              <ReadOnlySectionHeading icon={Clock} title="5. Ciclo de Caixa e Obrigações" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="Dívidas ou Empréstimos" value={fd.v1_descricaoDividas} />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                      <ReadOnlyInput label="Total Dívidas" value={fd.v1_valorTotalDividas} />
+                                      <ReadOnlyInput label="Peso Mensal da Dívida" value={fd.v1_pesoDivida} />
+                                      <ReadOnlyInput label="Prazo Médio Recebimento" value={fd.v1_prazoRec} />
+                                      <ReadOnlyInput label="Prazo Médio Pagamento" value={fd.v1_prazoPag} />
+                                  </div>
+                              </div>
+
+                              {/* 6. CAIXA */}
+                              <ReadOnlySectionHeading icon={Landmark} title="6. Posição Patrimonial" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Saldo Conta/Caixa" value={fd.v1_saldo} />
+                                  <ReadOnlyInput label="Reserva Financeira" value={fd.v1_reserva} />
+                                  <ReadOnlyInput label="Valor em Estoque" value={fd.v1_estoque} />
+                                  <div className="md:col-span-2"><ReadOnlyTextArea label="Pretende Crédito?" value={fd.v1_detalhesCredito} /></div>
+                              </div>
+
+                              {/* 7. VISÃO */}
+                              <ReadOnlySectionHeading icon={Sparkles} title="7. Visão Estratégica" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="Maior Desafio Financeiro" value={fd.v1_desafio} />
+                                  <ReadOnlyTextArea label="Objetivo 12 Meses" value={fd.v1_objetivo} />
+                              </div>
+                          </>
+                      ) : (
+                          <>
+                              {/* GUIADO - 1. IDENTIFICAÇÃO */}
+                              <ReadOnlySectionHeading icon={Building2} title="1. Identificação da Empresa" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Razão Social da Empresa" value={fd.g_razao} />
+                                  <ReadOnlyInput label="CNPJ" value={fd.g_cnpj} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Nome do Responsável" value={fd.g_responsavel} /></div>
+                                  <ReadOnlyInput label="Email de Contato" value={fd.g_email} icon={Mail} />
+                                  <ReadOnlyInput label="Celular / WhatsApp" value={fd.g_phone} icon={Phone} />
+                              </div>
+
+                              {/* 2. OPERAÇÃO */}
+                              <ReadOnlySectionHeading icon={Target} title="2. Sobre o Negócio" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="O que Vende" value={fd.g_oqueVende} />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                      <ReadOnlyInput label="Tempo de Existência" value={fd.g_tempoExistencia} />
+                                      <ReadOnlyInput label="Quantidade Pessoas" value={fd.g_pessoas} />
+                                  </div>
+                              </div>
+
+                              {/* 3. VENDAS */}
+                              <ReadOnlySectionHeading icon={Landmark} title="3. Vendas (O que Entra)" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Faturamento Mensal" value={fd.g_faturamento} />
+                                  <ReadOnlyInput label="Mix (Prod/Serv)" value={fd.g_mixFaturamento} />
+                                  <ReadOnlyInput label="Frequência de Vendas" value={fd.g_frequencia} />
+                                  <ReadOnlyInput label="Meios de Recebimento" value={fd.g_meioVenda} />
+                                  <div className="md:col-span-2"><ReadOnlyTextArea label="Avaliação da Precificação" value={fd.g_sobrePreco} /></div>
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Produto Mais Lucrativo" value={fd.g_produtoLucrativo} /></div>
+                              </div>
+
+                              {/* 4. GASTOS */}
+                              <ReadOnlySectionHeading icon={Wallet} title="4. Gastos Principais" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Aluguel Mensal" value={fd.g_aluguel} />
+                                  <ReadOnlyInput label="Gastos Funcionários" value={fd.g_gastoFunc} />
+                                  <ReadOnlyInput label="Seu Salário (Pró-labore)" value={fd.g_prolabore} />
+                                  <ReadOnlyInput label="Custos com Mercadorias/Serviço" value={fd.g_custosDiretos} />
+                                  <ReadOnlyInput label="Taxas Maquininha" value={fd.g_taxaMaquininha} />
+                                  <ReadOnlyInput label="Outros Gastos Fixos" value={fd.g_outrosFixos} />
+                                  <div className="md:col-span-2"><ReadOnlyTextArea label="Maior Ralo de Dinheiro" value={fd.g_raloDinheiro} /></div>
+                              </div>
+
+                              {/* 5. DÍVIDAS */}
+                              <ReadOnlySectionHeading icon={Clock} title="5. Dívidas e Gestão" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="Possui Dívidas?" value={fd.g_descricaoDividas} />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                      <ReadOnlyInput label="Valor Total Dívidas" value={fd.g_valorTotalDivida} />
+                                      <ReadOnlyInput label="Pagamento em Dia?" value={fd.g_contasEmDia} />
+                                      <div className="md:col-span-2"><ReadOnlyInput label="Mistura Contas PF e PJ?" value={fd.g_misturaContas} /></div>
+                                  </div>
+                              </div>
+
+                              {/* 6. CAIXA */}
+                              <ReadOnlySectionHeading icon={Landmark} title="6. Caixa e Crédito" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Fôlego de Caixa" value={fd.g_folegoCaixa} />
+                                  <ReadOnlyInput label="Valor em Estoque" value={fd.g_estoque} />
+                                  <div className="md:col-span-2"><ReadOnlyTextArea label="Quer Empréstimo?" value={fd.g_querEmprestimo} /></div>
+                                  <ReadOnlyInput label="Prazo Pagamento Desejado" value={fd.g_prazoPagamento} />
+                              </div>
+
+                              {/* 7. VISÃO */}
+                              <ReadOnlySectionHeading icon={Sparkles} title="7. Visão de Futuro" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="Maior Desafio Hoje" value={fd.g_desafio} />
+                                  <ReadOnlyTextArea label="O que acontece em 3 meses?" value={fd.g_futuro} />
+                              </div>
+                          </>
+                      )}
+
+                      {/* --- SEÇÃO 9: DOCUMENTOS E ANEXOS --- */}
+                      <ReadOnlySectionHeading icon={Upload} title={isV1 ? "8. Documentos e Anexos" : "9. Documentos e Anexos"} />
+                      <div className="space-y-5 bg-slate-50 border border-slate-100 p-6 rounded-2xl break-avoid">
+                          <ReadOnlyTextArea label="Links de Planilhas / Drive (Enviados pelo cliente)" value={(isV1 ? fd.v1_linksAnexos : fd.g_linksAnexos) || "Nenhum link fornecido."} />
+                          
+                          <div className="space-y-1.5 w-full text-left">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Arquivos do Computador (Enviados pelo cliente)</label>
+                              <div className="w-full bg-white border border-slate-100 px-4 py-3 rounded-xl font-bold text-[#137789] text-xs outline-none min-h-[3rem] flex flex-wrap gap-2 items-center">
+                                  {(isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos) ? (
+                                      (isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos).split(', ').map((file, idx) => (
+                                          <span key={idx} className="bg-[#137789]/10 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                                            <FileBox size={14}/> {file}
+                                          </span>
+                                      ))
+                                  ) : (
+                                      <span className="text-slate-400">Nenhum arquivo anexado.</span>
+                                  )}
+                              </div>
                           </div>
                       </div>
-                  );
-              } else {
-                  return (
-                      <div className="space-y-6">
-                          <ReadOnlySectionHeading icon={Building2} title="1. Identificação da Empresa" />
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                              <ReadOnlyInput label="Razão Social da Empresa" value={fd.g_razao} />
-                              <ReadOnlyInput label="CNPJ" value={fd.g_cnpj} />
-                              <div className="md:col-span-2"><ReadOnlyInput label="Nome do Responsável" value={fd.g_responsavel} /></div>
-                              <ReadOnlyInput label="Email de Contato" value={fd.g_email} icon={Mail} />
-                              <ReadOnlyInput label="Celular / WhatsApp" value={fd.g_phone} icon={Phone} />
-                          </div>
-                          <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-center">
-                              <p className="text-xs font-bold text-slate-400">... (Restante das Respostas do Formulário) ...</p>
-                          </div>
-                      </div>
-                  );
-              }
+                  </div>
+              );
           };
 
           return (
-            <div className="min-h-screen flex text-[#05121b] font-sans">
+            <div className="min-h-screen flex text-[#05121b] font-sans bg-slate-50/40 print:bg-white">
               
               {/* SIDEBAR */}
-              <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64 p-6' : 'w-20 p-4'} flex flex-col z-10 print:hidden`}>
+              <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64 p-6' : 'w-20 p-4'} flex flex-col z-10 print-hidden`}>
                 <div className="flex items-center gap-3 mb-10 overflow-hidden cursor-pointer" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                     <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md"><ShieldCheck size={20}/></div>
                     {isSidebarOpen && <span className="font-black italic text-xl tracking-tighter">OLUAP</span>}
@@ -464,11 +578,47 @@
               </aside>
 
               {/* CONTEÚDO PRINCIPAL */}
-              <main className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-50/40">
+              <main className="flex-1 p-6 md:p-10 overflow-y-auto w-full print:p-0">
                 
+                {/* --- HEADER PDF EXCLUSIVO PARA IMPRESSÃO --- */}
+                <div className="hidden print-show items-center justify-between mb-10 pb-6 border-b-2 border-[#05121b]">
+                    <img src="logo2.png" alt="OLUAP" className="h-10 object-contain" />
+                    <h1 className="text-xl font-black uppercase tracking-widest text-[#05121b]">Relatório de Diagnóstico</h1>
+                </div>
+
                 {/* ---------- TELA 1: FILA DE ESPERA (SÓ PENDING) ---------- */}
                 {view === 'dashboard' && (
-                    <div className="max-w-6xl mx-auto">
+                    <div className="max-w-6xl mx-auto w-full">
+                        
+                        {/* --- WIDGETS DE DADOS (RESUMO) --- */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                                <div className="absolute -right-4 -bottom-4 opacity-5"><Users size={80}/></div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Clientes na Base</p>
+                                <p className="text-3xl font-black text-[#05121b]">{stats.clients}</p>
+                            </div>
+                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                                <div className="absolute -right-4 -bottom-4 opacity-5"><CheckCircle size={80}/></div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Análises Concluídas</p>
+                                <p className="text-3xl font-black text-[#137789]">{stats.completed}</p>
+                            </div>
+                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Por Status</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-emerald-500 rounded-full"></span><span className="text-xs font-bold">{stats.healthy}</span></div>
+                                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-amber-400 rounded-full"></span><span className="text-xs font-bold">{stats.warning}</span></div>
+                                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-red-500 rounded-full"></span><span className="text-xs font-bold">{stats.critical}</span></div>
+                                </div>
+                            </div>
+                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Por Tipo</p>
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center justify-between text-[11px] font-bold"><span className="text-slate-500">Estruturado</span> <span>{stats.structured}</span></div>
+                                    <div className="flex items-center justify-between text-[11px] font-bold"><span className="text-slate-500">Guiado</span> <span>{stats.guided}</span></div>
+                                </div>
+                            </div>
+                        </div>
+
                         <header className="mb-8">
                             <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Fila de Espera</h1>
                             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Diagnósticos pendentes de análise</p>
@@ -542,7 +692,7 @@
 
                 {/* ---------- TELA 2: BASE DE CLIENTES (SÓ COMPLETED) ---------- */}
                 {view === 'clients' && (
-                    <div className="max-w-6xl mx-auto">
+                    <div className="max-w-6xl mx-auto w-full">
                         
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                             <header>
@@ -559,7 +709,7 @@
                             </div>
                         </div>
 
-                        {/* --- BARRA DE FILTROS BASE DE CLIENTES --- */}
+                        {/* Filtros Base de Clientes */}
                         <div className="flex flex-col md:flex-row gap-4 items-end bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
                             <div className="flex-1 w-full space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Buscar (Nome, E-mail ou Fone)</label>
@@ -568,8 +718,6 @@
                                     <input type="text" placeholder="Digite para buscar..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
                                 </div>
                             </div>
-                            
-                            {/* Filtro de Diagnóstico (Status de Saúde) */}
                             <div className="w-full md:w-32 space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Diagnóstico</label>
                                 <select value={clientStatusFilter} onChange={(e) => setClientStatusFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all appearance-none cursor-pointer">
@@ -579,8 +727,6 @@
                                     <option value="critical">Atenção</option>
                                 </select>
                             </div>
-
-                            {/* Filtro de Tipo */}
                             <div className="w-full md:w-32 space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Tipo</label>
                                 <select value={clientTypeFilter} onChange={(e) => setClientTypeFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all appearance-none cursor-pointer">
@@ -589,7 +735,6 @@
                                     <option value="Guiado">Guiado</option>
                                 </select>
                             </div>
-
                             <div className="w-full md:w-32 space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (De)</label>
                                 <input type="date" value={clientDateFrom} onChange={(e) => setClientDateFrom(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
@@ -603,7 +748,6 @@
                             </button>
                         </div>
 
-                        {/* Tabela de Base de Clientes (Paginada) */}
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50 border-b border-slate-100">
@@ -619,8 +763,7 @@
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {currentClients.length > 0 ? currentClients.map(c => {
-                                        const lastSub = c.latestSubmission || c.history[0]; // Pega a última análise para mostrar o status
-                                        
+                                        const lastSub = c.latestSubmission || c.history[0]; 
                                         return (
                                         <tr key={c.cnpj} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="p-5">
@@ -663,29 +806,21 @@
                             </table>
                         </div>
 
-                        {/* Paginação */}
                         {totalPages > 1 && (
                             <div className="flex justify-center items-center gap-2 pb-10">
-                                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-                                    <ChevronLeft size={16} />
-                                </button>
+                                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronLeft size={16} /></button>
                                 {[...Array(totalPages)].map((_, i) => (
-                                    <button key={i} onClick={() => paginate(i + 1)} className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${currentPage === i + 1 ? 'bg-[#137789] text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                                        {i + 1}
-                                    </button>
+                                    <button key={i} onClick={() => paginate(i + 1)} className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${currentPage === i + 1 ? 'bg-[#137789] text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{i + 1}</button>
                                 ))}
-                                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors">
-                                    <ChevronRight size={16} />
-                                </button>
+                                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronRight size={16} /></button>
                             </div>
                         )}
-
                     </div>
                 )}
 
                 {/* ---------- TELA 3: FICHA DO CLIENTE (PERFIL) ---------- */}
                 {view === 'client_profile' && selectedClient && (
-                    <div className="max-w-5xl mx-auto pb-20">
+                    <div className="max-w-5xl mx-auto pb-20 w-full">
                         <div className="flex justify-between items-center mb-8">
                             <button onClick={goClients} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors">
                                 <ArrowLeft size={16}/> Voltar para clientes
@@ -743,17 +878,17 @@
 
                 {/* ---------- TELA 4: MODO DE EDIÇÃO E ANÁLISE ---------- */}
                 {view === 'review' && selectedSubmission && (
-                    <div className="max-w-5xl mx-auto pb-20 print:pb-0">
-                        <div className="flex justify-between items-center mb-8 print:hidden">
+                    <div className="max-w-5xl mx-auto pb-20 w-full print:max-w-none print:w-full print:p-0 print:m-0 print:pb-0">
+                        <div className="flex justify-between items-center mb-8 print-hidden">
                             <button onClick={() => setView(selectedClient ? 'client_profile' : 'dashboard')} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors">
                                 <ArrowLeft size={16}/> {selectedClient ? "Voltar para Ficha" : "Voltar para lista"}
                             </button>
                             <span className="bg-orange-50 text-[#ff7b00] px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">Modo de Edição & Análise</span>
                         </div>
                         
-                        <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 print:shadow-none print:border-none print:p-0">
+                        <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0">
                             
-                            <div className="flex justify-between items-start mb-8 border-b border-slate-100 pb-6 print:border-black">
+                            <div className="flex justify-between items-start mb-8 border-b border-slate-100 pb-6 print-hidden">
                                 <div>
                                     <h2 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter mb-2">{selectedSubmission.razao_social || selectedSubmission.client_name}</h2>
                                     <p className="text-[#137789] text-[10px] font-black uppercase tracking-[0.15em]">{selectedSubmission.form_type} • Enviado em {new Date(selectedSubmission.created_at).toLocaleDateString()}</p>
@@ -761,7 +896,7 @@
                             </div>
 
                             {/* Exportar para IA */}
-                            <div className="bg-slate-50 p-6 rounded-3xl flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-12 border border-slate-100 print:hidden">
+                            <div className="bg-slate-50 p-6 rounded-3xl flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-12 border border-slate-100 print-hidden">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-tight text-[#05121b]">Exportar Dados</h3>
                                     <p className="text-[10px] text-slate-400 font-bold mt-1">Copie as respostas para usar em sua IA externa</p>
@@ -771,36 +906,41 @@
                                 </button>
                             </div>
 
-                            <div className="mb-16 pointer-events-none print:hidden">
+                            <div className="mb-16 pointer-events-none">
                                 {renderClientForm()}
                             </div>
 
-                            <div className="border-t-2 border-slate-100 pt-12 mb-12 print:border-none print:pt-0">
-                                <div className="flex items-center gap-2 mb-8 print:hidden">
+                            <div className="border-t-2 border-slate-100 pt-12 mb-12 break-avoid print:border-t-4 print:border-[#05121b] print:pt-6">
+                                <div className="flex items-center gap-2 mb-8 print-hidden">
                                     <Sparkles size={24} className="text-[#ff7b00]" />
                                     <h3 className="text-2xl font-black uppercase tracking-tighter italic text-[#05121b]">Resultado e Diagnóstico</h3>
                                 </div>
 
-                                {/* ÁREAS DE EDIÇÃO DE TEXTO */}
-                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                                    <div className="space-y-4 print:col-span-2">
-                                        <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2 print:text-black"><FileText size={16}/> Relatório em Texto</label>
-                                        <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-96 p-6 bg-white border-2 border-slate-100 rounded-[2rem] text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed shadow-inner print:border-none print:p-0 print:h-auto print:shadow-none" placeholder="Cole aqui o relatório detalhado gerado pela IA..."></textarea>
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 print:block print:w-full">
+                                    <div className="space-y-4 xl:col-span-2 print:w-full">
+                                        <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2 print-hidden"><FileText size={16}/> Relatório em Texto</label>
+                                        <div className="hidden print-show text-lg font-black uppercase text-[#05121b] tracking-wider mb-4 border-b border-slate-200 pb-2"><FileText size={20} className="inline mr-2 text-[#ff7b00]"/> Análise do Especialista</div>
+                                        
+                                        {/* TEXTAREA que vira DIV na impressão para não cortar */}
+                                        <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-96 p-6 bg-white border-2 border-slate-100 rounded-[2rem] text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed shadow-inner print-hidden" placeholder="Cole aqui o relatório detalhado gerado pela IA..."></textarea>
+                                        <div className="hidden print-show whitespace-pre-wrap text-sm leading-relaxed text-black">
+                                            {adminAnalysis || "Análise não preenchida."}
+                                        </div>
                                     </div>
-                                    <div className="space-y-4 print:hidden">
+                                    <div className="space-y-4 print-hidden">
                                         <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><BarChart2 size={16}/> Dados para Gráficos</label>
                                         <textarea value={chartDataInput} onChange={(e) => setChartDataInput(e.target.value)} className="w-full h-96 p-6 bg-[#05121b] text-emerald-400 font-mono border-2 border-[#05121b] rounded-[2rem] text-xs outline-none resize-none leading-relaxed shadow-inner" placeholder="Cole exatamente neste formato:&#10;&#10;Estrutura de Resultado&#10;Receita Bruta: R$ 100000&#10;Custos Diretos: R$ 40000&#10;..."></textarea>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="mb-12 print:hidden">
+                            <div className="mb-12 print-hidden">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4"><Lock size={14}/> Observações Internas da Análise (Privado)</label>
                                 <textarea value={internalAnalysisNotes} onChange={(e) => setInternalAnalysisNotes(e.target.value)} className="w-full h-32 p-6 bg-yellow-50/50 border-2 border-yellow-100 rounded-3xl text-sm font-medium text-slate-600 outline-none focus:border-yellow-300 resize-none leading-relaxed" placeholder="Anotações internas sobre esta análise específica (não visível para o cliente)..."></textarea>
                             </div>
 
-                            {/* SALVAMENTO (Não aparece no print) */}
-                            <div className="border-t-2 border-slate-100 pt-10 pb-10 print:hidden">
+                            {/* SALVAMENTO */}
+                            <div className="border-t-2 border-slate-100 pt-10 pb-10 print-hidden">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-4 text-center md:text-left">Classificação de Saúde Financeira</label>
                                 
                                 <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -815,43 +955,22 @@
                                 </button>
                             </div>
 
-                            {/* --- NOVA BARRA DE COMPARTILHAMENTO / PDF --- */}
-                            <div className="border-t-2 border-dashed border-slate-200 pt-10 mt-10 print:hidden bg-slate-50 -mx-8 md:-mx-12 -mb-8 md:-mb-12 p-8 md:p-12 rounded-b-[2rem]">
+                            {/* BARRA DE COMPARTILHAMENTO */}
+                            <div className="border-t-2 border-dashed border-slate-200 pt-10 mt-10 print-hidden bg-slate-50 -mx-8 md:-mx-12 -mb-8 md:-mb-12 p-8 md:p-12 rounded-b-[2rem]">
                                 <h3 className="text-sm font-black uppercase text-[#05121b] tracking-wider mb-6 flex items-center gap-2"><Send size={18} className="text-[#ff7b00]"/> Compartilhar / Exportar Resultado</h3>
                                 
                                 <div className="flex flex-col xl:flex-row gap-5 items-stretch xl:items-center">
-                                    
-                                    {/* Whatsapp Block */}
                                     <div className="flex-1 flex flex-col md:flex-row bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-[#25D366] focus-within:ring-1 focus-within:ring-[#25D366] shadow-sm">
-                                        <div className="px-5 py-4 bg-slate-100 border-r border-slate-200 text-slate-500 flex items-center justify-center shrink-0">
-                                            <MessageCircle size={20} className="text-[#25D366]" />
-                                        </div>
-                                        <input 
-                                            type="text" 
-                                            value={whatsAppNum} 
-                                            onChange={(e) => setWhatsAppNum(e.target.value)} 
-                                            placeholder="Celular do Cliente" 
-                                            className="px-5 py-4 bg-transparent outline-none text-sm font-bold text-[#05121b] w-full" 
-                                        />
-                                        <button onClick={() => handleSendWhatsApp(whatsAppNum)} className="px-8 py-4 bg-[#25D366] text-white font-black text-[10px] uppercase tracking-widest hover:bg-[#1da851] transition-colors shrink-0 whitespace-nowrap">
-                                            Enviar Whats
-                                        </button>
+                                        <div className="px-5 py-4 bg-slate-100 border-r border-slate-200 text-slate-500 flex items-center justify-center shrink-0"><MessageCircle size={20} className="text-[#25D366]" /></div>
+                                        <input type="text" value={whatsAppNum} onChange={(e) => setWhatsAppNum(e.target.value)} placeholder="Celular do Cliente" className="px-5 py-4 bg-transparent outline-none text-sm font-bold text-[#05121b] w-full" />
+                                        <button onClick={() => handleSendWhatsApp(whatsAppNum)} className="px-8 py-4 bg-[#25D366] text-white font-black text-[10px] uppercase tracking-widest hover:bg-[#1da851] transition-colors shrink-0 whitespace-nowrap">Enviar Whats</button>
                                     </div>
-
-                                    {/* Botões Email e PDF */}
                                     <div className="flex flex-col sm:flex-row gap-4 shrink-0">
-                                        <button onClick={handleSendEmail} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-blue-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-sm whitespace-nowrap">
-                                            <Mail size={16} /> Enviar E-mail
-                                        </button>
-
-                                        <button onClick={handlePrintPDF} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-[#05121b] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors shadow-sm whitespace-nowrap">
-                                            <Printer size={16} /> Gerar PDF
-                                        </button>
+                                        <button onClick={handleSendEmail} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-blue-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-sm whitespace-nowrap"><Mail size={16} /> Enviar E-mail</button>
+                                        <button onClick={handlePrintPDF} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-[#05121b] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors shadow-sm whitespace-nowrap"><Printer size={16} /> Gerar PDF</button>
                                     </div>
-
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 )}
