@@ -27,16 +27,14 @@
         ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
-<body class="m-0 p-0 font-sans bg-[#e8ecef] min-h-screen relative flex items-center justify-center overflow-x-hidden">
+<body class="m-0 p-0 font-sans min-h-screen relative flex items-center justify-center overflow-x-hidden bg-gradient-to-br from-[#f15a00] to-[#137789]">
     
-    <div class="absolute top-0 left-0 w-full h-[45vh] bg-gradient-to-r from-[#f15a00] to-[#137789] z-0"></div>
-
     <div id="root" class="w-full relative z-10 px-4 py-10 md:py-16"></div>
 
     <script type="text/babel" data-type="module">
         import React, { useState } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Loader2, AlertTriangle, Eye, EyeOff, CheckCircle, ArrowLeft } from 'lucide-react';
+        import { Loader2, AlertTriangle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP (CHAVES SALVAS) ---
         const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
@@ -111,11 +109,6 @@
                     {/* CARTÃO BRANCO CENTRAL */}
                     <div className="w-full bg-white rounded-[2rem] shadow-2xl p-8 md:p-12 relative">
                         
-                        {/* Botão Voltar */}
-                        <a href="login.html" className="absolute top-8 left-8 text-slate-400 hover:text-[#f15a00] transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest hidden md:flex">
-                            <ArrowLeft size={14} /> Voltar
-                        </a>
-
                         <div className="text-center mb-10 md:mt-4">
                             <h2 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter mb-2">Criar Conta</h2>
                             <p className="text-slate-500 text-sm font-medium">Preencha seus dados para iniciar o diagnóstico.</p>
@@ -227,7 +220,7 @@
                             </form>
                         )}
 
-                        {/* Link de Login (Mobile e Rodapé) */}
+                        {/* Link de Login */}
                         {!success && (
                             <div className="mt-8 text-center border-t border-slate-100 pt-6">
                                 <p className="text-xs font-bold text-slate-500">
