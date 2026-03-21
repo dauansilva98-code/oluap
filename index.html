@@ -285,8 +285,11 @@
 
                 const payload = {
                     user_id: currentUser.id,
-                    client_name: isV1 ? formData.v1_razao : formData.g_razao,
-                    cnpj: maskCNPJ(isV1 ? formData.v1_cnpj : formData.g_cnpj),
+                    client_name: isV1 ? formData.v1_responsavel : formData.g_responsavel, // Nome do Responsável
+                    razao_social: isV1 ? formData.v1_razao : formData.g_razao, // Razão Social
+                    cnpj: maskCNPJ(isV1 ? formData.v1_cnpj : formData.g_cnpj), // CNPJ
+                    email: isV1 ? formData.v1_email : formData.g_email, // Email
+                    telefone: isV1 ? formData.v1_phone : formData.g_phone, // Telefone
                     status: "⏳ Em análise",
                     internal_status: "pending",
                     form_type: isV1 ? 'Estruturado' : 'Guiado',
