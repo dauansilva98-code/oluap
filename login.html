@@ -22,18 +22,22 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* Checkbox laranja personalizado */
+        /* Personalização do checkbox */
         input[type="checkbox"]:checked {
             background-color: #f15a00;
             border-color: #f15a00;
         }
-        /* Ajuste do botão com gradiente exato do print */
+        /* Botão com o gradiente da marca */
         .btn-gradient {
-            background: linear-gradient(90deg, #155d64 0%, #f15a00 100%);
+            background: linear-gradient(90deg, #137789 0%, #f15a00 100%);
+        }
+        /* Removemos a barra de rolagem no desktop, mas mantemos no mobile para o teclado */
+        @media (min-width: 768px) {
+            body { overflow: hidden; }
         }
     </style>
 </head>
-<body class="bg-[#f5f6f8] m-0 p-0 font-sans md:overflow-hidden">
+<body class="m-0 p-0 font-sans">
     <div id="root"></div>
 
     <script type="text/babel" data-type="module">
@@ -41,7 +45,7 @@
         import { createRoot } from 'react-dom/client';
         import { Loader2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 
-        // --- CONEXÃO SUPABASE OLUAP ---
+        // --- CONEXÃO SUPABASE OLUAP (OFICIAL) ---
         const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -53,12 +57,11 @@
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState("");
 
-            // Auto-redirecionamento se já estiver logado
+            // Auto-redirecionamento Lumis: Se já tem sessão, pula o login!
             useEffect(() => {
                 const checkSession = async () => {
                     const { data: { session } } = await supabase.auth.getSession();
                     if (session && session.user.role !== 'anon') {
-                        // Se não for um usuário anônimo (cliente), joga pro admin
                         window.location.href = 'admin.html';
                     }
                 };
@@ -84,55 +87,51 @@
             };
 
             return (
-                <div className="min-h-screen w-full flex flex-col md:flex-row relative">
+                /* No Mobile: Fundo com Gradiente total (Laranja -> Azul)
+                 No Desktop: Fundo Cinza claro, o gradiente fica só na div da esquerda 
+                */
+                <div className="min-h-screen md:h-screen w-full flex flex-col md:flex-row bg-gradient-to-b from-[#f15a00] to-[#137789] md:bg-none md:bg-[#e8ecef]">
                     
-                    {/* ----- BACKGROUND MOBILE (Header Arredondado) ----- */}
-                    <div className="md:hidden absolute top-0 left-0 w-full h-72 bg-gradient-to-b from-[#f35d00] to-[#164e58] rounded-b-[60px] z-0 flex flex-col items-center pt-10 px-6">
-                        <div className="text-white font-black text-3xl tracking-tighter flex items-center gap-1 mb-4">
-                            olua<span className="text-white/80 rotate-45 ml-[-4px]">P</span>
-                        </div>
-                        <h1 className="text-white text-center text-xl font-bold leading-tight drop-shadow-md">
-                            A plataforma que <br/><span className="text-[#05121b] font-black">simplifica</span> o complicado!
-                        </h1>
-                    </div>
-
-                    {/* ----- LADO ESQUERDO: Degradê Laranja -> Azul Petróleo (DESKTOP) ----- */}
-                    <div className="hidden md:flex w-[45%] h-screen bg-gradient-to-b from-[#f35d00] to-[#164e58] rounded-r-[80px] p-12 relative shadow-2xl flex-col items-center justify-center">
+                    {/* ----- LADO ESQUERDO (DESKTOP) / CABEÇALHO (MOBILE) ----- */}
+                    <div className="flex md:w-[45%] md:h-full md:bg-gradient-to-b md:from-[#f15a00] md:to-[#137789] md:rounded-r-[60px] lg:rounded-r-[80px] p-8 md:p-12 relative md:shadow-2xl md:z-10 flex-col">
                         
-                        {/* Logo Superior Esquerda */}
-                        <div className="absolute top-12 left-12">
-                            <img src="logo.png" alt="Oluap" className="h-10 object-contain" onError={(e) => {
+                        {/* Logo Topo Esquerda */}
+                        <div className="flex items-center gap-1 md:absolute md:top-12 md:left-12 justify-center md:justify-start w-full md:w-auto mt-4 md:mt-0">
+                            <img src="logo.png" alt="Oluap" className="h-10 object-contain hidden" onError={(e) => {
                                 e.target.style.display = 'none';
                                 e.target.nextSibling.style.display = 'flex';
                             }}/>
-                            <div className="hidden text-white font-black text-3xl tracking-tighter flex items-center gap-1">
-                                olua<span className="text-[#137789] rotate-45 ml-[-4px]">P</span>
+                            <div className="text-white font-black text-3xl tracking-tighter flex items-center">
+                                olua<span className="text-[#05121b] rotate-45 ml-[-4px]">P</span>
                             </div>
                         </div>
 
-                        {/* Texto Centralizado */}
-                        <div className="text-center mt-[-40px]">
-                            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold leading-[1.15] tracking-tight">
-                                <span className="text-white block mb-2">A plataforma</span>
+                        {/* Texto de Impacto - Centralizado Vertical e Horizontalmente */}
+                        <div className="flex-1 flex items-center justify-center mt-10 md:mt-0 text-center md:text-left">
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] tracking-tight drop-shadow-sm">
+                                <span className="text-white block mb-1">A plataforma</span>
                                 <span className="text-white">que </span>
-                                <span className="text-[#1a1a1a] font-black drop-shadow-sm">simplifica</span>
+                                <span className="text-[#05121b] font-black">simplifica</span>
                                 <br />
-                                <span className="text-[#1a1a1a] font-black drop-shadow-sm">o complicado!</span>
+                                <span className="text-[#05121b] font-black">o complicado!</span>
                             </h1>
                         </div>
                     </div>
 
-                    {/* ----- LADO DIREITO: Formulário de Login ----- */}
-                    <div className="w-full md:w-[55%] min-h-screen md:h-screen flex items-center justify-center p-6 relative z-10 pt-48 md:pt-6">
+                    {/* ----- LADO DIREITO: FORMULÁRIO DE LOGIN ----- */}
+                    <div className="w-full md:w-[55%] flex-1 flex items-center justify-center p-6 md:p-8 relative z-20">
                         
-                        <div className="w-full max-w-sm bg-white md:bg-transparent p-8 md:p-0 rounded-[2rem] shadow-xl md:shadow-none border border-slate-100 md:border-none">
+                        {/* No Mobile: Card Branco flutuando com sombra forte
+                         No Desktop: Fundo transparente mesclando com o cinza claro da tela 
+                        */}
+                        <div className="w-full max-w-sm bg-white md:bg-transparent p-8 md:p-0 rounded-[2rem] shadow-2xl md:shadow-none">
                             
-                            <h2 className="text-2xl md:text-3xl font-medium text-[#1a1a1a] mb-8 text-center md:text-left">Acesse sua conta</h2>
+                            <h2 className="text-2xl md:text-3xl font-medium text-gray-800 mb-8 text-center md:text-left">Acesse sua conta</h2>
 
                             {error && (
                                 <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 shadow-sm">
                                     <AlertTriangle size={16} className="shrink-0" />
-                                    <span className="text-xs font-bold leading-tight">{error}</span>
+                                    <span className="text-[11px] font-bold uppercase tracking-wider leading-tight">{error}</span>
                                 </div>
                             )}
 
@@ -140,16 +139,16 @@
                                 {/* Input Email */}
                                 <div>
                                     <input 
-                                        type="text" 
+                                        type="email" 
                                         required 
                                         value={email} 
                                         onChange={(e) => setEmail(e.target.value)} 
                                         placeholder="E-mail ou CNPJ" 
-                                        className="w-full bg-[#f2f2f2] md:bg-[#e5e7eb] text-gray-800 px-5 py-3.5 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-gray-500 transition-shadow" 
+                                        className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-gray-800 px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-gray-500 transition-all font-medium" 
                                     />
                                 </div>
 
-                                {/* Input Senha com o Olhinho */}
+                                {/* Input Senha com Olhinho da Lumis */}
                                 <div className="relative">
                                     <input 
                                         type={showPassword ? "text" : "password"} 
@@ -157,7 +156,7 @@
                                         value={password} 
                                         onChange={(e) => setPassword(e.target.value)} 
                                         placeholder="Senha" 
-                                        className="w-full bg-[#f2f2f2] md:bg-[#e5e7eb] text-gray-800 pl-5 pr-12 py-3.5 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-gray-500 transition-shadow" 
+                                        className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-gray-800 pl-5 pr-12 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-gray-500 transition-all font-medium" 
                                     />
                                     <button 
                                         type="button" 
@@ -168,38 +167,38 @@
                                     </button>
                                 </div>
 
-                                {/* Lembrar de Mim e Esqueceu a Senha */}
-                                <div className="flex flex-col gap-3 pt-2">
-                                    <div className="flex items-center gap-3">
+                                {/* Lembrar Senha & Esqueceu Senha */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                                    <div className="flex items-center gap-2">
                                         <input 
                                             type="checkbox" 
                                             id="remember" 
                                             className="w-4 h-4 rounded border-gray-300 text-[#f15a00] focus:ring-[#f15a00] cursor-pointer" 
                                         />
-                                        <label htmlFor="remember" className="text-sm text-gray-500 cursor-pointer select-none font-medium">Lembrar de mim</label>
+                                        <label htmlFor="remember" className="text-xs text-gray-500 cursor-pointer font-bold select-none">Lembrar de mim</label>
                                     </div>
                                     
-                                    <a href="#" className="text-xs font-bold text-[#f15a00] hover:text-[#164e58] transition-colors self-start mt-1">
+                                    <a href="#" className="text-xs font-bold text-[#f15a00] hover:text-[#137789] transition-colors">
                                         Esqueceu a senha?
                                     </a>
                                 </div>
 
                                 {/* Botão Login */}
-                                <div className="flex justify-end pt-6">
+                                <div className="flex justify-center md:justify-end pt-6">
                                     <button 
                                         type="submit" 
                                         disabled={loading} 
-                                        className="btn-gradient w-full md:w-auto text-white px-10 py-3.5 rounded-full font-black text-sm uppercase tracking-wider shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all flex items-center justify-center min-w-[140px] disabled:opacity-70"
+                                        className="btn-gradient w-full md:w-auto text-white px-10 py-3.5 rounded-full font-black text-sm shadow-md hover:shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center min-w-[140px] disabled:opacity-70"
                                     >
                                         {loading ? <Loader2 size={18} className="animate-spin" /> : "Login"}
                                     </button>
                                 </div>
                             </form>
 
-                            {/* Link de Cadastro (Invisível no print original, mas crucial pro fluxo) */}
-                            <div className="mt-8 text-center md:text-left border-t border-slate-100 md:border-transparent pt-6 md:pt-0">
-                                <p className="text-xs font-bold text-slate-400">
-                                    Ainda não é Oluap? <a href="cadastro.html" className="text-[#137789] hover:underline uppercase tracking-wider ml-1">Criar conta</a>
+                            {/* Link de Cadastro Embutido */}
+                            <div className="mt-8 text-center md:text-left border-t border-slate-100 md:border-slate-300 pt-6">
+                                <p className="text-xs font-bold text-slate-500">
+                                    Não tem uma conta? <a href="cadastro.html" className="text-[#f15a00] hover:text-[#137789] transition-colors uppercase tracking-wider ml-1">Criar conta</a>
                                 </p>
                             </div>
 
