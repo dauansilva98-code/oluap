@@ -30,12 +30,12 @@
         import { 
           LayoutDashboard, Users, LogOut, ShieldCheck, 
           FileText, Building2, ArrowLeft, BarChart2, Mail, Phone, User, CheckCircle, ChevronRight,
-          Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote
+          Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote,
+          X, Printer, MessageCircle, Send
         } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP ---
-        // ATENÇÃO: COLE AQUI A SUA URL E CHAVE DO SUPABASE!
-        const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
+        const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -69,48 +69,89 @@
         const App = () => {
           const [view, setView] = useState('dashboard');
           const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-          const [diagnostics, setDiagnostics] = useState([]);
-          const [filteredDiagnostics, setFilteredDiagnostics] = useState([]);
           
+          // Dados Brutos
+          const [diagnostics, setDiagnostics] = useState([]);
           const [derivedClients, setDerivedClients] = useState([]);
+          
+          // Dados Filtrados
+          const [filteredDiagnostics, setFilteredDiagnostics] = useState([]);
           const [filteredClients, setFilteredClients] = useState([]);
           const [selectedClient, setSelectedClient] = useState(null);
 
           const [selectedSubmission, setSelectedSubmission] = useState(null);
           const [clientFormData, setClientFormData] = useState({});
           
+          // Estados de Filtro (Fila de Espera - Estilo Lumis)
+          const [filterSearch, setFilterSearch] = useState("");
+          const [filterStatus, setFilterStatus] = useState("todos"); // 'todos', 'pending', 'completed'
+          const [filterDateFrom, setFilterDateFrom] = useState("");
+          const [filterDateTo, setFilterDateTo] = useState("");
+
           // Estados de Edição da Análise
           const [adminAnalysis, setAdminAnalysis] = useState("");
           const [chartDataInput, setChartDataInput] = useState("");
           const [internalAnalysisNotes, setInternalAnalysisNotes] = useState("");
           const [healthStatus, setHealthStatus] = useState("");
           const [saveStatus, setSaveStatus] = useState("");
+          
+          // Estado de Envio WhatsApp
+          const [whatsAppNum, setWhatsAppNum] = useState("");
 
           // Estado de Edição das Notas Gerais do Cliente
           const [generalClientNotes, setGeneralClientNotes] = useState("");
           const [clientNotesSaveStatus, setClientNotesSaveStatus] = useState("");
 
-          // Estados de Filtro
-          const [searchTerm, setSearchTerm] = useState("");
+          // Filtro Base de Clientes
           const [clientSearchTerm, setClientSearchTerm] = useState("");
 
           useEffect(() => {
             fetchData();
           }, []);
 
-          // Aplica filtro na Fila de Espera
+          // Aplica os filtros na Fila de Espera (Multi-Filtro)
           useEffect(() => {
-              if (searchTerm.trim() === "") {
-                  setFilteredDiagnostics(diagnostics);
-              } else {
-                  const lower = searchTerm.toLowerCase();
-                  setFilteredDiagnostics(diagnostics.filter(d => 
+              let filtered = diagnostics;
+
+              // Filtro por Texto (Nome, Email, Celular, CNPJ)
+              if (filterSearch.trim() !== "") {
+                  const lower = filterSearch.toLowerCase();
+                  filtered = filtered.filter(d => 
                       (d.razao_social && d.razao_social.toLowerCase().includes(lower)) || 
                       (d.client_name && d.client_name.toLowerCase().includes(lower)) || 
-                      (d.cnpj && d.cnpj.includes(lower))
-                  ));
+                      (d.cnpj && d.cnpj.includes(lower)) ||
+                      (d.email && d.email.toLowerCase().includes(lower)) ||
+                      (d.telefone && d.telefone.includes(lower))
+                  );
               }
-          }, [searchTerm, diagnostics]);
+
+              // Filtro por Status
+              if (filterStatus !== "todos") {
+                  filtered = filtered.filter(d => d.internal_status === filterStatus);
+              }
+
+              // Filtro por Data (De)
+              if (filterDateFrom) {
+                  filtered = filtered.filter(d => new Date(d.created_at) >= new Date(filterDateFrom));
+              }
+
+              // Filtro por Data (Até)
+              if (filterDateTo) {
+                  const toDate = new Date(filterDateTo);
+                  toDate.setHours(23, 59, 59, 999);
+                  filtered = filtered.filter(d => new Date(d.created_at) <= toDate);
+              }
+
+              setFilteredDiagnostics(filtered);
+          }, [filterSearch, filterStatus, filterDateFrom, filterDateTo, diagnostics]);
+
+          // Limpar Filtros
+          const clearFilters = () => {
+              setFilterSearch("");
+              setFilterStatus("todos");
+              setFilterDateFrom("");
+              setFilterDateTo("");
+          };
 
           // Aplica filtro na Base de Clientes
           useEffect(() => {
@@ -131,7 +172,6 @@
             const { data: diags, error } = await supabase.from('diagnosticos').select('*').order('created_at', { ascending: false });
             if (diags) {
                 setDiagnostics(diags);
-                setFilteredDiagnostics(diags);
                 
                 // Agrupa os diagnósticos por Cliente (CNPJ)
                 const clientsMap = {};
@@ -147,16 +187,14 @@
                             submissionCount: 1, 
                             firstDate: d.created_at,
                             generalNotes: d.client_general_notes || "",
-                            history: [d] // Guarda todos os envios dele
+                            history: [d] 
                         };
                     } else {
                         clientsMap[cnpj].submissionCount++;
                         clientsMap[cnpj].history.push(d);
-                        // Verifica data de ingresso (a mais antiga)
                         if (new Date(d.created_at) < new Date(clientsMap[cnpj].firstDate)) {
                             clientsMap[cnpj].firstDate = d.created_at;
                         }
-                        // Pega a nota mais recente se houver
                         if (d.client_general_notes) {
                              clientsMap[cnpj].generalNotes = d.client_general_notes;
                         }
@@ -165,9 +203,7 @@
 
                 const clientsArray = Object.values(clientsMap);
                 setDerivedClients(clientsArray);
-                setFilteredClients(clientsArray);
 
-                // Se estiver com um cliente aberto, atualiza os dados dele em tempo real
                 if (selectedClient) {
                     const updatedClient = clientsMap[selectedClient.cnpj];
                     if (updatedClient) setSelectedClient(updatedClient);
@@ -175,7 +211,6 @@
             }
           };
 
-          // Navegação
           const goDashboard = () => { setView('dashboard'); setSelectedClient(null); setSelectedSubmission(null); };
           const goClients = () => { setView('clients'); setSelectedClient(null); setSelectedSubmission(null); };
           const openClientProfile = (client) => { 
@@ -192,6 +227,10 @@
             setChartDataInput(submission.chart_data_input || "");
             setInternalAnalysisNotes(submission.internal_analysis_notes || "");
             setHealthStatus(submission.health_status || "");
+            
+            // Prepara o WhatsApp com o número que o cliente enviou
+            setWhatsAppNum(submission.telefone || "");
+
             setView('review');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           };
@@ -220,7 +259,6 @@
           // Salvar Observação Geral do Cliente
           const handleSaveClientNotes = async () => {
               setClientNotesSaveStatus("Salvando...");
-              // Atualiza todos os registros deste CNPJ com a mesma observação geral
               const { error } = await supabase.from('diagnosticos')
                   .update({ client_general_notes: generalClientNotes })
                   .eq('cnpj', selectedClient.cnpj);
@@ -234,10 +272,9 @@
               }
           };
 
-          // Copiar Dados para IA
+          // Exportar Dados Mapeados IA
           const handleCopyDataForAI = () => {
               if (!selectedSubmission || !selectedSubmission.data) return;
-              
               let textToCopy = `DADOS DO DIAGNÓSTICO FINANCEIRO - TIPO: ${selectedSubmission.form_type}\n\n`;
               for (const [key, value] of Object.entries(selectedSubmission.data)) {
                   if (value && value.trim() !== "") {
@@ -246,23 +283,51 @@
                       textToCopy += `${cleanKey}: ${value}\n`;
                   }
               }
-              
               navigator.clipboard.writeText(textToCopy);
               setSaveStatus("Copiado para Área de Transferência!");
               setTimeout(() => setSaveStatus(""), 3000);
           };
 
-          const getHealthBadge = (status, internalStatus) => {
-              if (internalStatus === 'pending') return <span className="text-[#ff7b00] bg-orange-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1 w-max"><Clock size={10}/> Em Análise</span>;
-              switch(status) {
-                  case 'healthy': return <span className="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Saudável</span>;
-                  case 'warning': return <span className="text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Ajustar</span>;
-                  case 'critical': return <span className="text-red-600 bg-red-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Atenção</span>;
-                  default: return <span className="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Concluído</span>;
+          // --- FUNÇÕES DE COMPARTILHAMENTO (Módulo Novo) ---
+          const handleSendWhatsApp = () => {
+              const cleanPhone = whatsAppNum.replace(/\D/g, '');
+              if (!cleanPhone) {
+                  alert("Por favor, insira um número de celular válido.");
+                  return;
+              }
+              const message = encodeURIComponent(`Olá! Seu diagnóstico financeiro da OLUAP já está disponível. Acesse o painel para visualizar seus resultados detalhados.`);
+              window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+          };
+
+          const handleSendEmail = () => {
+              const email = selectedSubmission.email || "";
+              const subject = encodeURIComponent("Seu Diagnóstico OLUAP está pronto!");
+              const body = encodeURIComponent("Olá,\n\nAnalisamos as informações da sua empresa e seu diagnóstico financeiro OLUAP já foi concluído e está disponível em seu painel.\n\nAcesse a plataforma para visualizar os detalhes, indicadores e nossas recomendações de ajuste.\n\nAbraço,\nEquipe OLUAP");
+              window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+          };
+
+          const handlePrintPDF = () => {
+              window.print();
+          };
+
+          // --- BADGES DA TABELA ---
+          const getDiagnosticoBadge = (health_status) => {
+              switch(health_status) {
+                  case 'healthy': return <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Saudável</span>;
+                  case 'warning': return <span className="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Precisa Ajustar</span>;
+                  case 'critical': return <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Atenção</span>;
+                  default: return <span className="text-slate-300 font-bold text-xs">-</span>;
               }
           };
 
-          // RENDERIZAÇÃO DO FORMULÁRIO DO CLIENTE
+          const getStatusBadge = (internal_status) => {
+              if (internal_status === 'completed') {
+                  return <span className="bg-[#137789]/10 text-[#137789] px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-[#137789]/20">Concluído</span>;
+              }
+              return <span className="bg-orange-50 text-[#ff7b00] px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-orange-200">Analisar</span>;
+          };
+
+          // Renderização do Formulário (Leitura)
           const renderClientForm = () => {
               const isV1 = selectedSubmission?.form_type === 'Estruturado';
               const fd = clientFormData;
@@ -412,7 +477,7 @@
             <div className="min-h-screen flex text-[#05121b] font-sans">
               
               {/* SIDEBAR */}
-              <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64 p-6' : 'w-20 p-4'} flex flex-col z-10`}>
+              <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64 p-6' : 'w-20 p-4'} flex flex-col z-10 print:hidden`}>
                 <div className="flex items-center gap-3 mb-10 overflow-hidden cursor-pointer" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                     <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md"><ShieldCheck size={20}/></div>
                     {isSidebarOpen && <span className="font-black italic text-xl tracking-tighter">OLUAP</span>}
@@ -443,71 +508,111 @@
                             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Gerencie os diagnósticos recebidos</p>
                         </header>
 
-                        {/* Barra de Filtros */}
-                        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200 mb-8 flex flex-wrap gap-4 items-end">
-                            <div className="flex-1 min-w-[250px] space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Buscar Cliente</label>
+                        {/* --- NOVA BARRA DE FILTROS ESTILO LUMIS --- */}
+                        <div className="flex flex-col md:flex-row gap-4 items-end bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                            
+                            {/* Buscar */}
+                            <div className="flex-1 w-full space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Buscar (Nome, E-mail ou Fone)</label>
                                 <div className="relative">
-                                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-                                    <input type="text" placeholder="Nome ou CNPJ..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 rounded-xl text-xs font-bold text-[#05121b] outline-none focus:border-[#ff7b00]" />
+                                    <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Digite para buscar..." 
+                                        value={filterSearch}
+                                        onChange={(e) => setFilterSearch(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"
+                                    />
                                 </div>
                             </div>
-                            <div className="w-full md:w-auto space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Período de Envio</label>
-                                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl">
-                                    <Calendar size={14} className="text-slate-300"/>
-                                    <span className="text-xs font-bold text-[#05121b]">dd/mm/aaaa</span>
-                                    <span className="text-[10px] font-bold text-slate-400 mx-2 uppercase">Até</span>
-                                    <span className="text-xs font-bold text-[#05121b]">dd/mm/aaaa</span>
-                                    <Calendar size={14} className="text-slate-300 ml-2"/>
-                                </div>
+                            
+                            {/* Select Status */}
+                            <div className="w-full md:w-48 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Status</label>
+                                <select 
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all appearance-none cursor-pointer"
+                                >
+                                    <option value="todos">Todos os status</option>
+                                    <option value="pending">Analisar</option>
+                                    <option value="completed">Concluído</option>
+                                </select>
                             </div>
-                            <div className="w-full md:w-auto space-y-2 hidden lg:block">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Modelo</label>
-                                <div className="flex items-center justify-between gap-4 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl min-w-[150px]">
-                                    <span className="text-xs font-bold text-[#05121b]">Todos</span>
-                                    <Filter size={14} className="text-slate-300"/>
-                                </div>
+
+                            {/* Data De */}
+                            <div className="w-full md:w-40 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data Envio (De)</label>
+                                <input 
+                                    type="date" 
+                                    value={filterDateFrom}
+                                    onChange={(e) => setFilterDateFrom(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"
+                                />
                             </div>
+
+                            {/* Data Até */}
+                            <div className="w-full md:w-40 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data Envio (Até)</label>
+                                <input 
+                                    type="date" 
+                                    value={filterDateTo}
+                                    onChange={(e) => setFilterDateTo(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"
+                                />
+                            </div>
+
+                            {/* Clear Button */}
+                            <button 
+                                onClick={clearFilters}
+                                title="Limpar Filtros"
+                                className="h-[42px] w-[42px] shrink-0 bg-slate-50 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <X size={16} />
+                            </button>
                         </div>
                         
                         {/* Tabela de Fila de Espera */}
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                             <table className="w-full text-left border-collapse">
-                                <thead className="border-b border-slate-100">
+                                <thead className="bg-slate-50 border-b border-slate-100">
                                     <tr>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Empresa</th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Tipo</th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Envio</th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Status</th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Empresa</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Tipo</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Data de Envio</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Diagnóstico</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Status</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
                                     {filteredDiagnostics.length > 0 ? filteredDiagnostics.map(d => (
                                         <tr key={d.id} className="hover:bg-slate-50/50 transition-colors group">
-                                            <td className="p-6">
+                                            <td className="p-5">
                                                 <div className="font-black text-sm uppercase text-[#05121b] tracking-tight">{d.razao_social || d.client_name}</div>
-                                                <div className="text-[10px] text-slate-400 font-bold mt-1 tracking-widest">{d.cnpj}</div>
+                                                <div className="text-[10px] text-slate-400 font-bold mt-0.5 tracking-widest">{d.cnpj}</div>
                                             </td>
-                                            <td className="p-6 text-center">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#ff7b00] bg-orange-50 px-3 py-1 rounded-md">{d.form_type}</span>
+                                            <td className="p-5 text-center">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{d.form_type}</span>
                                             </td>
-                                            <td className="p-6 text-center text-xs font-bold text-slate-400">
+                                            <td className="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                                                 {new Date(d.created_at).toLocaleDateString()}
                                             </td>
-                                            <td className="p-6 text-center flex justify-center">
-                                                {getHealthBadge(d.health_status, d.internal_status)}
+                                            <td className="p-5 text-center flex justify-center mt-2.5">
+                                                {getDiagnosticoBadge(d.health_status)}
                                             </td>
-                                            <td className="p-6 text-right">
-                                                <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] shadow-md shadow-[#137789]/20 transition-all hover:scale-[1.05] flex items-center gap-2 ml-auto">
+                                            <td className="p-5 text-center">
+                                                {getStatusBadge(d.internal_status)}
+                                            </td>
+                                            <td className="p-5 text-right">
+                                                <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] shadow-sm transition-all hover:scale-[1.05] flex items-center gap-2 ml-auto">
                                                     Abrir <ChevronRight size={14} />
                                                 </button>
                                             </td>
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan="5" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum diagnóstico encontrado.</td>
+                                            <td colSpan="6" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum diagnóstico encontrado.</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -516,7 +621,7 @@
                     </div>
                 )}
 
-                {/* ---------- TELA 2: BASE DE CLIENTES (LISTA) ---------- */}
+                {/* ---------- TELA 2: BASE DE CLIENTES (INTACTO) ---------- */}
                 {view === 'clients' && (
                     <div className="max-w-6xl mx-auto">
                         <header className="mb-8">
@@ -524,7 +629,6 @@
                             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Gerencie os clientes cadastrados</p>
                         </header>
 
-                        {/* Barra de Filtros Base de Clientes */}
                         <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200 mb-8 flex flex-wrap gap-4 items-end">
                             <div className="flex-1 min-w-[250px] space-y-2">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Buscar (Nome, CNPJ, Email, Tel)</label>
@@ -533,19 +637,8 @@
                                     <input type="text" placeholder="Digite para buscar..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 rounded-xl text-xs font-bold text-[#05121b] outline-none focus:border-[#ff7b00]" />
                                 </div>
                             </div>
-                            <div className="w-full md:w-auto space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Data de Primeiro Contato</label>
-                                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl">
-                                    <Calendar size={14} className="text-slate-300"/>
-                                    <span className="text-xs font-bold text-[#05121b]">dd/mm/aaaa</span>
-                                    <span className="text-[10px] font-bold text-slate-400 mx-2 uppercase">Até</span>
-                                    <span className="text-xs font-bold text-[#05121b]">dd/mm/aaaa</span>
-                                    <Calendar size={14} className="text-slate-300 ml-2"/>
-                                </div>
-                            </div>
                         </div>
 
-                        {/* Tabela de Clientes */}
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                             <table className="w-full text-left border-collapse">
                                 <thead className="border-b border-slate-100">
@@ -591,10 +684,9 @@
                     </div>
                 )}
 
-                {/* ---------- TELA 3: FICHA DO CLIENTE (PERFIL) ---------- */}
+                {/* ---------- TELA 3: FICHA DO CLIENTE (PERFIL) (INTACTO) ---------- */}
                 {view === 'client_profile' && selectedClient && (
                     <div className="max-w-5xl mx-auto pb-20">
-                        {/* Header Topo */}
                         <div className="flex justify-between items-center mb-8">
                             <button onClick={goClients} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors">
                                 <ArrowLeft size={16}/> Voltar para clientes
@@ -602,31 +694,21 @@
                             <span className="bg-slate-100 text-slate-500 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">Ficha do Cliente</span>
                         </div>
 
-                        {/* Card Principal do Cliente */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-8 flex items-center gap-6">
-                            <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center text-[#ff7b00] shrink-0">
-                                <Building2 size={32} />
-                            </div>
+                            <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center text-[#ff7b00] shrink-0"><Building2 size={32} /></div>
                             <div>
                                 <h2 className="text-2xl font-black italic uppercase text-[#05121b] tracking-tighter mb-3">{selectedClient.razao}</h2>
                                 <div className="flex flex-wrap gap-4 text-[11px] font-bold text-slate-400">
                                     <span className="flex items-center gap-1.5"><FileText size={14}/> {selectedClient.cnpj}</span>
                                     <span className="flex items-center gap-1.5"><Mail size={14}/> {selectedClient.email || "Sem e-mail"}</span>
                                     <span className="flex items-center gap-1.5"><Phone size={14}/> {selectedClient.phone || "Sem telefone"}</span>
-                                    <span className="flex items-center gap-1.5"><Calendar size={14}/> Contato: {new Date(selectedClient.firstDate).toLocaleDateString()}</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Observações Gerais (Admin) */}
                         <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-12">
                             <label className="text-[11px] font-black uppercase tracking-widest text-[#05121b] flex items-center gap-2 mb-4"><StickyNote size={16} className="text-[#137789]"/> Observações Gerais do Cliente (Admin)</label>
-                            <textarea 
-                                value={generalClientNotes} 
-                                onChange={(e) => setGeneralClientNotes(e.target.value)} 
-                                className="w-full h-32 p-5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed mb-4" 
-                                placeholder="Escreva aqui anotações, lembretes ou detalhes importantes sobre este cliente..."
-                            ></textarea>
+                            <textarea value={generalClientNotes} onChange={(e) => setGeneralClientNotes(e.target.value)} className="w-full h-32 p-5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed mb-4"></textarea>
                             <div className="flex justify-end items-center gap-4">
                                 {clientNotesSaveStatus && <span className="text-xs font-bold text-emerald-600">{clientNotesSaveStatus}</span>}
                                 <button onClick={handleSaveClientNotes} className="bg-[#05121b] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-all flex items-center gap-2 shadow-md">
@@ -635,7 +717,6 @@
                             </div>
                         </div>
 
-                        {/* Histórico de Diagnósticos */}
                         <div>
                             <h3 className="text-xl font-black italic uppercase text-[#05121b] tracking-tighter mb-6">Histórico de Diagnósticos ({selectedClient.history.length})</h3>
                             <div className="space-y-4">
@@ -649,7 +730,7 @@
                                             <h4 className="font-black text-sm uppercase text-[#05121b]">{submission.razao_social || submission.client_name}</h4>
                                         </div>
                                         <div className="flex items-center gap-4">
-                                            {getHealthBadge(submission.health_status, submission.internal_status)}
+                                            {getDiagnosticoBadge(submission.health_status)}
                                             <button onClick={() => handleAdminAnalyze(submission)} className="bg-[#137789] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] transition-all flex items-center gap-2 shadow-sm">
                                                 Ver Análise <ChevronRight size={14} />
                                             </button>
@@ -661,27 +742,27 @@
                     </div>
                 )}
 
-                {/* ---------- TELA 4: MODO DE EDIÇÃO E ANÁLISE (CÓPIA PARA IA) ---------- */}
+                {/* ---------- TELA 4: MODO DE EDIÇÃO E ANÁLISE ---------- */}
                 {view === 'review' && selectedSubmission && (
-                    <div className="max-w-5xl mx-auto pb-20">
-                        <div className="flex justify-between items-center mb-8">
+                    <div className="max-w-5xl mx-auto pb-20 print:pb-0">
+                        <div className="flex justify-between items-center mb-8 print:hidden">
                             <button onClick={() => setView(selectedClient ? 'client_profile' : 'dashboard')} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors">
                                 <ArrowLeft size={16}/> {selectedClient ? "Voltar para Ficha" : "Voltar para lista"}
                             </button>
                             <span className="bg-orange-50 text-[#ff7b00] px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">Modo de Edição & Análise</span>
                         </div>
                         
-                        <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
+                        <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 print:shadow-none print:border-none print:p-0">
                             
-                            <div className="flex justify-between items-start mb-8">
+                            <div className="flex justify-between items-start mb-8 border-b border-slate-100 pb-6 print:border-black">
                                 <div>
                                     <h2 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter mb-2">{selectedSubmission.razao_social || selectedSubmission.client_name}</h2>
                                     <p className="text-[#137789] text-[10px] font-black uppercase tracking-[0.15em]">{selectedSubmission.form_type} • Enviado em {new Date(selectedSubmission.created_at).toLocaleDateString()}</p>
                                 </div>
-                                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 border border-slate-100"><Eye size={20}/></div>
                             </div>
 
-                            <div className="bg-slate-50 p-6 rounded-3xl flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-12 border border-slate-100">
+                            {/* Exportar para IA */}
+                            <div className="bg-slate-50 p-6 rounded-3xl flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-12 border border-slate-100 print:hidden">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-tight text-[#05121b]">Exportar Dados</h3>
                                     <p className="text-[10px] text-slate-400 font-bold mt-1">Copie as respostas para usar em sua IA externa</p>
@@ -691,36 +772,36 @@
                                 </button>
                             </div>
 
-                            <div className="mb-16 pointer-events-none">
+                            <div className="mb-16 pointer-events-none print:hidden">
                                 {renderClientForm()}
                             </div>
 
-                            <div className="border-t-2 border-slate-100 pt-12 mb-12">
-                                <div className="flex items-center gap-2 mb-8">
+                            <div className="border-t-2 border-slate-100 pt-12 mb-12 print:border-none print:pt-0">
+                                <div className="flex items-center gap-2 mb-8 print:hidden">
                                     <Sparkles size={24} className="text-[#ff7b00]" />
                                     <h3 className="text-2xl font-black uppercase tracking-tighter italic text-[#05121b]">Resultado e Diagnóstico</h3>
                                 </div>
 
+                                {/* ÁREAS DE EDIÇÃO DE TEXTO */}
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                                    <div className="space-y-4">
-                                        <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><FileText size={16}/> Relatório em Texto</label>
-                                        <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-96 p-6 bg-white border-2 border-slate-100 rounded-[2rem] text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed shadow-inner" placeholder="Cole aqui o relatório detalhado gerado pela IA..."></textarea>
-                                        <p className="text-right text-[9px] text-slate-400 font-bold uppercase tracking-widest pr-4">O cliente verá este texto na tela de resultado.</p>
+                                    <div className="space-y-4 print:col-span-2">
+                                        <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2 print:text-black"><FileText size={16}/> Relatório em Texto</label>
+                                        <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-96 p-6 bg-white border-2 border-slate-100 rounded-[2rem] text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed shadow-inner print:border-none print:p-0 print:h-auto print:shadow-none" placeholder="Cole aqui o relatório detalhado gerado pela IA..."></textarea>
                                     </div>
-                                    <div className="space-y-4">
+                                    <div className="space-y-4 print:hidden">
                                         <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><BarChart2 size={16}/> Dados para Gráficos</label>
                                         <textarea value={chartDataInput} onChange={(e) => setChartDataInput(e.target.value)} className="w-full h-96 p-6 bg-[#05121b] text-emerald-400 font-mono border-2 border-[#05121b] rounded-[2rem] text-xs outline-none resize-none leading-relaxed shadow-inner" placeholder="Cole exatamente neste formato:&#10;&#10;Estrutura de Resultado&#10;Receita Bruta: R$ 100000&#10;Custos Diretos: R$ 40000&#10;..."></textarea>
-                                        <p className="text-right text-[9px] text-slate-400 font-bold uppercase tracking-widest pr-4">Copie os dados numéricos da IA e cole aqui.</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="mb-12">
+                            <div className="mb-12 print:hidden">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4"><Lock size={14}/> Observações Internas da Análise (Privado)</label>
                                 <textarea value={internalAnalysisNotes} onChange={(e) => setInternalAnalysisNotes(e.target.value)} className="w-full h-32 p-6 bg-yellow-50/50 border-2 border-yellow-100 rounded-3xl text-sm font-medium text-slate-600 outline-none focus:border-yellow-300 resize-none leading-relaxed" placeholder="Anotações internas sobre esta análise específica (não visível para o cliente)..."></textarea>
                             </div>
 
-                            <div className="border-t-2 border-slate-100 pt-10">
+                            {/* SALVAMENTO (Não aparece no print) */}
+                            <div className="border-t-2 border-slate-100 pt-10 pb-10 print:hidden">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-4 text-center md:text-left">Classificação de Saúde Financeira</label>
                                 
                                 <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -733,6 +814,43 @@
                                 <button onClick={handleSaveAnalysis} className="w-full bg-[#05121b] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-[#137789] transition-all shadow-xl flex items-center justify-center gap-3">
                                     <Save size={18} /> Salvar Diagnóstico e Gráficos
                                 </button>
+                            </div>
+
+                            {/* --- NOVA BARRA DE COMPARTILHAMENTO / PDF --- */}
+                            <div className="border-t-2 border-dashed border-slate-200 pt-10 mt-10 print:hidden bg-slate-50 -mx-8 md:-mx-12 -mb-8 md:-mb-12 p-8 md:p-12 rounded-b-[2rem]">
+                                <h3 className="text-sm font-black uppercase text-[#05121b] tracking-wider mb-6 flex items-center gap-2"><Send size={18} className="text-[#ff7b00]"/> Compartilhar / Exportar Resultado</h3>
+                                
+                                <div className="flex flex-col xl:flex-row gap-5 items-stretch xl:items-center">
+                                    
+                                    {/* Whatsapp Block */}
+                                    <div className="flex-1 flex flex-col md:flex-row bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-[#25D366] focus-within:ring-1 focus-within:ring-[#25D366] shadow-sm">
+                                        <div className="px-5 py-4 bg-slate-100 border-r border-slate-200 text-slate-500 flex items-center justify-center shrink-0">
+                                            <MessageCircle size={20} className="text-[#25D366]" />
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            value={whatsAppNum} 
+                                            onChange={(e) => setWhatsAppNum(e.target.value)} 
+                                            placeholder="Celular do Cliente" 
+                                            className="px-5 py-4 bg-transparent outline-none text-sm font-bold text-[#05121b] w-full" 
+                                        />
+                                        <button onClick={handleSendWhatsApp} className="px-8 py-4 bg-[#25D366] text-white font-black text-[10px] uppercase tracking-widest hover:bg-[#1da851] transition-colors shrink-0 whitespace-nowrap">
+                                            Enviar Whats
+                                        </button>
+                                    </div>
+
+                                    {/* Botões Email e PDF */}
+                                    <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+                                        <button onClick={handleSendEmail} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-blue-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-sm whitespace-nowrap">
+                                            <Mail size={16} /> Enviar E-mail
+                                        </button>
+
+                                        <button onClick={handlePrintPDF} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-[#05121b] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors shadow-sm whitespace-nowrap">
+                                            <Printer size={16} /> Gerar PDF
+                                        </button>
+                                    </div>
+
+                                </div>
                             </div>
 
                         </div>
