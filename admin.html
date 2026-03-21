@@ -559,8 +559,22 @@
               {/* SIDEBAR */}
               <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64 p-6' : 'w-20 p-4'} flex flex-col z-10 print-hidden`}>
                 <div className="flex items-center gap-3 mb-10 overflow-hidden cursor-pointer" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                    <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md"><ShieldCheck size={20}/></div>
-                    {isSidebarOpen && <span className="font-black italic text-xl tracking-tighter">OLUAP</span>}
+                    {isSidebarOpen ? (
+                        <img src="logo2.png" alt="OLUAP" className="h-8 object-contain" onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}/>
+                    ) : (
+                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md">
+                          <ShieldCheck size={20} />
+                        </div>
+                    )}
+                    <div className="hidden items-center">
+                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md">
+                          <ShieldCheck size={20} />
+                        </div>
+                        <span className="font-black italic text-xl tracking-tighter ml-3">OLUAP</span>
+                    </div>
                 </div>
                 
                 <nav className="flex-1 space-y-3">
@@ -718,6 +732,8 @@
                                     <input type="text" placeholder="Digite para buscar..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
                                 </div>
                             </div>
+                            
+                            {/* Filtro de Diagnóstico (Status de Saúde) */}
                             <div className="w-full md:w-32 space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Diagnóstico</label>
                                 <select value={clientStatusFilter} onChange={(e) => setClientStatusFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all appearance-none cursor-pointer">
@@ -727,6 +743,8 @@
                                     <option value="critical">Atenção</option>
                                 </select>
                             </div>
+
+                            {/* Filtro de Tipo */}
                             <div className="w-full md:w-32 space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Tipo</label>
                                 <select value={clientTypeFilter} onChange={(e) => setClientTypeFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all appearance-none cursor-pointer">
@@ -735,6 +753,7 @@
                                     <option value="Guiado">Guiado</option>
                                 </select>
                             </div>
+
                             <div className="w-full md:w-32 space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (De)</label>
                                 <input type="date" value={clientDateFrom} onChange={(e) => setClientDateFrom(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
@@ -806,6 +825,7 @@
                             </table>
                         </div>
 
+                        {/* Paginação */}
                         {totalPages > 1 && (
                             <div className="flex justify-center items-center gap-2 pb-10">
                                 <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronLeft size={16} /></button>
@@ -916,6 +936,7 @@
                                     <h3 className="text-2xl font-black uppercase tracking-tighter italic text-[#05121b]">Resultado e Diagnóstico</h3>
                                 </div>
 
+                                {/* ÁREAS DE EDIÇÃO DE TEXTO E GRÁFICOS (Somente a análise vai pro PDF) */}
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 print:block print:w-full">
                                     <div className="space-y-4 xl:col-span-2 print:w-full">
                                         <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2 print-hidden"><FileText size={16}/> Relatório em Texto</label>
