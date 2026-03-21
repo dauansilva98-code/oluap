@@ -28,6 +28,15 @@
             /* Permitir rolagem apenas dentro do formulário se a tela for muito pequena verticalmente */
             .form-scroll { max-height: 100vh; overflow-y: auto; }
         }
+        
+        /* Ajuste fino para a barra de scroll interna do formulário ficar mais suave */
+        .form-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .form-scroll::-webkit-scrollbar-thumb {
+            background-color: #d1d5db; 
+            border-radius: 10px;
+        }
     </style>
 </head>
 <body class="m-0 p-0 font-sans bg-gradient-to-b from-[#f15a00] to-[#137789] md:bg-none md:bg-[#e8ecef]">
@@ -96,10 +105,10 @@
             };
 
             return (
-                <div className="min-h-screen md:h-screen w-full flex flex-col md:flex-row relative">
+                <div className="min-h-screen md:h-screen w-full flex flex-col md:flex-row relative bg-[#e8ecef]">
                     
                     {/* ----- LADO ESQUERDO (DESKTOP) / CABEÇALHO (MOBILE) ----- */}
-                    <div className="flex w-full md:w-[45%] h-56 md:h-full md:bg-gradient-to-b md:from-[#f15a00] md:to-[#137789] md:rounded-r-[80px] p-6 md:p-12 relative md:shadow-2xl z-10 flex-col items-center md:items-start justify-center">
+                    <div className="flex w-full md:w-[45%] h-56 md:h-full md:bg-gradient-to-b md:from-[#f15a00] md:to-[#137789] md:rounded-r-[80px] p-6 md:p-12 relative shadow-xl md:shadow-2xl z-10 flex-col items-center justify-center">
                         
                         {/* Logo */}
                         <div className="absolute top-6 md:top-12 left-0 w-full md:w-auto flex justify-center md:left-12">
@@ -113,8 +122,8 @@
                         </div>
 
                         {/* Texto de Impacto */}
-                        <div className="w-full flex-1 flex flex-col items-center justify-center mt-6 md:mt-0 text-center md:text-left md:items-start">
-                            {/* Versão Desktop (Texto Grande) */}
+                        <div className="w-full flex-1 flex flex-col items-center justify-center mt-6 md:mt-0 text-center">
+                            {/* Versão Desktop (Texto Grande Centralizado) */}
                             <h1 className="hidden md:block text-4xl lg:text-5xl xl:text-6xl font-bold leading-[1.1] tracking-tight drop-shadow-sm">
                                 <span className="text-white block mb-1">Crie sua conta e</span>
                                 <span className="text-[#05121b] font-black">simplifique</span>
@@ -130,7 +139,7 @@
                     </div>
 
                     {/* ----- LADO DIREITO: FORMULÁRIO DE CADASTRO ----- */}
-                    <div className="w-full md:w-[55%] flex-1 flex items-start md:items-center justify-center p-6 relative z-20 -mt-16 md:mt-0 form-scroll">
+                    <div className="w-full md:w-[55%] flex-1 flex items-start md:items-center justify-center p-6 relative z-20 -mt-16 md:mt-0 form-scroll py-10 md:py-6">
                         
                         {/* Card Branco flutuando (Mobile) ou Fundo transparente (Desktop) */}
                         <div className="w-full max-w-sm bg-white md:bg-transparent p-8 md:p-0 rounded-[2rem] shadow-xl md:shadow-none border border-slate-100 md:border-none my-auto">
@@ -145,7 +154,7 @@
                             )}
 
                             {success ? (
-                                <div className="text-center space-y-4 py-12 bg-white md:bg-transparent rounded-3xl">
+                                <div className="text-center space-y-4 py-12 bg-white md:bg-[#dcdfe3] rounded-3xl">
                                     <CheckCircle size={56} className="text-[#137789] mx-auto" />
                                     <h3 className="text-xl font-black text-[#05121b] uppercase tracking-tighter">Conta Criada!</h3>
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Preparando seu painel...</p>
@@ -162,7 +171,7 @@
                                             value={name} 
                                             onChange={(e) => setName(e.target.value)} 
                                             placeholder="Nome Completo" 
-                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
                                         />
                                     </div>
 
@@ -174,7 +183,7 @@
                                             value={email} 
                                             onChange={(e) => setEmail(e.target.value)} 
                                             placeholder="E-mail profissional" 
-                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
                                         />
                                     </div>
 
@@ -187,7 +196,7 @@
                                             onChange={(e) => setPhone(maskPhone(e.target.value))} 
                                             placeholder="Celular / WhatsApp" 
                                             maxLength="15" 
-                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
                                         />
                                     </div>
 
@@ -200,7 +209,7 @@
                                             onChange={(e) => setCnpj(maskCNPJ(e.target.value))} 
                                             placeholder="CNPJ" 
                                             maxLength="18" 
-                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
                                         />
                                     </div>
 
@@ -212,7 +221,7 @@
                                             value={password} 
                                             onChange={(e) => setPassword(e.target.value)} 
                                             placeholder="Crie uma senha forte" 
-                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] pl-5 pr-12 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 pr-12 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
                                         />
                                         <button 
                                             type="button" 
