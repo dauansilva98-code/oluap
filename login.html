@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLUAP - Acesso</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "lucide-react": "https://esm.sh/lucide-react@0.344.0?external=react"
+        }
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-[#05121b]">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { ShieldCheck, Mail, Lock, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
+
+        // --- CONEXÃO SUPABASE ---
+        // COLE AQUI A SUA URL E CHAVE
+        const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const Login = () => {
+            const [email, setEmail] = useState("");
+            const [password, setPassword] = useState("");
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState("");
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                setError("");
+
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password,
+                });
+
+                if (error) {
+                    setError("E-mail ou senha incorretos.");
+                    setLoading(false);
+                } else {
+                    // Redireciona para o admin (ou para o painel do cliente, dependendo do seu fluxo)
+                    window.location.href = 'admin.html'; 
+                }
+            };
+
+            return (
+                <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+                    {/* Efeitos de Fundo */}
+                    <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-[#137789] rounded-full mix-blend-multiply filter blur-[128px] opacity-20"></div>
+                    <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-[#ff7b00] rounded-full mix-blend-multiply filter blur-[128px] opacity-10"></div>
+
+                    <div className="max-w-md w-full bg-white rounded-[2rem] p-10 relative z-10 shadow-2xl">
+                        <div className="text-center mb-10">
+                            <div className="w-16 h-16 bg-[#ff7b00] rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-orange-500/30">
+                                <ShieldCheck size={32} className="text-white" />
+                            </div>
+                            <h1 className="text-3xl font-black text-[#05121b] italic uppercase tracking-tighter">OLUAP</h1>
+                            <p className="text-[#137789] font-bold text-[10px] uppercase tracking-[0.4em] mt-2">Acesso Seguro</p>
+                        </div>
+
+                        {error && (
+                            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600">
+                                <AlertTriangle size={16} className="shrink-0" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">{error}</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleLogin} className="space-y-5">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-2">E-mail</label>
+                                <div className="relative">
+                                    <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-4 rounded-xl text-sm font-bold text-[#05121b] outline-none focus:border-[#ff7b00] transition-colors" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-2">Senha</label>
+                                <div className="relative">
+                                    <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                                    <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-50 border border-slate-200 pl-12 pr-4 py-4 rounded-xl text-sm font-bold text-[#05121b] outline-none focus:border-[#ff7b00] transition-colors" />
+                                </div>
+                            </div>
+
+                            <button type="submit" disabled={loading} className="w-full bg-[#05121b] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-[#137789] transition-all shadow-xl mt-4 flex items-center justify-center gap-2">
+                                {loading ? <Loader2 size={16} className="animate-spin" /> : "Entrar no Sistema"} {!loading && <ChevronRight size={16} />}
+                            </button>
+                        </form>
+
+                        <div className="mt-8 text-center">
+                            <p className="text-xs font-bold text-slate-400">
+                                Não tem uma conta? <a href="cadastro.html" className="text-[#ff7b00] hover:underline uppercase tracking-wider ml-1">Criar conta</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<Login />);
+    </script>
+</body>
+</html>
