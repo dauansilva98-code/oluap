@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OLUAP Admin - Fila de Espera</title>
+    <title>OLUAP Admin - Gestão de Diagnósticos</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -30,7 +30,7 @@
         import { 
           LayoutDashboard, Users, LogOut, ShieldCheck, 
           FileText, Building2, ArrowLeft, BarChart2, Mail, Phone, User, CheckCircle, ChevronRight,
-          Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock
+          Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote
         } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP ---
@@ -71,6 +71,11 @@
           const [isSidebarOpen, setIsSidebarOpen] = useState(true);
           const [diagnostics, setDiagnostics] = useState([]);
           const [filteredDiagnostics, setFilteredDiagnostics] = useState([]);
+          
+          const [derivedClients, setDerivedClients] = useState([]);
+          const [filteredClients, setFilteredClients] = useState([]);
+          const [selectedClient, setSelectedClient] = useState(null);
+
           const [selectedSubmission, setSelectedSubmission] = useState(null);
           const [clientFormData, setClientFormData] = useState({});
           
@@ -81,37 +86,108 @@
           const [healthStatus, setHealthStatus] = useState("");
           const [saveStatus, setSaveStatus] = useState("");
 
+          // Estado de Edição das Notas Gerais do Cliente
+          const [generalClientNotes, setGeneralClientNotes] = useState("");
+          const [clientNotesSaveStatus, setClientNotesSaveStatus] = useState("");
+
           // Estados de Filtro
           const [searchTerm, setSearchTerm] = useState("");
+          const [clientSearchTerm, setClientSearchTerm] = useState("");
 
           useEffect(() => {
             fetchData();
           }, []);
 
-          // Aplica filtro simples por nome ou CNPJ
+          // Aplica filtro na Fila de Espera
           useEffect(() => {
               if (searchTerm.trim() === "") {
                   setFilteredDiagnostics(diagnostics);
               } else {
                   const lower = searchTerm.toLowerCase();
                   setFilteredDiagnostics(diagnostics.filter(d => 
+                      (d.razao_social && d.razao_social.toLowerCase().includes(lower)) || 
                       (d.client_name && d.client_name.toLowerCase().includes(lower)) || 
                       (d.cnpj && d.cnpj.includes(lower))
                   ));
               }
           }, [searchTerm, diagnostics]);
 
+          // Aplica filtro na Base de Clientes
+          useEffect(() => {
+              if (clientSearchTerm.trim() === "") {
+                  setFilteredClients(derivedClients);
+              } else {
+                  const lower = clientSearchTerm.toLowerCase();
+                  setFilteredClients(derivedClients.filter(c => 
+                      (c.razao && c.razao.toLowerCase().includes(lower)) || 
+                      (c.name && c.name.toLowerCase().includes(lower)) || 
+                      (c.cnpj && c.cnpj.includes(lower)) ||
+                      (c.email && c.email.toLowerCase().includes(lower))
+                  ));
+              }
+          }, [clientSearchTerm, derivedClients]);
+
           const fetchData = async () => {
             const { data: diags, error } = await supabase.from('diagnosticos').select('*').order('created_at', { ascending: false });
             if (diags) {
                 setDiagnostics(diags);
                 setFilteredDiagnostics(diags);
+                
+                // Agrupa os diagnósticos por Cliente (CNPJ)
+                const clientsMap = {};
+                diags.forEach(d => {
+                    const cnpj = d.cnpj || "N/A";
+                    if (!clientsMap[cnpj]) {
+                        clientsMap[cnpj] = { 
+                            name: d.client_name, 
+                            razao: d.razao_social || d.client_name, 
+                            email: d.email || "", 
+                            phone: d.telefone || "", 
+                            cnpj: d.cnpj, 
+                            submissionCount: 1, 
+                            firstDate: d.created_at,
+                            generalNotes: d.client_general_notes || "",
+                            history: [d] // Guarda todos os envios dele
+                        };
+                    } else {
+                        clientsMap[cnpj].submissionCount++;
+                        clientsMap[cnpj].history.push(d);
+                        // Verifica data de ingresso (a mais antiga)
+                        if (new Date(d.created_at) < new Date(clientsMap[cnpj].firstDate)) {
+                            clientsMap[cnpj].firstDate = d.created_at;
+                        }
+                        // Pega a nota mais recente se houver
+                        if (d.client_general_notes) {
+                             clientsMap[cnpj].generalNotes = d.client_general_notes;
+                        }
+                    }
+                });
+
+                const clientsArray = Object.values(clientsMap);
+                setDerivedClients(clientsArray);
+                setFilteredClients(clientsArray);
+
+                // Se estiver com um cliente aberto, atualiza os dados dele em tempo real
+                if (selectedClient) {
+                    const updatedClient = clientsMap[selectedClient.cnpj];
+                    if (updatedClient) setSelectedClient(updatedClient);
+                }
             }
+          };
+
+          // Navegação
+          const goDashboard = () => { setView('dashboard'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goClients = () => { setView('clients'); setSelectedClient(null); setSelectedSubmission(null); };
+          const openClientProfile = (client) => { 
+              setSelectedClient(client); 
+              setGeneralClientNotes(client.generalNotes);
+              setView('client_profile'); 
+              window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
           const handleAdminAnalyze = (submission) => {
             setSelectedSubmission(submission);
-            setClientFormData(submission.data || {}); // Carrega os dados do form do cliente
+            setClientFormData(submission.data || {}); 
             setAdminAnalysis(submission.analysis || "");
             setChartDataInput(submission.chart_data_input || "");
             setInternalAnalysisNotes(submission.internal_analysis_notes || "");
@@ -120,6 +196,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
+          // Salvar Análise Específica
           const handleSaveAnalysis = async () => {
             setSaveStatus("Salvando...");
             const { error } = await supabase.from('diagnosticos').update({
@@ -133,21 +210,37 @@
 
             if (!error) {
                 setSaveStatus("Salvo com sucesso!");
-                fetchData();
+                await fetchData();
                 setTimeout(() => setSaveStatus(""), 3000);
             } else {
                 setSaveStatus("Erro ao salvar.");
             }
           };
 
-          // Copia os dados mastigados para jogar na IA
+          // Salvar Observação Geral do Cliente
+          const handleSaveClientNotes = async () => {
+              setClientNotesSaveStatus("Salvando...");
+              // Atualiza todos os registros deste CNPJ com a mesma observação geral
+              const { error } = await supabase.from('diagnosticos')
+                  .update({ client_general_notes: generalClientNotes })
+                  .eq('cnpj', selectedClient.cnpj);
+
+              if (!error) {
+                  setClientNotesSaveStatus("Observação Salva!");
+                  await fetchData();
+                  setTimeout(() => setClientNotesSaveStatus(""), 3000);
+              } else {
+                  setClientNotesSaveStatus("Erro ao salvar.");
+              }
+          };
+
+          // Copiar Dados para IA
           const handleCopyDataForAI = () => {
               if (!selectedSubmission || !selectedSubmission.data) return;
               
               let textToCopy = `DADOS DO DIAGNÓSTICO FINANCEIRO - TIPO: ${selectedSubmission.form_type}\n\n`;
               for (const [key, value] of Object.entries(selectedSubmission.data)) {
                   if (value && value.trim() !== "") {
-                      // Limpa a chave (ex: v1_razao -> razao) para ficar bonito
                       let cleanKey = key.replace('v1_', '').replace('g_', '').replace(/([A-Z])/g, ' $1').trim();
                       cleanKey = cleanKey.charAt(0).toUpperCase() + cleanKey.slice(1);
                       textToCopy += `${cleanKey}: ${value}\n`;
@@ -159,7 +252,17 @@
               setTimeout(() => setSaveStatus(""), 3000);
           };
 
-          // Renderiza o Formulário do Cliente bloqueado
+          const getHealthBadge = (status, internalStatus) => {
+              if (internalStatus === 'pending') return <span className="text-[#ff7b00] bg-orange-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1 w-max"><Clock size={10}/> Em Análise</span>;
+              switch(status) {
+                  case 'healthy': return <span className="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Saudável</span>;
+                  case 'warning': return <span className="text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Ajustar</span>;
+                  case 'critical': return <span className="text-red-600 bg-red-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Atenção</span>;
+                  default: return <span className="text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Concluído</span>;
+              }
+          };
+
+          // RENDERIZAÇÃO DO FORMULÁRIO DO CLIENTE
           const renderClientForm = () => {
               const isV1 = selectedSubmission?.form_type === 'Estruturado';
               const fd = clientFormData;
@@ -316,24 +419,23 @@
                 </div>
                 
                 <nav className="flex-1 space-y-3">
-                    <button onClick={() => setView('dashboard')} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view==='dashboard'?'bg-[#05121b] text-white shadow-lg':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
-                        <LayoutDashboard size={18}/> {isSidebarOpen && "Dashboard"}
+                    <button onClick={goDashboard} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view==='dashboard'?'bg-[#05121b] text-white shadow-lg':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                        <LayoutDashboard size={18}/> {isSidebarOpen && "Fila de Espera"}
                     </button>
-                    {/* Botão Base de Clientes desativado temporariamente focado no seu pedido */}
-                    <button disabled className="w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-slate-300 cursor-not-allowed opacity-50">
-                        <Users size={18}/> {isSidebarOpen && "Clientes (Em Breve)"}
+                    <button onClick={goClients} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view==='clients'||view==='client_profile'?'bg-[#05121b] text-white shadow-lg':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                        <Users size={18}/> {isSidebarOpen && "Base de Clientes"}
                     </button>
                 </nav>
 
                 <button onClick={() => window.location.href='index.html'} className="flex items-center gap-3 p-3 text-slate-400 font-bold text-xs uppercase hover:text-red-500 transition-colors">
-                    <LogOut size={18}/> {isSidebarOpen && "Sair"}
+                    <LogOut size={18}/> {isSidebarOpen && "Sair do Admin"}
                 </button>
               </aside>
 
               {/* CONTEÚDO PRINCIPAL */}
-              <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+              <main className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-50/40">
                 
-                {/* ---------- TELA 1: FILA DE ESPERA (DASHBOARD) ---------- */}
+                {/* ---------- TELA 1: FILA DE ESPERA ---------- */}
                 {view === 'dashboard' && (
                     <div className="max-w-6xl mx-auto">
                         <header className="mb-8">
@@ -341,7 +443,7 @@
                             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Gerencie os diagnósticos recebidos</p>
                         </header>
 
-                        {/* Barra de Filtros Visual (Igual ao Print) */}
+                        {/* Barra de Filtros */}
                         <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200 mb-8 flex flex-wrap gap-4 items-end">
                             <div className="flex-1 min-w-[250px] space-y-2">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Buscar Cliente</label>
@@ -360,18 +462,11 @@
                                     <Calendar size={14} className="text-slate-300 ml-2"/>
                                 </div>
                             </div>
-                            <div className="w-full md:w-auto space-y-2">
+                            <div className="w-full md:w-auto space-y-2 hidden lg:block">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Modelo</label>
                                 <div className="flex items-center justify-between gap-4 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl min-w-[150px]">
                                     <span className="text-xs font-bold text-[#05121b]">Todos</span>
                                     <Filter size={14} className="text-slate-300"/>
-                                </div>
-                            </div>
-                            <div className="w-full md:w-auto space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Status</label>
-                                <div className="flex items-center justify-between gap-4 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl min-w-[150px]">
-                                    <span className="text-xs font-bold text-[#05121b]">Todos</span>
-                                    <div className="w-2 h-2 rounded-full bg-slate-300"></div>
                                 </div>
                             </div>
                         </div>
@@ -401,16 +496,8 @@
                                             <td className="p-6 text-center text-xs font-bold text-slate-400">
                                                 {new Date(d.created_at).toLocaleDateString()}
                                             </td>
-                                            <td className="p-6 text-center">
-                                                {d.internal_status === 'pending' ? (
-                                                    <span className="inline-flex flex-col items-center justify-center bg-orange-50 text-[#ff7b00] px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-center leading-tight">
-                                                        <Clock size={12} className="mb-0.5" /> EM ANÁLISE
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex flex-col items-center justify-center bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest text-center leading-tight">
-                                                        <CheckCircle size={12} className="mb-0.5" /> CONCLUÍDO
-                                                    </span>
-                                                )}
+                                            <td className="p-6 text-center flex justify-center">
+                                                {getHealthBadge(d.health_status, d.internal_status)}
                                             </td>
                                             <td className="p-6 text-right">
                                                 <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] shadow-md shadow-[#137789]/20 transition-all hover:scale-[1.05] flex items-center gap-2 ml-auto">
@@ -429,20 +516,163 @@
                     </div>
                 )}
 
-                {/* ---------- TELA 2: MODO DE EDIÇÃO E ANÁLISE ---------- */}
+                {/* ---------- TELA 2: BASE DE CLIENTES (LISTA) ---------- */}
+                {view === 'clients' && (
+                    <div className="max-w-6xl mx-auto">
+                        <header className="mb-8">
+                            <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Base de Clientes</h1>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Gerencie os clientes cadastrados</p>
+                        </header>
+
+                        {/* Barra de Filtros Base de Clientes */}
+                        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-200 mb-8 flex flex-wrap gap-4 items-end">
+                            <div className="flex-1 min-w-[250px] space-y-2">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Buscar (Nome, CNPJ, Email, Tel)</label>
+                                <div className="relative">
+                                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                                    <input type="text" placeholder="Digite para buscar..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full bg-slate-50 border border-slate-200 pl-11 pr-4 py-3 rounded-xl text-xs font-bold text-[#05121b] outline-none focus:border-[#ff7b00]" />
+                                </div>
+                            </div>
+                            <div className="w-full md:w-auto space-y-2">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">Data de Primeiro Contato</label>
+                                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-4 py-3 rounded-xl">
+                                    <Calendar size={14} className="text-slate-300"/>
+                                    <span className="text-xs font-bold text-[#05121b]">dd/mm/aaaa</span>
+                                    <span className="text-[10px] font-bold text-slate-400 mx-2 uppercase">Até</span>
+                                    <span className="text-xs font-bold text-[#05121b]">dd/mm/aaaa</span>
+                                    <Calendar size={14} className="text-slate-300 ml-2"/>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tabela de Clientes */}
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="border-b border-slate-100">
+                                    <tr>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Contato</th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Histórico</th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Ingresso</th>
+                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filteredClients.length > 0 ? filteredClients.map(c => (
+                                        <tr key={c.cnpj} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-6">
+                                                <div className="font-black text-sm uppercase text-[#05121b] tracking-tight">{c.razao}</div>
+                                                <div className="text-[10px] text-slate-400 font-bold mt-1 tracking-widest">{c.cnpj}</div>
+                                            </td>
+                                            <td className="p-6">
+                                                <div className="text-[10px] font-bold text-slate-500 mb-1">{c.email || "-"}</div>
+                                                <div className="text-[10px] font-bold text-slate-500">{c.phone || "-"}</div>
+                                            </td>
+                                            <td className="p-6 text-center">
+                                                <span className="text-sm font-black text-[#137789]">{c.submissionCount}</span>
+                                            </td>
+                                            <td className="p-6 text-center text-xs font-bold text-slate-400">
+                                                {new Date(c.firstDate).toLocaleDateString()}
+                                            </td>
+                                            <td className="p-6 text-right">
+                                                <button onClick={() => openClientProfile(c)} className="border-2 border-slate-200 text-slate-500 px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-[#137789] hover:text-[#137789] transition-all flex items-center gap-2 ml-auto">
+                                                    Ver <Eye size={14} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="5" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum cliente encontrado.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* ---------- TELA 3: FICHA DO CLIENTE (PERFIL) ---------- */}
+                {view === 'client_profile' && selectedClient && (
+                    <div className="max-w-5xl mx-auto pb-20">
+                        {/* Header Topo */}
+                        <div className="flex justify-between items-center mb-8">
+                            <button onClick={goClients} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors">
+                                <ArrowLeft size={16}/> Voltar para clientes
+                            </button>
+                            <span className="bg-slate-100 text-slate-500 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">Ficha do Cliente</span>
+                        </div>
+
+                        {/* Card Principal do Cliente */}
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-8 flex items-center gap-6">
+                            <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center text-[#ff7b00] shrink-0">
+                                <Building2 size={32} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black italic uppercase text-[#05121b] tracking-tighter mb-3">{selectedClient.razao}</h2>
+                                <div className="flex flex-wrap gap-4 text-[11px] font-bold text-slate-400">
+                                    <span className="flex items-center gap-1.5"><FileText size={14}/> {selectedClient.cnpj}</span>
+                                    <span className="flex items-center gap-1.5"><Mail size={14}/> {selectedClient.email || "Sem e-mail"}</span>
+                                    <span className="flex items-center gap-1.5"><Phone size={14}/> {selectedClient.phone || "Sem telefone"}</span>
+                                    <span className="flex items-center gap-1.5"><Calendar size={14}/> Contato: {new Date(selectedClient.firstDate).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Observações Gerais (Admin) */}
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-12">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-[#05121b] flex items-center gap-2 mb-4"><StickyNote size={16} className="text-[#137789]"/> Observações Gerais do Cliente (Admin)</label>
+                            <textarea 
+                                value={generalClientNotes} 
+                                onChange={(e) => setGeneralClientNotes(e.target.value)} 
+                                className="w-full h-32 p-5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed mb-4" 
+                                placeholder="Escreva aqui anotações, lembretes ou detalhes importantes sobre este cliente..."
+                            ></textarea>
+                            <div className="flex justify-end items-center gap-4">
+                                {clientNotesSaveStatus && <span className="text-xs font-bold text-emerald-600">{clientNotesSaveStatus}</span>}
+                                <button onClick={handleSaveClientNotes} className="bg-[#05121b] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-all flex items-center gap-2 shadow-md">
+                                    <Save size={14} /> Salvar Observação
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Histórico de Diagnósticos */}
+                        <div>
+                            <h3 className="text-xl font-black italic uppercase text-[#05121b] tracking-tighter mb-6">Histórico de Diagnósticos ({selectedClient.history.length})</h3>
+                            <div className="space-y-4">
+                                {selectedClient.history.map(submission => (
+                                    <div key={submission.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 hover:shadow-md transition-shadow">
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest">{submission.form_type}</span>
+                                                <span className="text-[10px] font-bold text-slate-400">{new Date(submission.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <h4 className="font-black text-sm uppercase text-[#05121b]">{submission.razao_social || submission.client_name}</h4>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            {getHealthBadge(submission.health_status, submission.internal_status)}
+                                            <button onClick={() => handleAdminAnalyze(submission)} className="bg-[#137789] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] transition-all flex items-center gap-2 shadow-sm">
+                                                Ver Análise <ChevronRight size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ---------- TELA 4: MODO DE EDIÇÃO E ANÁLISE (CÓPIA PARA IA) ---------- */}
                 {view === 'review' && selectedSubmission && (
                     <div className="max-w-5xl mx-auto pb-20">
-                        {/* Header Topo Voltar */}
                         <div className="flex justify-between items-center mb-8">
-                            <button onClick={() => setView('dashboard')} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors">
-                                <ArrowLeft size={16}/> Voltar para lista
+                            <button onClick={() => setView(selectedClient ? 'client_profile' : 'dashboard')} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors">
+                                <ArrowLeft size={16}/> {selectedClient ? "Voltar para Ficha" : "Voltar para lista"}
                             </button>
                             <span className="bg-orange-50 text-[#ff7b00] px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">Modo de Edição & Análise</span>
                         </div>
                         
                         <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100">
                             
-                            {/* Título Principal */}
                             <div className="flex justify-between items-start mb-8">
                                 <div>
                                     <h2 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter mb-2">{selectedSubmission.razao_social || selectedSubmission.client_name}</h2>
@@ -451,23 +681,20 @@
                                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 border border-slate-100"><Eye size={20}/></div>
                             </div>
 
-                            {/* Bloco Exportar Dados */}
                             <div className="bg-slate-50 p-6 rounded-3xl flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-12 border border-slate-100">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-tight text-[#05121b]">Exportar Dados</h3>
-                                    <p className="text-[10px] text-slate-400 font-bold mt-1">Copie as respostas mastigadas para usar em sua IA externa</p>
+                                    <p className="text-[10px] text-slate-400 font-bold mt-1">Copie as respostas para usar em sua IA externa</p>
                                 </div>
                                 <button onClick={handleCopyDataForAI} className="bg-white border border-slate-200 text-[#05121b] px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-[#137789] transition-all flex items-center gap-2 shadow-sm">
                                     <Copy size={14} /> Copiar Respostas
                                 </button>
                             </div>
 
-                            {/* O FORMULÁRIO DO CLIENTE RENDERIZADO AQUI */}
                             <div className="mb-16 pointer-events-none">
                                 {renderClientForm()}
                             </div>
 
-                            {/* SEÇÃO DA IA: RESULTADO E GRÁFICOS */}
                             <div className="border-t-2 border-slate-100 pt-12 mb-12">
                                 <div className="flex items-center gap-2 mb-8">
                                     <Sparkles size={24} className="text-[#ff7b00]" />
@@ -475,14 +702,11 @@
                                 </div>
 
                                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                                    {/* Coluna Texto */}
                                     <div className="space-y-4">
                                         <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><FileText size={16}/> Relatório em Texto</label>
                                         <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-96 p-6 bg-white border-2 border-slate-100 rounded-[2rem] text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed shadow-inner" placeholder="Cole aqui o relatório detalhado gerado pela IA..."></textarea>
                                         <p className="text-right text-[9px] text-slate-400 font-bold uppercase tracking-widest pr-4">O cliente verá este texto na tela de resultado.</p>
                                     </div>
-                                    
-                                    {/* Coluna Gráficos */}
                                     <div className="space-y-4">
                                         <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><BarChart2 size={16}/> Dados para Gráficos</label>
                                         <textarea value={chartDataInput} onChange={(e) => setChartDataInput(e.target.value)} className="w-full h-96 p-6 bg-[#05121b] text-emerald-400 font-mono border-2 border-[#05121b] rounded-[2rem] text-xs outline-none resize-none leading-relaxed shadow-inner" placeholder="Cole exatamente neste formato:&#10;&#10;Estrutura de Resultado&#10;Receita Bruta: R$ 100000&#10;Custos Diretos: R$ 40000&#10;..."></textarea>
@@ -491,25 +715,20 @@
                                 </div>
                             </div>
 
-                            {/* SEÇÃO: OBSERVAÇÃO INTERNA */}
                             <div className="mb-12">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4"><Lock size={14}/> Observações Internas (Privado)</label>
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4"><Lock size={14}/> Observações Internas da Análise (Privado)</label>
                                 <textarea value={internalAnalysisNotes} onChange={(e) => setInternalAnalysisNotes(e.target.value)} className="w-full h-32 p-6 bg-yellow-50/50 border-2 border-yellow-100 rounded-3xl text-sm font-medium text-slate-600 outline-none focus:border-yellow-300 resize-none leading-relaxed" placeholder="Anotações internas sobre esta análise específica (não visível para o cliente)..."></textarea>
                             </div>
 
-                            {/* SEÇÃO: SAÚDE FINANCEIRA E SALVAR */}
                             <div className="border-t-2 border-slate-100 pt-10">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-4 text-center md:text-left">Classificação de Saúde Financeira</label>
                                 
                                 <div className="flex flex-col md:flex-row gap-4 mb-8">
                                     <button onClick={() => setHealthStatus('healthy')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase border-2 transition-all tracking-widest ${healthStatus === 'healthy' ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/30' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}>Saudável</button>
-                                    
                                     <button onClick={() => setHealthStatus('warning')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase border-2 transition-all tracking-widest ${healthStatus === 'warning' ? 'bg-[#ffca28] text-[#05121b] border-[#ffca28] shadow-lg shadow-yellow-500/30' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}>Precisa Ajustar</button>
-                                    
                                     <button onClick={() => setHealthStatus('critical')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase border-2 transition-all tracking-widest ${healthStatus === 'critical' ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/30' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}>Atenção</button>
                                 </div>
 
-                                {/* BOTÃO SALVAR */}
                                 {saveStatus && <p className="text-center font-bold text-xs text-emerald-600 mb-4">{saveStatus}</p>}
                                 <button onClick={handleSaveAnalysis} className="w-full bg-[#05121b] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-[#137789] transition-all shadow-xl flex items-center justify-center gap-3">
                                     <Save size={18} /> Salvar Diagnóstico e Gráficos
@@ -525,7 +744,7 @@
         };
 
         const rootElement = document.getElementById('root');
-        const root = createRoot(rootElement); // AGORA SIM, 100% CORRETO!
+        const root = createRoot(rootElement);
         root.render(<App />);
     </script>
 </body>
