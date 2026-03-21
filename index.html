@@ -117,7 +117,7 @@
                     type={type} value={value || ""} onChange={handleChange} readOnly={readOnly}
                     placeholder={placeholder || (maskType === 'currency' ? "R$ 0,00" : maskType === 'cnpj' ? "00.000.000/0000-00" : maskType === 'phone' ? "(00) 00000-0000" : "")}
                     maxLength={maskType === 'cnpj' ? 18 : maskType === 'phone' ? 15 : undefined}
-                    className={`w-full bg-white border ${Icon ? 'pl-10' : 'px-4'} pr-4 py-2.5 rounded-xl font-medium text-[#05121b] transition-all outline-none text-xs min-w-0 ${error ? 'border-red-500 ring-1 ring-red-500/20' : readOnly ? 'border-slate-100 bg-slate-50 text-slate-500' : 'border-slate-200 focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]'}`} 
+                    className={`w-full bg-white border ${Icon ? 'pl-10' : 'px-4'} pr-4 py-2.5 rounded-xl font-medium text-[#05121b] transition-all outline-none text-xs min-w-0 ${error ? 'border-red-500 ring-1 ring-red-500/20' : readOnly ? 'border-slate-100 bg-slate-50 text-slate-500 cursor-not-allowed' : 'border-slate-200 focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]'}`} 
                 />
               </div>
             </div>
@@ -142,7 +142,7 @@
           <div className="space-y-1.5 w-full text-left">
             <label className={`text-[10px] font-bold uppercase tracking-wider px-1 ${error ? 'text-red-500' : 'text-[#05121b]/50'}`}>{label}</label>
             {subLabel && <p className="text-[10px] text-slate-400 px-1 leading-relaxed">{subLabel}</p>}
-            <textarea value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} readOnly={readOnly} className={`w-full bg-white border px-4 py-3 rounded-xl font-medium text-[#05121b] transition-all outline-none resize-none text-xs h-24 ${error ? 'border-red-500 ring-1 ring-red-500/20' : readOnly ? 'border-slate-100 bg-slate-50 text-slate-500' : 'border-slate-200 focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]'}`}></textarea>
+            <textarea value={value || ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} readOnly={readOnly} className={`w-full bg-white border px-4 py-3 rounded-xl font-medium text-[#05121b] transition-all outline-none resize-none text-xs h-24 ${error ? 'border-red-500 ring-1 ring-red-500/20' : readOnly ? 'border-slate-100 bg-slate-50 text-slate-500 cursor-not-allowed' : 'border-slate-200 focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]'}`}></textarea>
           </div>
         );
 
@@ -160,6 +160,13 @@
           
           const [user, setUser] = useState(null);
           const [authChecking, setAuthChecking] = useState(true);
+
+          // Estado para o Perfil do Usuário
+          const [profileData, setProfileData] = useState({
+            full_name: '', email: '', phone: '', cnpj: '', razao_social: ''
+          });
+          const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+          const [profileSuccess, setProfileSuccess] = useState("");
 
           const [diagnostics, setDiagnostics] = useState([]);
           
@@ -185,7 +192,7 @@
             g_desafio: "", g_futuro: ""
           });
 
-          // --- O PULO DO GATO: AUTO-PREENCHIMENTO COM DADOS DO CADASTRO ---
+          // --- VERIFICAÇÃO DE SESSÃO, PERFIL E AUTOPREENCHIMENTO ---
           useEffect(() => {
             const checkSession = async () => {
                 const { data: { session } } = await supabase.auth.getSession();
@@ -195,27 +202,39 @@
                     setUser(currentUser);
                     fetchDiagnostics(currentUser.id);
                     
-                    // Injeta os dados do "user_metadata" (que vieram do cadastro) no formulário
+                    // Injeta os dados da mochila (user_metadata) na aba Perfil e nos Formulários
                     if (currentUser.user_metadata) {
                         const meta = currentUser.user_metadata;
                         
+                        // 1. Popula a aba de Perfil
+                        setProfileData({
+                            full_name: meta.full_name || '',
+                            email: currentUser.email || '',
+                            phone: meta.phone || '',
+                            cnpj: meta.cnpj || '',
+                            razao_social: meta.razao_social || ''
+                        });
+
+                        // 2. Autopreenchimento dos Formulários
                         setFormData(prev => ({
                             ...prev,
-                            // Autopreenchimento Formulário Estruturado
+                            // Formulário Estruturado
                             v1_responsavel: meta.full_name || prev.v1_responsavel,
                             v1_email: currentUser.email || prev.v1_email,
                             v1_phone: meta.phone || prev.v1_phone,
                             v1_cnpj: meta.cnpj || prev.v1_cnpj,
+                            v1_razao: meta.razao_social || prev.v1_razao,
                             
-                            // Autopreenchimento Formulário Guiado
+                            // Formulário Guiado
                             g_responsavel: meta.full_name || prev.g_responsavel,
                             g_email: currentUser.email || prev.g_email,
                             g_phone: meta.phone || prev.g_phone,
                             g_cnpj: meta.cnpj || prev.g_cnpj,
+                            g_razao: meta.razao_social || prev.g_razao,
                         }));
                     }
                 } else {
-                    // Login anônimo de fallback
+                    // Login anônimo de fallback (pra quem não logou)
                     const { data, error } = await supabase.auth.signInAnonymously();
                     if (data?.user) {
                         setUser(data.user);
@@ -241,6 +260,35 @@
               }
           };
 
+          // Salvar Edições do Perfil
+          const handleUpdateProfile = async (e) => {
+              e.preventDefault();
+              setIsUpdatingProfile(true);
+              setProfileSuccess("");
+
+              const { data, error } = await supabase.auth.updateUser({
+                  data: { 
+                      full_name: profileData.full_name,
+                      phone: profileData.phone,
+                      cnpj: profileData.cnpj,
+                      razao_social: profileData.razao_social
+                  }
+              });
+
+              setIsUpdatingProfile(false);
+              
+              if (!error) {
+                  setProfileSuccess("Perfil atualizado com sucesso!");
+                  // Atualiza também os formulários para os próximos diagnósticos
+                  setFormData(prev => ({
+                      ...prev,
+                      v1_responsavel: profileData.full_name, v1_phone: profileData.phone, v1_cnpj: profileData.cnpj, v1_razao: profileData.razao_social,
+                      g_responsavel: profileData.full_name, g_phone: profileData.phone, g_cnpj: profileData.cnpj, g_razao: profileData.razao_social,
+                  }));
+                  setTimeout(() => setProfileSuccess(""), 3000);
+              }
+          };
+
           const handleClientPortalAccess = () => { setView('dashboard'); };
           const handleLogout = async () => { 
               await supabase.auth.signOut();
@@ -255,7 +303,6 @@
             try {
                 let currentUser = user;
 
-                // TENTA FORÇAR O LOGIN ANÔNIMO NA MARRA SE ELE SE PERDEU
                 if (!currentUser) {
                     const { data, error } = await supabase.auth.signInAnonymously();
                     if (error) throw new Error("Erro de Segurança (Supabase): " + error.message);
@@ -591,6 +638,10 @@
                       <Plus size={isSidebarOpen ? 14 : 16}/> 
                       {isSidebarOpen && <span>Nova Análise</span>}
                   </button>
+                  <button onClick={() => setView('profile')} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all ${view === 'profile' ? 'bg-[#05121b] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                      <User size={isSidebarOpen ? 14 : 16}/> 
+                      {isSidebarOpen && <span>Meu Perfil</span>}
+                  </button>
                 </nav>
 
                 <button onClick={handleLogout} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-4 text-slate-300 font-bold text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors mt-6`}>
@@ -650,6 +701,38 @@
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* --- NOVA TELA DE PERFIL --- */}
+                {view === 'profile' && (
+                  <div className="max-w-4xl mx-auto w-full">
+                     <header className="mb-10">
+                        <h1 className="text-2xl font-black text-[#05121b] italic mb-1">Meu Perfil</h1>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Gerencie suas informações pessoais e da empresa</p>
+                     </header>
+                     
+                     <div className="bg-white p-8 md:p-10 rounded-3xl border border-slate-100 shadow-sm">
+                        <form onSubmit={handleUpdateProfile} className="space-y-6">
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <InputField label="Nome Completo" value={profileData.full_name} onChange={v => setProfileData({...profileData, full_name: v})} icon={User} />
+                                <InputField label="E-mail (Acesso)" value={profileData.email} readOnly={true} icon={Mail} subLabel="Seu e-mail de login não pode ser alterado por aqui." />
+                                <InputField label="Celular / WhatsApp" value={profileData.phone} onChange={v => setProfileData({...profileData, phone: maskPhone(v)})} icon={Phone} maskType="phone" />
+                                <InputField label="CNPJ" value={profileData.cnpj} onChange={v => setProfileData({...profileData, cnpj: maskCNPJ(v)})} maskType="cnpj" />
+                                <div className="md:col-span-2">
+                                    <InputField label="Razão Social da Empresa" value={profileData.razao_social} onChange={v => setProfileData({...profileData, razao_social: v})} icon={Building2} subLabel="Adicione a razão social para agilizar suas próximas análises." />
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                                <span className="text-xs font-bold text-emerald-600">{profileSuccess}</span>
+                                <button type="submit" disabled={isUpdatingProfile} className="w-full md:w-auto bg-[#137789] text-white px-10 py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-md hover:bg-[#05121b] hover:scale-[1.02] transition-all flex items-center justify-center gap-2">
+                                    {isUpdatingProfile ? <Loader2 size={16} className="animate-spin" /> : "Salvar Alterações"}
+                                </button>
+                            </div>
+                        </form>
+                     </div>
                   </div>
                 )}
 
