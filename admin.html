@@ -7,26 +7,34 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
 
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom": "https://esm.sh/react-dom@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "lucide-react": "https://esm.sh/lucide-react@0.344.0?external=react"
+        }
+      }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-[#05121b]">
     <div id="root"></div>
 
-    <script type="text/babel">
-        // Extraindo ferramentas do modo seguro
-        const { useState, useEffect } = React;
-        const { 
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
           LayoutDashboard, Users, LogOut, ShieldCheck, 
-          FileText, Building2, ArrowLeft, BarChart2, Mail, Phone, User
-        } = lucide;
+          FileText, Building2, ArrowLeft, BarChart2, Mail, Phone, User, CheckCircle, ChevronRight
+        } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP ---
-        // ATENÇÃO: Confirme se esta URL e Chave são as mesmas que você colocou no index.html
-        const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
+        // COLE AQUI A MESMA URL E CHAVE QUE VOCÊ USOU NO INDEX.HTML
+        const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -49,20 +57,26 @@
           }, []);
 
           const fetchData = async () => {
-            const { data: diags } = await supabase.from('diagnosticos').select('*').order('created_at', { ascending: false });
+            const { data: diags, error } = await supabase.from('diagnosticos').select('*').order('created_at', { ascending: false });
+            
+            if (error) {
+                console.error("Erro ao buscar dados no Supabase:", error);
+                return;
+            }
+
             if (diags) {
                 setDiagnostics(diags);
                 
-                // Gera lista de clientes únicos baseados no CNPJ (Agora com os dados novos!)
+                // Gera lista de clientes puxando as colunas novas
                 const clientsMap = {};
                 diags.forEach(d => {
                     const cnpj = d.cnpj || "N/A";
                     if (!clientsMap[cnpj]) {
                         clientsMap[cnpj] = { 
                             name: d.client_name, 
-                            razao: d.razao_social || d.client_name, // Puxa Razão Social nova
-                            email: d.email || "", // Puxa Email novo
-                            phone: d.telefone || "", // Puxa Telefone novo
+                            razao: d.razao_social || d.client_name, 
+                            email: d.email || "", 
+                            phone: d.telefone || "", 
                             cnpj: d.cnpj, 
                             submissionCount: 1, 
                             lastDate: d.created_at 
@@ -101,6 +115,7 @@
                 setTimeout(() => setSaveStatus(""), 3000);
             } else {
                 setSaveStatus("Erro ao salvar.");
+                console.error(error);
             }
           };
 
@@ -114,9 +129,9 @@
           return (
             <div className="min-h-screen bg-slate-50 flex text-[#05121b]">
               <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64 p-6' : 'w-20 p-4'} flex flex-col`}>
-                <div className="flex items-center gap-3 mb-10 overflow-hidden">
+                <div className="flex items-center gap-3 mb-10 overflow-hidden cursor-pointer" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                     <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white"><ShieldCheck size={20}/></div>
-                    {isSidebarOpen && <span className="font-black italic text-xl">OLUAP <span className="text-[10px] not-italic text-slate-400">ADMIN</span></span>}
+                    {isSidebarOpen && <span className="font-black italic text-xl tracking-tighter">OLUAP <span className="text-[10px] not-italic text-slate-400 tracking-widest">ADMIN</span></span>}
                 </div>
                 
                 <nav className="flex-1 space-y-2">
@@ -136,37 +151,42 @@
               <main className="flex-1 p-8 overflow-y-auto">
                 {view === 'dashboard' && (
                     <div className="max-w-6xl mx-auto">
-                        <h1 className="text-2xl font-black mb-8 italic uppercase">Fila de Diagnósticos</h1>
+                        <h1 className="text-2xl font-black mb-8 italic uppercase text-[#05121b]">Fila de Diagnósticos</h1>
+                        
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50 border-b border-slate-100">
                                     <tr>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400">Empresa / Contato</th>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400">Tipo</th>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400">Status</th>
-                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400 text-right">Ação</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Empresa / Contato</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Tipo</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                                        <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {diagnostics.map(d => (
-                                        <tr key={d.id} className="hover:bg-slate-50/50">
+                                    {diagnostics.length > 0 ? diagnostics.map(d => (
+                                        <tr key={d.id} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="p-4">
-                                                <div className="font-bold text-sm uppercase text-[#05121b]">{d.razao_social || d.client_name}</div>
-                                                <div className="text-[10px] text-slate-500 font-medium mt-0.5">
-                                                    {d.email && <span>{d.email} </span>}
+                                                <div className="font-black text-sm uppercase text-[#05121b] tracking-tight">{d.razao_social || d.client_name}</div>
+                                                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1 flex gap-2">
+                                                    {d.email && <span>{d.email}</span>}
                                                     {d.telefone && <span>• {d.telefone}</span>}
                                                 </div>
-                                                <div className="text-[10px] text-slate-400 mt-0.5">{d.cnpj}</div>
+                                                <div className="text-[10px] text-slate-400 font-bold mt-1 tracking-widest">{d.cnpj}</div>
                                             </td>
-                                            <td className="p-4 text-xs font-medium">{d.form_type}</td>
+                                            <td className="p-4 text-[11px] font-bold uppercase tracking-wider text-slate-500">{d.form_type}</td>
                                             <td className="p-4">
-                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${d.internal_status === 'pending' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.status}</span>
+                                                <span className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${d.internal_status === 'pending' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.status}</span>
                                             </td>
                                             <td className="p-4 text-right">
-                                                <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-wider hover:bg-[#05121b] transition-all">Abrir Análise</button>
+                                                <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] shadow-sm transition-all hover:scale-[1.02]">Abrir Análise</button>
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="4" className="p-10 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum diagnóstico recebido ainda.</td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -175,33 +195,38 @@
 
                 {view === 'review' && selectedSubmission && (
                     <div className="max-w-5xl mx-auto">
-                        <button onClick={() => setView('dashboard')} className="flex items-center gap-2 text-slate-400 font-bold text-xs mb-6 uppercase tracking-widest hover:text-[#05121b] transition-colors"><ArrowLeft size={16}/> Voltar</button>
+                        <button onClick={() => setView('dashboard')} className="flex items-center gap-2 text-slate-400 font-bold text-[10px] mb-8 uppercase tracking-widest hover:text-[#05121b] transition-colors"><ArrowLeft size={14}/> Voltar</button>
+                        
                         <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-                            <h2 className="text-2xl font-black italic uppercase mb-2 text-[#05121b]">{selectedSubmission.razao_social || selectedSubmission.client_name}</h2>
-                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-8">{selectedSubmission.cnpj} • Enviado em {new Date(selectedSubmission.created_at).toLocaleDateString()}</p>
+                            <h2 className="text-2xl font-black italic uppercase mb-2 text-[#05121b] tracking-tighter">{selectedSubmission.razao_social || selectedSubmission.client_name}</h2>
+                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-10">{selectedSubmission.cnpj} • Enviado em {new Date(selectedSubmission.created_at).toLocaleDateString()}</p>
                             
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><FileText size={14}/> Relatório de Diagnóstico</label>
-                                    <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-80 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#ff7b00] resize-none" placeholder="Cole aqui a análise da IA..."></textarea>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><FileText size={14}/> Relatório do Especialista (IA)</label>
+                                    <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-96 p-5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#ff7b00] resize-none leading-relaxed text-slate-700" placeholder="Cole aqui a análise textual gerada pela IA..."></textarea>
                                 </div>
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><BarChart2 size={14}/> Dados dos Gráficos</label>
-                                    <textarea value={chartDataInput} onChange={(e) => setChartDataInput(e.target.value)} className="w-full h-80 p-4 bg-[#05121b] text-emerald-400 font-mono border border-slate-800 rounded-2xl text-[11px] outline-none resize-none" placeholder="Estrutura de Resultado:&#10;Receita Bruta: R$ 100.000..."></textarea>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><BarChart2 size={14}/> Dados dos Gráficos (IA)</label>
+                                    <textarea value={chartDataInput} onChange={(e) => setChartDataInput(e.target.value)} className="w-full h-96 p-5 bg-[#05121b] text-emerald-400 font-mono border border-slate-800 rounded-2xl text-[11px] outline-none resize-none leading-relaxed" placeholder="Estrutura de Resultado:&#10;Receita Bruta: R$ 100.000..."></textarea>
                                 </div>
                             </div>
 
-                            <div className="space-y-6 pt-6 border-t border-slate-100">
+                            <div className="space-y-6 pt-8 border-t border-slate-100">
                                 <div>
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-3">Status de Saúde Financeira do Cliente</label>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-4">Classificação de Saúde Financeira</label>
                                     <div className="flex gap-4">
-                                        <button onClick={() => setHealthStatus('healthy')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase border transition-all tracking-widest ${healthStatus === 'healthy' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>Saudável</button>
-                                        <button onClick={() => setHealthStatus('warning')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase border transition-all tracking-widest ${healthStatus === 'warning' ? 'bg-amber-400 text-[#05121b] border-amber-400' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>Requer Ajustes</button>
-                                        <button onClick={() => setHealthStatus('critical')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase border transition-all tracking-widest ${healthStatus === 'critical' ? 'bg-red-500 text-white border-red-500' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>Crítico (Atenção)</button>
+                                        <button onClick={() => setHealthStatus('healthy')} className={`flex-1 py-4 rounded-xl font-black text-[10px] uppercase border transition-all tracking-widest ${healthStatus === 'healthy' ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>Saudável</button>
+                                        <button onClick={() => setHealthStatus('warning')} className={`flex-1 py-4 rounded-xl font-black text-[10px] uppercase border transition-all tracking-widest ${healthStatus === 'warning' ? 'bg-amber-400 text-[#05121b] border-amber-400 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>Requer Ajustes</button>
+                                        <button onClick={() => setHealthStatus('critical')} className={`flex-1 py-4 rounded-xl font-black text-[10px] uppercase border transition-all tracking-widest ${healthStatus === 'critical' ? 'bg-red-500 text-white border-red-500 shadow-md' : 'bg-white text-slate-400 border-slate-200 hover:bg-slate-50'}`}>Crítico (Atenção)</button>
                                     </div>
                                 </div>
-                                <button onClick={handleSaveAnalysis} className="w-full bg-[#05121b] text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:scale-[1.01] transition-all shadow-lg">{saveStatus || "Finalizar e Liberar para o Cliente"}</button>
-                                <button onClick={handleCopyData} className="w-full text-[#137789] hover:text-[#ff7b00] font-black text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2"><FileText size={14} /> Copiar Dados Brutos (Para colar no ChatGPT)</button>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                                    <button onClick={handleCopyData} className="w-full border-2 border-[#137789] text-[#137789] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#137789] hover:text-white transition-all flex items-center justify-center gap-2"><FileText size={16} /> 1. Copiar Dados Brutos do Cliente</button>
+                                    
+                                    <button onClick={handleSaveAnalysis} className="w-full bg-[#ff7b00] text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#e66a00] transition-all shadow-md flex items-center justify-center gap-2">{saveStatus || "2. Finalizar e Liberar Análise"}</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -209,26 +234,33 @@
 
                 {view === 'clients' && (
                     <div className="max-w-6xl mx-auto">
-                        <h1 className="text-2xl font-black mb-8 italic uppercase">Base de Clientes</h1>
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {derivedClients.map(c => (
-                                <div key={c.cnpj} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-[#137789] mb-4"><Building2 size={24}/></div>
-                                    <h3 className="font-black uppercase text-sm truncate text-[#05121b]" title={c.razao}>{c.razao}</h3>
-                                    <p className="text-[10px] text-slate-400 font-black tracking-widest mb-4">{c.cnpj}</p>
-                                    
-                                    <div className="space-y-2 mb-6 bg-slate-50 p-4 rounded-2xl">
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-2"><User size={12} className="text-slate-400"/> {c.name}</p>
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-2"><Mail size={12} className="text-slate-400"/> {c.email || "S/ Email"}</p>
-                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-2"><Phone size={12} className="text-slate-400"/> {c.phone || "S/ Telefone"}</p>
-                                    </div>
+                        <h1 className="text-2xl font-black mb-8 italic uppercase text-[#05121b]">Base de Clientes</h1>
+                        
+                        {derivedClients.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                {derivedClients.map(c => (
+                                    <div key={c.cnpj} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="w-12 h-12 bg-[#137789]/10 rounded-2xl flex items-center justify-center text-[#137789] mb-5"><Building2 size={20}/></div>
+                                        <h3 className="font-black uppercase text-sm truncate text-[#05121b] tracking-tight" title={c.razao}>{c.razao}</h3>
+                                        <p className="text-[10px] text-slate-400 font-bold tracking-widest mb-5">{c.cnpj}</p>
+                                        
+                                        <div className="space-y-3 mb-6 bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-3"><User size={14} className="text-[#ff7b00]"/> <span className="truncate">{c.name}</span></p>
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-3"><Mail size={14} className="text-[#ff7b00]"/> <span className="truncate">{c.email || "S/ Email"}</span></p>
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-3"><Phone size={14} className="text-[#ff7b00]"/> <span>{c.phone || "S/ Telefone"}</span></p>
+                                        </div>
 
-                                    <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-full">{c.submissionCount} Análise(s)</span>
+                                        <div className="flex justify-between items-center pt-5 border-t border-slate-100">
+                                            <span className="text-[9px] font-black text-[#137789] uppercase tracking-widest bg-[#137789]/10 px-3 py-1.5 rounded-full">{c.submissionCount} Análise(s)</span>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-16 text-center bg-white rounded-3xl border border-slate-100 shadow-sm w-full">
+                              <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum cliente registrado ainda.</p>
+                            </div>
+                        )}
                     </div>
                 )}
               </main>
@@ -236,9 +268,8 @@
           );
         };
 
-        // A MÁGICA DA RENDERIZAÇÃO ESTÁ AQUI (Sem erros de Babel)
         const rootElement = document.getElementById('root');
-        const root = ReactDOM.createRoot(rootElement);
+        const root = createRoot(rootElement);
         root.render(<App />);
     </script>
 </body>
