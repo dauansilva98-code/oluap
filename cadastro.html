@@ -132,7 +132,7 @@
                             <form onSubmit={handleSignup} className="space-y-6">
                                 
                                 {/* Nome Completo */}
-                                <div>
+                                <div className="w-full">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">Nome Completo</label>
                                     <input 
                                         type="text" 
@@ -145,7 +145,7 @@
                                 </div>
 
                                 {/* Email */}
-                                <div>
+                                <div className="w-full">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">E-mail Profissional</label>
                                     <input 
                                         type="email" 
@@ -157,36 +157,36 @@
                                     />
                                 </div>
 
-                                {/* Celular e CNPJ na mesma linha no PC, e separados no celular */}
-                                <div className="flex flex-col md:flex-row gap-6 w-full">
-                                    <div className="flex-1 w-full">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">Celular / WhatsApp</label>
-                                        <input 
-                                            type="text" 
-                                            required 
-                                            value={phone} 
-                                            onChange={(e) => setPhone(maskPhone(e.target.value))} 
-                                            placeholder="(00) 00000-0000" 
-                                            maxLength="15" 
-                                            className="w-full bg-slate-50 border border-slate-200 text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] focus:border-transparent placeholder-slate-400 transition-all font-medium" 
-                                        />
-                                    </div>
-                                    <div className="flex-1 w-full">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">CNPJ da Empresa</label>
-                                        <input 
-                                            type="text" 
-                                            required 
-                                            value={cnpj} 
-                                            onChange={(e) => setCnpj(maskCNPJ(e.target.value))} 
-                                            placeholder="00.000.000/0000-00" 
-                                            maxLength="18" 
-                                            className="w-full bg-slate-50 border border-slate-200 text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] focus:border-transparent placeholder-slate-400 transition-all font-medium" 
-                                        />
-                                    </div>
+                                {/* Celular */}
+                                <div className="w-full">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">Celular / WhatsApp</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        value={phone} 
+                                        onChange={(e) => setPhone(maskPhone(e.target.value))} 
+                                        placeholder="(00) 00000-0000" 
+                                        maxLength="15" 
+                                        className="w-full bg-slate-50 border border-slate-200 text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] focus:border-transparent placeholder-slate-400 transition-all font-medium" 
+                                    />
+                                </div>
+
+                                {/* CNPJ */}
+                                <div className="w-full">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">CNPJ da Empresa</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        value={cnpj} 
+                                        onChange={(e) => setCnpj(maskCNPJ(e.target.value))} 
+                                        placeholder="00.000.000/0000-00" 
+                                        maxLength="18" 
+                                        className="w-full bg-slate-50 border border-slate-200 text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] focus:border-transparent placeholder-slate-400 transition-all font-medium" 
+                                    />
                                 </div>
 
                                 {/* Senha com Olhinho */}
-                                <div>
+                                <div className="w-full">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">Crie uma Senha Segura</label>
                                     <div className="relative">
                                         <input 
@@ -208,7 +208,7 @@
                                 </div>
 
                                 {/* Botão Cadastrar */}
-                                <div className="pt-6">
+                                <div className="pt-6 w-full">
                                     <button 
                                         type="submit" 
                                         disabled={loading} 
@@ -222,7 +222,7 @@
 
                         {/* Link de Login */}
                         {!success && (
-                            <div className="mt-8 text-center border-t border-slate-100 pt-6">
+                            <div className="mt-8 text-center border-t border-slate-100 pt-6 w-full">
                                 <p className="text-xs font-bold text-slate-500">
                                     Já possui uma conta? <a href="login.html" className="text-[#137789] hover:text-[#f15a00] transition-colors uppercase tracking-wider ml-1">Entrar agora</a>
                                 </p>
