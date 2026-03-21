@@ -7,29 +7,34 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "lucide-react": "https://esm.sh/lucide-react@0.344.0?external=react",
+          "recharts": "https://esm.sh/recharts@2.12.2?external=react,react-dom"
+        }
+      }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
-    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body class="bg-[#05121b]">
     <div id="root"></div>
 
-    <script type="text/babel">
-        // Extração de Bibliotecas Globais (Substitui os imports)
-        const { useState, useEffect } = React;
-        const { 
-            LayoutDashboard, LogOut, ShieldCheck, AlertTriangle, Plus, 
-            FileText, Sparkles, Clock, Building2, Landmark, Wallet, Target, ChevronRight, 
-            Info, ArrowLeft, CheckCircle, Printer, MessageCircle, Mail, Phone, 
-            FileSearch, ChevronLeft, Menu, Loader2, BarChart2, HelpCircle
-        } = lucide;
-
-        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } = Recharts;
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+          LayoutDashboard, LogOut, ShieldCheck, AlertTriangle, Plus, 
+          FileText, Sparkles, Clock, Building2, Landmark, Wallet, Target, ChevronRight, 
+          Info, ArrowLeft, CheckCircle, Printer, MessageCircle, Mail, Phone, 
+          FileSearch, ChevronLeft, Menu, Loader2, BarChart2
+        } from 'lucide-react';
+        
+        import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
         // --- CONEXÃO COM SEU NOVO SUPABASE ---
         const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
@@ -88,13 +93,7 @@
         const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         const isValidCNPJ = (cnpj) => cnpj.replace(/\D/g, '').length === 14;
 
-        // Wrapper de Icone para contornar problemas de CDN local
-        const IconWrapper = ({ name, size = 16, className = "" }) => {
-            const Icon = lucide[name] || HelpCircle;
-            return <Icon size={size} className={className} />;
-        };
-
-        const InputField = ({ label, value, onChange, placeholder, maskType = "text", error, optional = false, subLabel, readOnly = false, type = "text", iconName }) => {
+        const InputField = ({ label, value, onChange, placeholder, maskType = "text", error, optional = false, subLabel, readOnly = false, type = "text", icon: Icon }) => {
           const handleChange = (e) => {
             let rawValue = e.target.value;
             if (maskType === 'currency') onChange(formatCurrency(rawValue));
@@ -112,12 +111,12 @@
               </div>
               {subLabel && <p className="text-[10px] text-slate-400 px-1 mb-1 leading-relaxed">{subLabel}</p>}
               <div className="relative">
-                {iconName && <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300"><IconWrapper name={iconName} size={16}/></div>}
+                {Icon && <Icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />}
                 <input 
                     type={type} value={value || ""} onChange={handleChange} readOnly={readOnly}
                     placeholder={placeholder || (maskType === 'currency' ? "R$ 0,00" : maskType === 'cnpj' ? "00.000.000/0000-00" : maskType === 'phone' ? "(00) 00000-0000" : "")}
                     maxLength={maskType === 'cnpj' ? 18 : maskType === 'phone' ? 15 : undefined}
-                    className={`w-full bg-white border ${iconName ? 'pl-10' : 'px-4'} pr-4 py-2.5 rounded-xl font-medium text-[#05121b] transition-all outline-none text-xs min-w-0 ${error ? 'border-red-500 ring-1 ring-red-500/20' : readOnly ? 'border-slate-100 bg-slate-50 text-slate-500' : 'border-slate-200 focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]'}`} 
+                    className={`w-full bg-white border ${Icon ? 'pl-10' : 'px-4'} pr-4 py-2.5 rounded-xl font-medium text-[#05121b] transition-all outline-none text-xs min-w-0 ${error ? 'border-red-500 ring-1 ring-red-500/20' : readOnly ? 'border-slate-100 bg-slate-50 text-slate-500' : 'border-slate-200 focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]'}`} 
                 />
               </div>
             </div>
@@ -146,9 +145,9 @@
           </div>
         );
 
-        const SectionHeading = ({ iconName, title, color = "text-[#137789]" }) => (
+        const SectionHeading = ({ icon: Icon, title, color = "text-[#137789]" }) => (
           <div className="flex items-center gap-2 pt-8 pb-3 border-b border-slate-100 mb-6 mt-8 first:mt-0 break-inside-avoid">
-            <div className={color}><IconWrapper name={iconName} size={18} /></div>
+            <Icon size={18} className={color} />
             <h3 className="text-xs font-black uppercase tracking-[0.15em] text-[#05121b]">{title}</h3>
           </div>
         );
@@ -185,7 +184,6 @@
             g_desafio: "", g_futuro: ""
           });
 
-          // Inicialização do Supabase Auth
           useEffect(() => {
             const checkSession = async () => {
                 const { data: { session } } = await supabase.auth.getSession();
@@ -193,7 +191,6 @@
                     setUser(session.user);
                     fetchDiagnostics(session.user.id);
                 } else {
-                    // Faz login anônimo automático se não tiver sessão
                     const { data, error } = await supabase.auth.signInAnonymously();
                     if (data?.user) {
                         setUser(data.user);
@@ -205,7 +202,6 @@
             checkSession();
           }, []);
 
-          // Buscar diagnósticos do cliente
           const fetchDiagnostics = async (userId) => {
               const { data, error } = await supabase
                   .from('diagnosticos')
@@ -225,7 +221,7 @@
               window.location.reload(); 
           };
 
-          // FUNÇÃO DE VALIDAÇÃO E ENVIO BLINDADA 2.0
+          // FUNÇÃO BLINDADA COM FORÇA BRUTA NO SUPABASE
           const validateAndSubmit = async () => {
             setIsSubmitting(true);
             setFormError(""); 
@@ -236,7 +232,7 @@
                 // TENTA FORÇAR O LOGIN ANÔNIMO NA MARRA SE ELE SE PERDEU
                 if (!currentUser) {
                     const { data, error } = await supabase.auth.signInAnonymously();
-                    if (error) throw new Error("Supabase Auth: " + error.message);
+                    if (error) throw new Error("Erro de Segurança (Supabase): " + error.message);
                     if (data?.user) {
                         currentUser = data.user;
                         setUser(currentUser);
@@ -277,7 +273,7 @@
                   setFieldErrors(errs);
                   setFormError(errorMessage);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
-                  throw new Error("Validação falhou."); // Para a execução aqui
+                  throw new Error("Validação falhou.");
                 }
 
                 setFormError("Salvando formulário no banco de dados...");
@@ -293,14 +289,12 @@
                     data: formData
                 };
 
-                // Tenta enviar pro Supabase
                 const { error } = await supabase.from('diagnosticos').insert([payload]);
                 
                 if (error) {
-                    throw new Error("Supabase: " + error.message); 
+                    throw new Error("Erro no Supabase: " + error.message); 
                 }
 
-                // Se chegou aqui, deu tudo certo!
                 const reset = Object.keys(formData).reduce((a, k) => ({...a, [k]: ""}), {});
                 setFormData(reset); 
                 
@@ -311,7 +305,7 @@
             } catch (err) {
                 console.error("Erro no envio:", err);
                 if (err.message !== "Validação falhou.") {
-                    setFormError("ERRO: " + err.message);
+                    setFormError("ERRO AO SALVAR: " + err.message);
                 }
             } finally {
                 setIsSubmitting(false); 
@@ -360,15 +354,15 @@
               <div className="space-y-6">
                 {formMode === 'standard' ? (
                   <>
-                    <SectionHeading iconName="Building2" title="1. Identificação da Empresa" />
+                    <SectionHeading icon={Building2} title="1. Identificação da Empresa" />
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
                       <InputField label="Razão Social da Empresa" value={formData.v1_razao} onChange={v => setFormData({...formData, v1_razao: v})} error={fieldErrors.v1_razao} readOnly={readOnly} />
                       <InputField label="CNPJ" value={formData.v1_cnpj} onChange={v => setFormData({...formData, v1_cnpj: v})} error={fieldErrors.v1_cnpj} readOnly={readOnly} maskType="cnpj" />
                       <div className="md:col-span-2">
                          <InputField label="Nome do Responsável" value={formData.v1_responsavel} onChange={v => setFormData({...formData, v1_responsavel: v})} error={fieldErrors.v1_responsavel} readOnly={readOnly} />
                       </div>
-                      <InputField label="Email de Contato" value={formData.v1_email} onChange={v => setFormData({...formData, v1_email: v})} error={fieldErrors.v1_email} readOnly={readOnly} iconName="Mail" />
-                      <InputField label="Celular / WhatsApp" value={formData.v1_phone} onChange={v => setFormData({...formData, v1_phone: v})} error={fieldErrors.v1_phone} readOnly={readOnly} iconName="Phone" maskType="phone" />
+                      <InputField label="Email de Contato" value={formData.v1_email} onChange={v => setFormData({...formData, v1_email: v})} error={fieldErrors.v1_email} readOnly={readOnly} icon={Mail} />
+                      <InputField label="Celular / WhatsApp" value={formData.v1_phone} onChange={v => setFormData({...formData, v1_phone: v})} error={fieldErrors.v1_phone} readOnly={readOnly} icon={Phone} maskType="phone" />
                       <div className="md:col-span-2">
                         <InputField label="Segmento de Atuação" placeholder="Ex: Comércio de Roupas, Consultoria IT, Indústria de Alimentos..." value={formData.v1_segmento} onChange={v => setFormData({...formData, v1_segmento: v})} error={fieldErrors.v1_segmento} readOnly={readOnly} />
                       </div>
@@ -379,7 +373,7 @@
                       </div>
                     </div>
                     
-                    <SectionHeading iconName="Landmark" title="2. Performance de Vendas (Receita)" />
+                    <SectionHeading icon={Landmark} title="2. Performance de Vendas (Receita)" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <InputField label="Faturamento Médio (6 meses)" value={formData.v1_fatMedio} onChange={v => setFormData({...formData, v1_fatMedio: v})} isCurrency={true} maskType="currency" error={fieldErrors.v1_fatMedio} readOnly={readOnly} />
                       <InputField label="Faturamento Total (12 meses)" value={formData.v1_fat12} onChange={v => setFormData({...formData, v1_fat12: v})} isCurrency={true} maskType="currency" error={fieldErrors.v1_fat12} readOnly={readOnly} />
@@ -402,14 +396,14 @@
                       <InputField label="Taxa de Inadimplência" subLabel="Média de valores em atraso/não recebidos (R$ ou %)" value={formData.v1_inadimplencia} onChange={v => setFormData({...formData, v1_inadimplencia: v})} error={fieldErrors.v1_inadimplencia} readOnly={readOnly} />
                     </div>
                     
-                    <SectionHeading iconName="Wallet" title="3. Custos Diretos (Mercadorias e/ou Serviços)" />
+                    <SectionHeading icon={Wallet} title="3. Custos Diretos (Mercadorias e/ou Serviços)" />
                     <div className="space-y-5">
                       <InputField label="Custo com Mercadorias ou Prestação dos Serviços" subLabel="Valor médio mensal. Para produtos: custo de compra. Para serviços: repasses a parceiros ou insumos diretos." value={formData.v1_custosDiretos} onChange={v => setFormData({...formData, v1_custosDiretos: v})} isCurrency={true} maskType="currency" error={fieldErrors.v1_custosDiretos} readOnly={readOnly} />
                       <InputField label="Taxas de Recebimento" subLabel="Valor médio mensal. Custos com maquininhas, gateways, taxas de boleto." value={formData.v1_taxaRecebimento} onChange={v => setFormData({...formData, v1_taxaRecebimento: v})} isCurrency={true} maskType="currency" error={fieldErrors.v1_taxaRecebimento} readOnly={readOnly} />
                       <InputField label="Comissões" optional={true} subLabel="Valor médio mensal. Média paga a vendedores ou parceiros." value={formData.v1_comissoes} onChange={v => setFormData({...formData, v1_comissoes: v})} isCurrency={true} maskType="currency" readOnly={readOnly} />
                     </div>
                     
-                    <SectionHeading iconName="Target" title="4. Estrutura Operacional (Despesas Fixas)" />
+                    <SectionHeading icon={Target} title="4. Estrutura Operacional (Despesas Fixas)" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <InputField label="Folha de Pagamento (valor médio mensal)" subLabel="Salários, benefícios e encargos dos funcionários" value={formData.v1_folha} onChange={v => setFormData({...formData, v1_folha: v})} isCurrency={true} maskType="currency" error={fieldErrors.v1_folha} readOnly={readOnly} />
                       <InputField label="Pró-labore dos Sócios (valor mensal)" subLabel="Retirada mensal fixa dos donos" value={formData.v1_prolabore} onChange={v => setFormData({...formData, v1_prolabore: v})} isCurrency={true} maskType="currency" error={fieldErrors.v1_prolabore} readOnly={readOnly} />
@@ -420,7 +414,7 @@
                       </div>
                     </div>
                     
-                    <SectionHeading iconName="Clock" title="5. Ciclo de Caixa e Obrigações" />
+                    <SectionHeading icon={Clock} title="5. Ciclo de Caixa e Obrigações" />
                     <div className="space-y-5">
                       <TextAreaField label="A empresa possui dívidas ou empréstimos atuais?" subLabel="Se sim, descreva os credores e os prazos de pagamento. Se não possuir, escreva 'Não'." value={formData.v1_descricaoDividas} onChange={v => setFormData({...formData, v1_descricaoDividas: v})} error={fieldErrors.v1_descricaoDividas} readOnly={readOnly} />
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -433,7 +427,7 @@
                       </div>
                     </div>
                     
-                    <SectionHeading iconName="Landmark" title="6. Posição Patrimonial e Crédito" />
+                    <SectionHeading icon={Landmark} title="6. Posição Patrimonial e Crédito" />
                     <div className="space-y-5">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                           <InputField label="Saldo atual em banco/caixa" value={formData.v1_saldo} onChange={v => setFormData({...formData, v1_saldo: v})} isCurrency={true} maskType="currency" error={fieldErrors.v1_saldo} readOnly={readOnly} />
@@ -443,7 +437,7 @@
                       <TextAreaField label="A empresa pretende contratar crédito em breve?" subLabel="Se sim, descreva o valor desejado e a principal finalidade. Se não, escreva 'Não'." value={formData.v1_detalhesCredito} onChange={v => setFormData({...formData, v1_detalhesCredito: v})} error={fieldErrors.v1_detalhesCredito} readOnly={readOnly} />
                     </div>
                     
-                    <SectionHeading iconName="Sparkles" title="7. Visão Estratégica & Anexos" />
+                    <SectionHeading icon={Sparkles} title="7. Visão Estratégica & Anexos" />
                     <div className="space-y-5">
                       <TextAreaField label="Qual é hoje o seu maior desafio financeiro?" value={formData.v1_desafio} onChange={v => setFormData({...formData, v1_desafio: v})} error={fieldErrors.v1_desafio} readOnly={readOnly} />
                       <TextAreaField label="Qual o seu objetivo principal para os próximos 12 meses?" value={formData.v1_objetivo} onChange={v => setFormData({...formData, v1_objetivo: v})} error={fieldErrors.v1_objetivo} readOnly={readOnly} />
@@ -451,25 +445,25 @@
                   </>
                 ) : (
                   <>
-                    <SectionHeading iconName="Building2" title="1. Identificação da Empresa" color="text-[#ff7b00]" />
+                    <SectionHeading icon={Building2} title="1. Identificação da Empresa" color="text-[#ff7b00]" />
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-5">
                       <InputField label="Razão Social da Empresa" value={formData.g_razao} onChange={v => setFormData({...formData, g_razao: v})} error={fieldErrors.g_razao} readOnly={readOnly} />
                       <InputField label="CNPJ" value={formData.g_cnpj} onChange={v => setFormData({...formData, g_cnpj: v})} error={fieldErrors.g_cnpj} readOnly={readOnly} maskType="cnpj" />
                       <div className="md:col-span-2">
                         <InputField label="Nome do Responsável" value={formData.g_responsavel} onChange={v => setFormData({...formData, g_responsavel: v})} error={fieldErrors.g_responsavel} readOnly={readOnly} />
                       </div>
-                      <InputField label="Email de Contato" value={formData.g_email} onChange={v => setFormData({...formData, g_email: v})} error={fieldErrors.g_email} readOnly={readOnly} iconName="Mail" />
-                      <InputField label="Celular / WhatsApp" value={formData.g_phone} onChange={v => setFormData({...formData, g_phone: v})} error={fieldErrors.g_phone} readOnly={readOnly} iconName="Phone" maskType="phone" />
+                      <InputField label="Email de Contato" value={formData.g_email} onChange={v => setFormData({...formData, g_email: v})} error={fieldErrors.g_email} readOnly={readOnly} icon={Mail} />
+                      <InputField label="Celular / WhatsApp" value={formData.g_phone} onChange={v => setFormData({...formData, g_phone: v})} error={fieldErrors.g_phone} readOnly={readOnly} icon={Phone} maskType="phone" />
                     </div>
                     
-                    <SectionHeading iconName="Target" title="2. Sobre o Negócio (Operação)" color="text-[#ff7b00]" />
+                    <SectionHeading icon={Target} title="2. Sobre o Negócio (Operação)" color="text-[#ff7b00]" />
                     <div className="space-y-5">
                       <TextAreaField label="A empresa vende Produtos, Serviços ou os dois?" subLabel="Descreva o que você oferece aos seus clientes." placeholder="Ex: Só presto serviços de TI / Só vendo roupas / Vendo peças e faço a instalação..." value={formData.g_oqueVende} onChange={v => setFormData({...formData, g_oqueVende: v})} error={fieldErrors.g_oqueVende} readOnly={readOnly} />
                       <InputField label="Há quanto tempo sua empresa existe?" placeholder="Ex: 2 anos e 3 meses..." value={formData.g_tempoExistencia} onChange={v => setFormData({...formData, g_tempoExistencia: v})} error={fieldErrors.g_tempoExistencia} readOnly={readOnly} />
                       <InputField label="Quantas pessoas trabalham com você?" subLabel="(Incluindo você)" value={formData.g_pessoas} onChange={v => setFormData({...formData, g_pessoas: v})} error={fieldErrors.g_pessoas} readOnly={readOnly} />
                     </div>
                     
-                    <SectionHeading iconName="Landmark" title="3. Vendas (O dinheiro que entra)" color="text-[#ff7b00]" />
+                    <SectionHeading icon={Landmark} title="3. Vendas (O dinheiro que entra)" color="text-[#ff7b00]" />
                     <div className="space-y-5">
                       <InputField label="Quanto entra de dinheiro por mês? (Faturamento)" subLabel="Valor aproximado" value={formData.g_faturamento} onChange={v => setFormData({...formData, g_faturamento: v})} isCurrency={true} maskType="currency" error={fieldErrors.g_faturamento} readOnly={readOnly} />
                       <InputField label="De onde vem a maior parte do dinheiro?" placeholder="Ex: 100% produtos, 100% serviços, ou 60% prod / 40% serv..." value={formData.g_mixFaturamento} onChange={v => setFormData({...formData, g_mixFaturamento: v})} error={fieldErrors.g_mixFaturamento} readOnly={readOnly} />
@@ -479,7 +473,7 @@
                       <InputField label="Qual o seu produto ou serviço que mais vende e dá lucro?" placeholder="Descreva seu principal produto/serviço" value={formData.g_produtoLucrativo} onChange={v => setFormData({...formData, g_produtoLucrativo: v})} error={fieldErrors.g_produtoLucrativo} readOnly={readOnly} />
                     </div>
                     
-                    <SectionHeading iconName="Wallet" title="4. Gastos Principais (O dinheiro que sai)" color="text-[#ff7b00]" />
+                    <SectionHeading icon={Wallet} title="4. Gastos Principais (O dinheiro que sai)" color="text-[#ff7b00]" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <InputField label="Aluguel mensal" value={formData.g_aluguel} onChange={v => setFormData({...formData, g_aluguel: v})} isCurrency={true} maskType="currency" error={fieldErrors.g_aluguel} readOnly={readOnly} />
                       <InputField label="Gasto com ajudantes/func." value={formData.g_gastoFunc} onChange={v => setFormData({...formData, g_gastoFunc: v})} isCurrency={true} maskType="currency" error={fieldErrors.g_gastoFunc} readOnly={readOnly} />
@@ -492,7 +486,7 @@
                         <TextAreaField label="Qual você considera ser o maior 'ralo' de dinheiro hoje?" subLabel="Onde você sente que a empresa gasta mais sem necessidade?" value={formData.g_raloDinheiro} onChange={v => setFormData({...formData, g_raloDinheiro: v})} error={fieldErrors.g_raloDinheiro} readOnly={readOnly} />
                     </div>
                     
-                    <SectionHeading iconName="Clock" title="5. Dívidas e Gestão" color="text-[#ff7b00]" />
+                    <SectionHeading icon={Clock} title="5. Dívidas e Gestão" color="text-[#ff7b00]" />
                     <div className="space-y-5">
                       <TextAreaField label="A empresa possui empréstimos ou dívidas hoje?" subLabel="Descreva para quem deve e como estão as parcelas. Se não possuir, escreva 'Não'." value={formData.g_descricaoDividas} onChange={v => setFormData({...formData, g_descricaoDividas: v})} error={fieldErrors.g_descricaoDividas} readOnly={readOnly} />
                       <InputField label="Qual o valor total estimado dessas dívidas?" optional={true} value={formData.g_valorTotalDivida} onChange={v => setFormData({...formData, g_valorTotalDivida: v})} isCurrency={true} maskType="currency" readOnly={readOnly} />
@@ -500,7 +494,7 @@
                       <InputField label="Você costuma misturar as contas da empresa com as pessoais?" placeholder="Ex: Sim, sempre pago contas de casa com o dinheiro do caixa..." value={formData.g_misturaContas} onChange={v => setFormData({...formData, g_misturaContas: v})} error={fieldErrors.g_misturaContas} readOnly={readOnly} />
                     </div>
                     
-                    <SectionHeading iconName="Landmark" title="6. Caixa e Crédito" color="text-[#ff7b00]" />
+                    <SectionHeading icon={Landmark} title="6. Caixa e Crédito" color="text-[#ff7b00]" />
                     <div className="space-y-5">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <InputField label="Se parar de vender hoje, quanto tempo a empresa sobrevive?" placeholder="Ex: Não chega a 1 mês..." value={formData.g_folegoCaixa} onChange={v => setFormData({...formData, g_folegoCaixa: v})} error={fieldErrors.g_folegoCaixa} readOnly={readOnly} />
@@ -510,7 +504,7 @@
                       <InputField label="Em quantos meses gostaria de pagar esse possível empréstimo?" placeholder="Ex: Em 24 meses" value={formData.g_prazoPagamento} onChange={v => setFormData({...formData, g_prazoPagamento: v})} readOnly={readOnly} optional={true} />
                     </div>
                     
-                    <SectionHeading iconName="Sparkles" title="8. Visão de Futuro & Anexos" color="text-[#ff7b00]" />
+                    <SectionHeading icon={Sparkles} title="8. Visão de Futuro & Anexos" color="text-[#ff7b00]" />
                     <div className="space-y-5">
                       <TextAreaField label="Qual é hoje o maior desafio financeiro?" value={formData.g_desafio} onChange={v => setFormData({...formData, g_desafio: v})} error={fieldErrors.g_desafio} readOnly={readOnly} />
                       <TextAreaField label="Se nada mudar, o que acontece com a empresa em 3 meses?" value={formData.g_futuro} onChange={v => setFormData({...formData, g_futuro: v})} error={fieldErrors.g_futuro} readOnly={readOnly} />
@@ -685,7 +679,7 @@
                           <p className="text-[#137789] font-bold uppercase text-[9px] tracking-[0.2em]">{formMode === 'standard' ? 'Preencha com dados reais para um diagnóstico preciso' : 'Responda com valores aproximados para clareza inicial'}</p>
                         </header>
 
-                        {formError && <div className={`mb-8 p-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${formError === 'Salvando formulário...' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-red-50 text-red-600 border-red-100'}`}><AlertTriangle size={14} className="shrink-0"/> <span>{formError}</span></div>}
+                        {formError && <div className={`mb-8 p-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${formError === 'Salvando formulário no banco de dados...' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-red-50 text-red-600 border-red-100'}`}><AlertTriangle size={14} className="shrink-0"/> <span>{formError}</span></div>}
 
                         {renderFormFields(false)}
 
