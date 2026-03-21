@@ -35,7 +35,7 @@
         } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP ---
-        const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
+        const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -71,8 +71,8 @@
           const [isSidebarOpen, setIsSidebarOpen] = useState(true);
           
           // Dados Brutos
-          const [diagnostics, setDiagnostics] = useState([]);
-          const [derivedClients, setDerivedClients] = useState([]);
+          const [diagnostics, setDiagnostics] = useState([]); // Fila (pending)
+          const [derivedClients, setDerivedClients] = useState([]); // Base (completed)
           
           // Dados Filtrados
           const [filteredDiagnostics, setFilteredDiagnostics] = useState([]);
@@ -88,12 +88,13 @@
           
           // Estados de Filtro (Fila de Espera)
           const [filterSearch, setFilterSearch] = useState("");
-          const [filterStatus, setFilterStatus] = useState("todos");
           const [filterDateFrom, setFilterDateFrom] = useState("");
           const [filterDateTo, setFilterDateTo] = useState("");
 
           // Estados de Filtro (Base de Clientes)
           const [clientSearchTerm, setClientSearchTerm] = useState("");
+          const [clientStatusFilter, setClientStatusFilter] = useState("todos"); // 'todos', 'healthy', 'warning', 'critical'
+          const [clientTypeFilter, setClientTypeFilter] = useState("todos"); // 'todos', 'Estruturado', 'Guiado'
           const [clientDateFrom, setClientDateFrom] = useState("");
           const [clientDateTo, setClientDateTo] = useState("");
 
@@ -113,9 +114,9 @@
             fetchData();
           }, []);
 
-          // Aplica os filtros na Fila de Espera
+          // Aplica os filtros na Fila de Espera (Apenas 'pending')
           useEffect(() => {
-              let filtered = diagnostics;
+              let filtered = diagnostics; // 'diagnostics' já vem filtrado com pending da função fetchData
 
               if (filterSearch.trim() !== "") {
                   const lower = filterSearch.toLowerCase();
@@ -126,10 +127,6 @@
                       (d.email && d.email.toLowerCase().includes(lower)) ||
                       (d.telefone && d.telefone.includes(lower))
                   );
-              }
-
-              if (filterStatus !== "todos") {
-                  filtered = filtered.filter(d => d.internal_status === filterStatus);
               }
 
               if (filterDateFrom) {
@@ -143,9 +140,9 @@
               }
 
               setFilteredDiagnostics(filtered);
-          }, [filterSearch, filterStatus, filterDateFrom, filterDateTo, diagnostics]);
+          }, [filterSearch, filterDateFrom, filterDateTo, diagnostics]);
 
-          // Aplica filtros na Base de Clientes e reseta paginação
+          // Aplica filtros na Base de Clientes (Apenas 'completed')
           useEffect(() => {
               let filtered = derivedClients;
 
@@ -160,6 +157,16 @@
                   );
               }
 
+              if (clientStatusFilter !== "todos") {
+                  // Filtra pelo status do diagnóstico mais recente
+                  filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.health_status === clientStatusFilter);
+              }
+
+              if (clientTypeFilter !== "todos") {
+                   // Filtra pelo tipo do diagnóstico mais recente
+                  filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.form_type === clientTypeFilter);
+              }
+
               if (clientDateFrom) {
                   filtered = filtered.filter(c => new Date(c.firstDate) >= new Date(clientDateFrom));
               }
@@ -171,18 +178,19 @@
               }
 
               setFilteredClients(filtered);
-              setCurrentPage(1); // Volta para a primeira página sempre que filtra
-          }, [clientSearchTerm, clientDateFrom, clientDateTo, derivedClients]);
+              setCurrentPage(1); // Volta para a primeira página
+          }, [clientSearchTerm, clientStatusFilter, clientTypeFilter, clientDateFrom, clientDateTo, derivedClients]);
 
           const clearFilters = () => {
               setFilterSearch("");
-              setFilterStatus("todos");
               setFilterDateFrom("");
               setFilterDateTo("");
           };
 
           const clearClientFilters = () => {
               setClientSearchTerm("");
+              setClientStatusFilter("todos");
+              setClientTypeFilter("todos");
               setClientDateFrom("");
               setClientDateTo("");
           };
@@ -190,9 +198,11 @@
           const fetchData = async () => {
             const { data: diags, error } = await supabase.from('diagnosticos').select('*').order('created_at', { ascending: false });
             if (diags) {
-                setDiagnostics(diags);
+                // Fila de Espera = Apenas Pending
+                const pendingDiags = diags.filter(d => d.internal_status === 'pending');
+                setDiagnostics(pendingDiags);
                 
-                // Agrupa os diagnósticos por Cliente (CNPJ) - Na base de clientes, foca em quem já tem histórico.
+                // Base de Clientes = Apenas quem tem histórico Completed
                 const clientsMap = {};
                 diags.forEach(d => {
                     const cnpj = d.cnpj || "N/A";
@@ -206,16 +216,21 @@
                             submissionCount: 0, 
                             firstDate: d.created_at,
                             generalNotes: d.client_general_notes || "",
-                            history: [] 
+                            history: [],
+                            latestSubmission: null
                         };
                     }
                     
-                    // Adiciona histórico apenas das concluídas (ou todas, se preferir ver tudo no perfil)
+                    // Adiciona na Base de Clientes apenas se for concluído
                     if (d.internal_status === 'completed') {
                         clientsMap[cnpj].submissionCount++;
+                        clientsMap[cnpj].history.push(d);
+                        
+                        // Atualiza latestSubmission para ajudar no filtro
+                        if (!clientsMap[cnpj].latestSubmission || new Date(d.created_at) > new Date(clientsMap[cnpj].latestSubmission.created_at)) {
+                            clientsMap[cnpj].latestSubmission = d;
+                        }
                     }
-                    
-                    clientsMap[cnpj].history.push(d);
 
                     if (new Date(d.created_at) < new Date(clientsMap[cnpj].firstDate)) {
                         clientsMap[cnpj].firstDate = d.created_at;
@@ -225,8 +240,8 @@
                     }
                 });
 
-                // Transforma em array e garante que só mostra quem tem alguma coisa preenchida
-                const clientsArray = Object.values(clientsMap);
+                // Remove clientes que não tem nenhuma análise concluída da Base de Clientes
+                const clientsArray = Object.values(clientsMap).filter(c => c.submissionCount > 0);
                 setDerivedClients(clientsArray);
 
                 if (selectedClient) {
@@ -267,6 +282,11 @@
           };
 
           const handleSaveAnalysis = async () => {
+            if(!healthStatus) {
+                alert("Por favor, selecione a Classificação de Saúde Financeira antes de salvar.");
+                return;
+            }
+
             setSaveStatus("Salvando...");
             const { error } = await supabase.from('diagnosticos').update({
                 analysis: adminAnalysis,
@@ -280,7 +300,11 @@
             if (!error) {
                 setSaveStatus("Salvo com sucesso!");
                 await fetchData();
-                setTimeout(() => setSaveStatus(""), 3000);
+                // Redireciona para Base de Clientes após salvar
+                setTimeout(() => {
+                    setSaveStatus("");
+                    goClients();
+                }, 1500);
             } else {
                 setSaveStatus("Erro ao salvar.");
             }
@@ -316,7 +340,6 @@
               setTimeout(() => setSaveStatus(""), 3000);
           };
 
-          // --- FUNÇÕES DE COMPARTILHAMENTO ---
           const handleSendWhatsApp = (phoneStr) => {
               const numToUse = phoneStr || whatsAppNum;
               const cleanPhone = numToUse.replace(/\D/g, '');
@@ -339,7 +362,6 @@
               window.print();
           };
 
-          // --- FUNÇÃO PARA BAIXAR PLANILHA CSV ---
           const downloadCSV = () => {
               if (filteredClients.length === 0) return;
               
@@ -370,18 +392,11 @@
           // --- BADGES DA TABELA ---
           const getDiagnosticoBadge = (health_status) => {
               switch(health_status) {
-                  case 'healthy': return <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Saudável</span>;
-                  case 'warning': return <span className="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Precisa Ajustar</span>;
-                  case 'critical': return <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Atenção</span>;
+                  case 'healthy': return <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100">Saudável</span>;
+                  case 'warning': return <span className="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-100">Ajustar</span>;
+                  case 'critical': return <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-red-100">Atenção</span>;
                   default: return <span className="text-slate-300 font-bold text-xs">-</span>;
               }
-          };
-
-          const getStatusBadge = (internal_status) => {
-              if (internal_status === 'completed') {
-                  return <span className="bg-[#137789]/10 text-[#137789] px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-[#137789]/20">Concluído</span>;
-              }
-              return <span className="bg-orange-50 text-[#ff7b00] px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-orange-200">Analisar</span>;
           };
 
           // Renderização do Formulário (Leitura)
@@ -400,8 +415,6 @@
                               <ReadOnlyInput label="Email de Contato" value={fd.v1_email} icon={Mail} />
                               <ReadOnlyInput label="Celular / WhatsApp" value={fd.v1_phone} icon={Phone} />
                           </div>
-                          {/* Simplifiquei a renderização do formulário aqui no código apenas visualmente para focar na base de clientes. 
-                              O resto continua funcionando via código anterior se precisar, mas a pedido, foquei nas telas novas. */}
                           <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-center">
                               <p className="text-xs font-bold text-slate-400">... (Restante das Respostas do Formulário) ...</p>
                           </div>
@@ -453,15 +466,15 @@
               {/* CONTEÚDO PRINCIPAL */}
               <main className="flex-1 p-6 md:p-10 overflow-y-auto bg-slate-50/40">
                 
-                {/* ---------- TELA 1: FILA DE ESPERA ---------- */}
+                {/* ---------- TELA 1: FILA DE ESPERA (SÓ PENDING) ---------- */}
                 {view === 'dashboard' && (
                     <div className="max-w-6xl mx-auto">
                         <header className="mb-8">
                             <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Fila de Espera</h1>
-                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Gerencie os diagnósticos recebidos</p>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Diagnósticos pendentes de análise</p>
                         </header>
 
-                        {/* --- BARRA DE FILTROS ESTILO LUMIS --- */}
+                        {/* Barra de Filtros Fila */}
                         <div className="flex flex-col md:flex-row gap-4 items-end bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
                             <div className="flex-1 w-full space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Buscar (Nome, E-mail ou Fone)</label>
@@ -469,14 +482,6 @@
                                     <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                                     <input type="text" placeholder="Digite para buscar..." value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
                                 </div>
-                            </div>
-                            <div className="w-full md:w-48 space-y-1.5">
-                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Status</label>
-                                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all appearance-none cursor-pointer">
-                                    <option value="todos">Todos os status</option>
-                                    <option value="pending">Analisar</option>
-                                    <option value="completed">Concluído</option>
-                                </select>
                             </div>
                             <div className="w-full md:w-40 space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data Envio (De)</label>
@@ -491,7 +496,6 @@
                             </button>
                         </div>
                         
-                        {/* Tabela de Fila de Espera */}
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50 border-b border-slate-100">
@@ -499,7 +503,6 @@
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Empresa</th>
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Tipo</th>
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Data de Envio</th>
-                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Diagnóstico</th>
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Status</th>
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
                                     </tr>
@@ -512,16 +515,13 @@
                                                 <div className="text-[10px] text-slate-400 font-bold mt-0.5 tracking-widest">{d.cnpj}</div>
                                             </td>
                                             <td className="p-5 text-center">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{d.form_type}</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-3 py-1 rounded-md">{d.form_type}</span>
                                             </td>
                                             <td className="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                                                 {new Date(d.created_at).toLocaleDateString()}
                                             </td>
-                                            <td className="p-5 text-center flex justify-center mt-2.5">
-                                                {getDiagnosticoBadge(d.health_status)}
-                                            </td>
                                             <td className="p-5 text-center">
-                                                {getStatusBadge(d.internal_status)}
+                                                <span className="bg-orange-50 text-[#ff7b00] px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-orange-200">Analisar</span>
                                             </td>
                                             <td className="p-5 text-right">
                                                 <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] shadow-sm transition-all hover:scale-[1.05] flex items-center gap-2 ml-auto">
@@ -531,7 +531,7 @@
                                         </tr>
                                     )) : (
                                         <tr>
-                                            <td colSpan="6" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum diagnóstico encontrado.</td>
+                                            <td colSpan="5" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma análise pendente no momento.</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -540,13 +540,14 @@
                     </div>
                 )}
 
-                {/* ---------- TELA 2: BASE DE CLIENTES ---------- */}
+                {/* ---------- TELA 2: BASE DE CLIENTES (SÓ COMPLETED) ---------- */}
                 {view === 'clients' && (
                     <div className="max-w-6xl mx-auto">
                         
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                             <header>
                                 <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Banco de Clientes</h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Clientes com diagnósticos concluídos</p>
                             </header>
                             <div className="flex items-center gap-3">
                                 <button onClick={downloadCSV} className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2 shadow-sm">
@@ -567,12 +568,34 @@
                                     <input type="text" placeholder="Digite para buscar..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
                                 </div>
                             </div>
-                            <div className="w-full md:w-40 space-y-1.5">
-                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data Cadastro (De)</label>
+                            
+                            {/* Filtro de Diagnóstico (Status de Saúde) */}
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Diagnóstico</label>
+                                <select value={clientStatusFilter} onChange={(e) => setClientStatusFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all appearance-none cursor-pointer">
+                                    <option value="todos">Todos</option>
+                                    <option value="healthy">Saudável</option>
+                                    <option value="warning">Ajustar</option>
+                                    <option value="critical">Atenção</option>
+                                </select>
+                            </div>
+
+                            {/* Filtro de Tipo */}
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Tipo</label>
+                                <select value={clientTypeFilter} onChange={(e) => setClientTypeFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all appearance-none cursor-pointer">
+                                    <option value="todos">Todos</option>
+                                    <option value="Estruturado">Estruturado</option>
+                                    <option value="Guiado">Guiado</option>
+                                </select>
+                            </div>
+
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (De)</label>
                                 <input type="date" value={clientDateFrom} onChange={(e) => setClientDateFrom(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
                             </div>
-                            <div className="w-full md:w-40 space-y-1.5">
-                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data Cadastro (Até)</label>
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (Até)</label>
                                 <input type="date" value={clientDateTo} onChange={(e) => setClientDateTo(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
                             </div>
                             <button onClick={clearClientFilters} title="Limpar Filtros" className="h-[42px] w-[42px] shrink-0 bg-slate-50 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
@@ -589,11 +612,16 @@
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Contato</th>
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Histórico</th>
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Data Cadastro</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Diagnóstico</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Tipo</th>
                                         <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {currentClients.length > 0 ? currentClients.map(c => (
+                                    {currentClients.length > 0 ? currentClients.map(c => {
+                                        const lastSub = c.latestSubmission || c.history[0]; // Pega a última análise para mostrar o status
+                                        
+                                        return (
                                         <tr key={c.cnpj} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="p-5">
                                                 <div className="font-black text-sm uppercase text-[#05121b] tracking-tight">{c.razao}</div>
@@ -609,9 +637,15 @@
                                             <td className="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                                                 {new Date(c.firstDate).toLocaleDateString()}
                                             </td>
+                                            <td className="p-5 text-center flex justify-center mt-2.5">
+                                                {lastSub ? getDiagnosticoBadge(lastSub.health_status) : "-"}
+                                            </td>
+                                            <td className="p-5 text-center">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-3 py-1 rounded-md">{lastSub ? lastSub.form_type : "-"}</span>
+                                            </td>
                                             <td className="p-5 text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <button onClick={() => handleSendWhatsApp(c.phone)} className="bg-green-50 text-green-600 border border-green-100 p-2.5 rounded-xl hover:bg-green-100 transition-colors" title="Chamar no WhatsApp">
+                                                    <button onClick={() => handleSendWhatsApp(c.phone)} className="bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 p-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors" title="Chamar no WhatsApp">
                                                         <MessageCircle size={16} />
                                                     </button>
                                                     <button onClick={() => openClientProfile(c)} className="border-2 border-slate-200 text-slate-500 px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-[#137789] hover:text-[#137789] transition-all flex items-center gap-2">
@@ -620,9 +654,9 @@
                                                 </div>
                                             </td>
                                         </tr>
-                                    )) : (
+                                    )}) : (
                                         <tr>
-                                            <td colSpan="5" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum cliente encontrado.</td>
+                                            <td colSpan="7" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum cliente encontrado.</td>
                                         </tr>
                                     )}
                                 </tbody>
