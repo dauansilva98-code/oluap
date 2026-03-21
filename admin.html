@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLUAP Admin - Gestão de Diagnósticos</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "https://esm.sh/react@18.2.0",
+          "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+          "lucide-react": "https://esm.sh/lucide-react@0.344.0?external=react",
+          "recharts": "https://esm.sh/recharts@2.12.2?external=react,react-dom"
+        }
+      }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-[#05121b]">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+          LayoutDashboard, Users, LogOut, Search, ShieldCheck, AlertTriangle, 
+          FileText, Sparkles, Building2, Landmark, Wallet, Target, ChevronRight, 
+          ArrowLeft, Eye, Copy, Save, CheckCircle, Filter, Calendar, Mail, Phone, 
+          Lock, StickyNote, ChevronLeft, Menu, Loader2, BarChart2
+        } from 'lucide-react';
+
+        // --- CONEXÃO SUPABASE OLUAP ---
+        const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- UTILS ---
+        const maskCNPJ = (v) => v?.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').replace(/(-\d{2})\d+?$/, '$1') || "";
+
+        const App = () => {
+          const [view, setView] = useState('dashboard');
+          const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+          const [diagnostics, setDiagnostics] = useState([]);
+          const [derivedClients, setDerivedClients] = useState([]);
+          const [searchTerm, setSearchTerm] = useState("");
+          const [clientSearchTerm, setClientSearchTerm] = useState("");
+          const [selectedSubmission, setSelectedSubmission] = useState(null);
+          const [selectedClient, setSelectedClient] = useState(null);
+          
+          // Estados de Edição da Análise
+          const [adminAnalysis, setAdminAnalysis] = useState("");
+          const [chartDataInput, setChartDataInput] = useState("");
+          const [internalAnalysisNotes, setInternalAnalysisNotes] = useState("");
+          const [healthStatus, setHealthStatus] = useState("");
+          const [saveStatus, setSaveStatus] = useState("");
+          const [clientNotes, setClientNotes] = useState("");
+
+          useEffect(() => {
+            fetchData();
+          }, []);
+
+          const fetchData = async () => {
+            const { data: diags } = await supabase.from('diagnosticos').select('*').order('created_at', { ascending: false });
+            if (diags) {
+                setDiagnostics(diags);
+                // Gera lista de clientes únicos baseados no CNPJ
+                const clientsMap = {};
+                diags.forEach(d => {
+                    const cnpj = d.cnpj || "N/A";
+                    if (!clientsMap[cnpj]) {
+                        clientsMap[cnpj] = { name: d.client_name, cnpj: d.cnpj, submissionCount: 1, lastDate: d.created_at };
+                    } else {
+                        clientsMap[cnpj].submissionCount++;
+                    }
+                });
+                setDerivedClients(Object.values(clientsMap));
+            }
+          };
+
+          const handleAdminAnalyze = (submission) => {
+            setSelectedSubmission(submission);
+            setAdminAnalysis(submission.analysis || "");
+            setChartDataInput(submission.chart_data_input || "");
+            setInternalAnalysisNotes(submission.internal_analysis_notes || "");
+            setHealthStatus(submission.health_status || "");
+            setView('review');
+          };
+
+          const handleSaveAnalysis = async () => {
+            setSaveStatus("Salvando...");
+            const { error } = await supabase.from('diagnosticos').update({
+                analysis: adminAnalysis,
+                chart_data_input: chartDataInput,
+                internal_analysis_notes: internalAnalysisNotes,
+                health_status: healthStatus,
+                status: "Concluído",
+                internal_status: "completed"
+            }).eq('id', selectedSubmission.id);
+
+            if (!error) {
+                setSaveStatus("Salvo com sucesso!");
+                fetchData();
+                setTimeout(() => setSaveStatus(""), 3000);
+            }
+          };
+
+          const handleCopyData = () => {
+              const text = JSON.stringify(selectedSubmission.data, null, 2);
+              navigator.clipboard.writeText(text);
+              setSaveStatus("Dados Copiados!");
+              setTimeout(() => setSaveStatus(""), 2000);
+          };
+
+          return (
+            <div className="min-h-screen bg-slate-50 flex text-[#05121b]">
+              <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64 p-6' : 'w-20 p-4'} flex flex-col`}>
+                <div className="flex items-center gap-3 mb-10 overflow-hidden">
+                    <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white"><ShieldCheck size={20}/></div>
+                    {isSidebarOpen && <span className="font-black italic text-xl">OLUAP <span className="text-[10px] not-italic text-slate-400">ADMIN</span></span>}
+                </div>
+                
+                <nav className="flex-1 space-y-2">
+                    <button onClick={() => setView('dashboard')} className={`w-full flex items-center gap-3 p-3 rounded-xl font-bold text-xs uppercase tracking-wider ${view==='dashboard'?'bg-[#05121b] text-white':'text-slate-400 hover:bg-slate-50'}`}>
+                        <FileText size={18}/> {isSidebarOpen && "Fila de Espera"}
+                    </button>
+                    <button onClick={() => setView('clients')} className={`w-full flex items-center gap-3 p-3 rounded-xl font-bold text-xs uppercase tracking-wider ${view==='clients'?'bg-[#05121b] text-white':'text-slate-400 hover:bg-slate-50'}`}>
+                        <Users size={18}/> {isSidebarOpen && "Clientes"}
+                    </button>
+                </nav>
+
+                <button onClick={() => window.location.href='painel.html'} className="flex items-center gap-3 p-3 text-slate-400 font-bold text-xs uppercase hover:text-red-500 transition-colors">
+                    <LogOut size={18}/> {isSidebarOpen && "Sair do Admin"}
+                </button>
+              </aside>
+
+              <main className="flex-1 p-8 overflow-y-auto">
+                {view === 'dashboard' && (
+                    <div className="max-w-6xl mx-auto">
+                        <h1 className="text-2xl font-black mb-8 italic uppercase">Fila de Diagnósticos</h1>
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-50 border-b border-slate-100">
+                                    <tr>
+                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400">Empresa</th>
+                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400">Tipo</th>
+                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400">Status</th>
+                                        <th className="p-4 text-[10px] font-black uppercase text-slate-400 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {diagnostics.map(d => (
+                                        <tr key={d.id} className="hover:bg-slate-50/50">
+                                            <td className="p-4">
+                                                <div className="font-bold text-sm uppercase">{d.client_name}</div>
+                                                <div className="text-[10px] text-slate-400">{d.cnpj}</div>
+                                            </td>
+                                            <td className="p-4 text-xs font-medium">{d.form_type}</td>
+                                            <td className="p-4">
+                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${d.internal_status === 'pending' ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600'}`}>{d.status}</span>
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-4 py-2 rounded-lg font-black text-[10px] uppercase hover:bg-[#05121b] transition-all">Abrir Análise</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {view === 'review' && (
+                    <div className="max-w-5xl mx-auto">
+                        <button onClick={() => setView('dashboard')} className="flex items-center gap-2 text-slate-400 font-bold text-xs mb-6 uppercase tracking-widest"><ArrowLeft size={16}/> Voltar</button>
+                        <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                            <h2 className="text-2xl font-black italic uppercase mb-8">{selectedSubmission.client_name}</h2>
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><FileText size={14}/> Relatório de Diagnóstico</label>
+                                    <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-80 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#ff7b00]" placeholder="Cole aqui a análise da IA..."></textarea>
+                                </div>
+                                <div className="space-y-4">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><BarChart2 size={14}/> Dados dos Gráficos</label>
+                                    <textarea value={chartDataInput} onChange={(e) => setChartDataInput(e.target.value)} className="w-full h-80 p-4 bg-[#05121b] text-emerald-400 font-mono border border-slate-800 rounded-2xl text-[11px] outline-none" placeholder="Estrutura de Resultado..."></textarea>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-3">Saúde Financeira</label>
+                                    <div className="flex gap-4">
+                                        {['healthy', 'warning', 'critical'].map(s => (
+                                            <button key={s} onClick={() => setHealthStatus(s)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase border transition-all ${healthStatus === s ? 'bg-[#ff7b00] text-white border-[#ff7b00]' : 'bg-white text-slate-300'}`}>{s}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <button onClick={handleSaveAnalysis} className="w-full bg-[#05121b] text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:scale-[1.01] transition-all">{saveStatus || "Finalizar e Enviar para o Cliente"}</button>
+                                <button onClick={handleCopyData} className="w-full text-slate-400 font-bold text-[10px] uppercase tracking-widest">Copiar Dados Brutos do Formulário</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {view === 'clients' && (
+                    <div className="max-w-6xl mx-auto">
+                        <h1 className="text-2xl font-black mb-8 italic uppercase">Base de Clientes</h1>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {derivedClients.map(c => (
+                                <div key={c.cnpj} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-[#137789] mb-4"><Building2 size={24}/></div>
+                                    <h3 className="font-black uppercase text-sm truncate">{c.name}</h3>
+                                    <p className="text-[10px] text-slate-400 font-bold mb-4">{c.cnpj}</p>
+                                    <div className="flex justify-between items-center pt-4 border-t border-slate-50">
+                                        <span className="text-[9px] font-black text-slate-300 uppercase">{c.submissionCount} Análises</span>
+                                        <button className="text-[#137789] font-black text-[10px] uppercase tracking-widest">Ver Ficha</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+              </main>
+            </div>
+          );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
