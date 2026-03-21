@@ -25,6 +25,8 @@
         /* Ocultar barra de rolagem no desktop, mas manter o comportamento fluído do flexbox */
         @media (min-width: 768px) {
             body { overflow: hidden; }
+            /* Permitir rolagem apenas dentro do formulário se a tela for muito pequena verticalmente */
+            .form-scroll { max-height: 100vh; overflow-y: auto; }
         }
     </style>
 </head>
@@ -34,14 +36,14 @@
     <script type="text/babel" data-type="module">
         import React, { useState } from 'react';
         import { createRoot } from 'react-dom/client';
-        import { Loader2, AlertTriangle, Eye, EyeOff, User, Mail, Phone, FileText, Lock, CheckCircle } from 'lucide-react';
+        import { Loader2, AlertTriangle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
-        // --- CONEXÃO SUPABASE OLUAP (OFICIAL) ---
-        const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
+        // --- CONEXÃO SUPABASE OLUAP (COM SUAS CHAVES) ---
+        const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // Funções de Máscara para manter o padrão
+        // Funções de Máscara
         const maskCNPJ = (value) => value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').replace(/(-\d{2})\d+?$/, '$1');
         const maskPhone = (value) => value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d)(\d{4})$/, '$1-$2').substring(0, 15);
 
@@ -68,7 +70,7 @@
                     return;
                 }
 
-                // O Pulo do Gato: Salvar os dados extras dentro do "user_metadata"
+                // Salva os dados extras dentro do "user_metadata" para autopreencher o formulário depois
                 const { data, error } = await supabase.auth.signUp({
                     email: email,
                     password: password,
@@ -85,7 +87,7 @@
                     setError(error.message);
                 } else {
                     setSuccess(true);
-                    // Redireciona para o painel do cliente após 3 segundos
+                    // Redireciona para o painel do cliente
                     setTimeout(() => {
                         window.location.href = 'index.html';
                     }, 3000);
@@ -97,8 +99,9 @@
                 <div className="min-h-screen md:h-screen w-full flex flex-col md:flex-row relative">
                     
                     {/* ----- LADO ESQUERDO (DESKTOP) / CABEÇALHO (MOBILE) ----- */}
-                    <div className="flex w-full md:w-[45%] h-48 md:h-full md:bg-gradient-to-b md:from-[#f15a00] md:to-[#137789] md:rounded-r-[80px] p-6 md:p-12 relative md:shadow-2xl z-10 flex-col items-center justify-center">
+                    <div className="flex w-full md:w-[45%] h-56 md:h-full md:bg-gradient-to-b md:from-[#f15a00] md:to-[#137789] md:rounded-r-[80px] p-6 md:p-12 relative md:shadow-2xl z-10 flex-col items-center md:items-start justify-center">
                         
+                        {/* Logo */}
                         <div className="absolute top-6 md:top-12 left-0 w-full md:w-auto flex justify-center md:left-12">
                             <img src="logo.png" alt="Oluap" className="h-8 md:h-10 object-contain" onError={(e) => {
                                 e.target.style.display = 'none';
@@ -109,27 +112,30 @@
                             </div>
                         </div>
 
-                        <div className="w-full flex-1 flex flex-col items-center justify-center mt-6 md:mt-0 text-center">
-                            <h1 className="hidden md:block text-4xl lg:text-5xl font-bold leading-[1.1] tracking-tight drop-shadow-sm">
-                                <span className="text-white block mb-1">Dê o primeiro passo</span>
-                                <span className="text-white">para a </span>
-                                <span className="text-[#05121b] font-black">clareza</span>
+                        {/* Texto de Impacto */}
+                        <div className="w-full flex-1 flex flex-col items-center justify-center mt-6 md:mt-0 text-center md:text-left md:items-start">
+                            {/* Versão Desktop (Texto Grande) */}
+                            <h1 className="hidden md:block text-4xl lg:text-5xl xl:text-6xl font-bold leading-[1.1] tracking-tight drop-shadow-sm">
+                                <span className="text-white block mb-1">Crie sua conta e</span>
+                                <span className="text-[#05121b] font-black">simplifique</span>
                                 <br />
-                                <span className="text-[#05121b] font-black">financeira!</span>
+                                <span className="text-[#05121b] font-black">seus números!</span>
                             </h1>
                             
-                            <h1 className="md:hidden text-white text-xl font-bold leading-snug drop-shadow-md">
-                                Dê o primeiro passo para a <span className="text-[#05121b] font-black">clareza</span> financeira!
+                            {/* Versão Mobile (Texto Menor em 2 linhas) */}
+                            <h1 className="md:hidden text-white text-lg font-bold leading-snug drop-shadow-md">
+                                Crie sua conta e <span className="text-[#05121b] font-black">simplifique</span><br/>seus números!
                             </h1>
                         </div>
                     </div>
 
                     {/* ----- LADO DIREITO: FORMULÁRIO DE CADASTRO ----- */}
-                    <div className="w-full md:w-[55%] flex-1 flex items-start md:items-center justify-center p-6 relative z-20 -mt-10 md:mt-0 md:overflow-y-auto">
+                    <div className="w-full md:w-[55%] flex-1 flex items-start md:items-center justify-center p-6 relative z-20 -mt-16 md:mt-0 form-scroll">
                         
-                        <div className="w-full max-w-md bg-white md:bg-transparent p-8 md:p-0 rounded-[2rem] shadow-xl md:shadow-none border border-slate-100 md:border-none my-auto">
+                        {/* Card Branco flutuando (Mobile) ou Fundo transparente (Desktop) */}
+                        <div className="w-full max-w-sm bg-white md:bg-transparent p-8 md:p-0 rounded-[2rem] shadow-xl md:shadow-none border border-slate-100 md:border-none my-auto">
                             
-                            <h2 className="text-2xl md:text-3xl font-medium text-[#05121b] mb-8 text-center md:text-left">Crie sua conta</h2>
+                            <h2 className="text-2xl md:text-3xl font-medium text-[#05121b] mb-8 text-center md:text-left">Nova Conta</h2>
 
                             {error && (
                                 <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 shadow-sm">
@@ -139,62 +145,102 @@
                             )}
 
                             {success ? (
-                                <div className="text-center space-y-4 py-12 bg-[#f3f4f6] md:bg-[#dcdfe3] rounded-3xl">
+                                <div className="text-center space-y-4 py-12 bg-white md:bg-transparent rounded-3xl">
                                     <CheckCircle size={56} className="text-[#137789] mx-auto" />
                                     <h3 className="text-xl font-black text-[#05121b] uppercase tracking-tighter">Conta Criada!</h3>
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Entrando no painel...</p>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Preparando seu painel...</p>
                                     <Loader2 size={24} className="animate-spin text-[#f15a00] mx-auto mt-4" />
                                 </div>
                             ) : (
                                 <form onSubmit={handleSignup} className="space-y-4">
                                     
                                     {/* Nome */}
-                                    <div className="relative">
-                                        <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do Responsável" className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] pl-12 pr-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" />
+                                    <div>
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            value={name} 
+                                            onChange={(e) => setName(e.target.value)} 
+                                            placeholder="Nome Completo" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                        />
                                     </div>
 
                                     {/* Email */}
-                                    <div className="relative">
-                                        <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] pl-12 pr-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" />
+                                    <div>
+                                        <input 
+                                            type="email" 
+                                            required 
+                                            value={email} 
+                                            onChange={(e) => setEmail(e.target.value)} 
+                                            placeholder="E-mail profissional" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                        />
                                     </div>
 
-                                    {/* Linha Dupla: Celular e CNPJ */}
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <div className="relative flex-1">
-                                            <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                            <input type="text" required value={phone} onChange={(e) => setPhone(maskPhone(e.target.value))} placeholder="Celular / WhatsApp" maxLength="15" className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] pl-12 pr-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" />
-                                        </div>
-                                        <div className="relative flex-1">
-                                            <FileText size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                            <input type="text" required value={cnpj} onChange={(e) => setCnpj(maskCNPJ(e.target.value))} placeholder="CNPJ" maxLength="18" className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] pl-12 pr-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" />
-                                        </div>
+                                    {/* Celular */}
+                                    <div>
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            value={phone} 
+                                            onChange={(e) => setPhone(maskPhone(e.target.value))} 
+                                            placeholder="Celular / WhatsApp" 
+                                            maxLength="15" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                        />
+                                    </div>
+
+                                    {/* CNPJ */}
+                                    <div>
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            value={cnpj} 
+                                            onChange={(e) => setCnpj(maskCNPJ(e.target.value))} 
+                                            placeholder="CNPJ" 
+                                            maxLength="18" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] px-5 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                        />
                                     </div>
 
                                     {/* Senha com Olhinho */}
                                     <div className="relative">
-                                        <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Crie uma senha forte" className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] pl-12 pr-12 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" />
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#f15a00] transition-colors">
+                                        <input 
+                                            type={showPassword ? "text" : "password"} 
+                                            required 
+                                            value={password} 
+                                            onChange={(e) => setPassword(e.target.value)} 
+                                            placeholder="Crie uma senha forte" 
+                                            className="w-full bg-[#f3f4f6] md:bg-[#dcdfe3] text-[#05121b] pl-5 pr-12 py-3.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#f15a00] placeholder-slate-400 transition-all font-medium" 
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#f15a00] transition-colors"
+                                        >
                                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                         </button>
                                     </div>
 
-                                    {/* Botão Cadastrar */}
+                                    {/* Botão Cadastrar (Sólido Laranja) */}
                                     <div className="flex justify-center md:justify-end pt-4">
-                                        <button type="submit" disabled={loading} className="bg-[#137789] text-white w-full md:w-auto px-10 py-3.5 rounded-full font-black text-sm shadow-md hover:bg-[#0f606e] hover:shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center min-w-[140px] disabled:opacity-70">
+                                        <button 
+                                            type="submit" 
+                                            disabled={loading} 
+                                            className="bg-[#f15a00] text-white w-full md:w-auto px-10 py-3.5 rounded-full font-black text-sm shadow-md hover:bg-[#d44e00] hover:shadow-lg hover:scale-[1.02] transition-all flex items-center justify-center min-w-[140px] disabled:opacity-70"
+                                        >
                                             {loading ? <Loader2 size={18} className="animate-spin" /> : "Criar Conta"}
                                         </button>
                                     </div>
                                 </form>
                             )}
 
-                            {/* Link Voltar para Login */}
+                            {/* Link de Login */}
                             {!success && (
                                 <div className="mt-8 text-center md:text-left border-t border-slate-100 md:border-slate-300 pt-6">
                                     <p className="text-xs font-bold text-slate-500">
-                                        Já tem uma conta? <a href="login.html" className="text-[#137789] hover:text-[#f15a00] transition-colors uppercase tracking-wider ml-1">Fazer Login</a>
+                                        Já tem uma conta? <a href="login.html" className="text-[#f15a00] hover:text-[#137789] transition-colors uppercase tracking-wider ml-1">Fazer Login</a>
                                     </p>
                                 </div>
                             )}
