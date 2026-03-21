@@ -38,7 +38,7 @@
         import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
         // --- CONEXÃO COM SEU NOVO SUPABASE ---
-        const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
+        const SUPABASE_URL = 'https://haxonnbycypirigxsvjq.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -185,15 +185,37 @@
             g_desafio: "", g_futuro: ""
           });
 
-          // Inicialização do Supabase Auth
+          // --- O PULO DO GATO: AUTO-PREENCHIMENTO COM DADOS DO CADASTRO ---
           useEffect(() => {
             const checkSession = async () => {
                 const { data: { session } } = await supabase.auth.getSession();
+                
                 if (session) {
-                    setUser(session.user);
-                    fetchDiagnostics(session.user.id);
+                    const currentUser = session.user;
+                    setUser(currentUser);
+                    fetchDiagnostics(currentUser.id);
+                    
+                    // Injeta os dados do "user_metadata" (que vieram do cadastro) no formulário
+                    if (currentUser.user_metadata) {
+                        const meta = currentUser.user_metadata;
+                        
+                        setFormData(prev => ({
+                            ...prev,
+                            // Autopreenchimento Formulário Estruturado
+                            v1_responsavel: meta.full_name || prev.v1_responsavel,
+                            v1_email: currentUser.email || prev.v1_email,
+                            v1_phone: meta.phone || prev.v1_phone,
+                            v1_cnpj: meta.cnpj || prev.v1_cnpj,
+                            
+                            // Autopreenchimento Formulário Guiado
+                            g_responsavel: meta.full_name || prev.g_responsavel,
+                            g_email: currentUser.email || prev.g_email,
+                            g_phone: meta.phone || prev.g_phone,
+                            g_cnpj: meta.cnpj || prev.g_cnpj,
+                        }));
+                    }
                 } else {
-                    // Faz login anônimo automático se não tiver sessão
+                    // Login anônimo de fallback
                     const { data, error } = await supabase.auth.signInAnonymously();
                     if (data?.user) {
                         setUser(data.user);
@@ -222,7 +244,7 @@
           const handleClientPortalAccess = () => { setView('dashboard'); };
           const handleLogout = async () => { 
               await supabase.auth.signOut();
-              window.location.reload(); 
+              window.location.href = 'login.html'; 
           };
 
           // FUNÇÃO BLINDADA QUE GARANTE A CRIAÇÃO DO USUÁRIO E ENVIO
@@ -285,11 +307,11 @@
 
                 const payload = {
                     user_id: currentUser.id,
-                    client_name: isV1 ? formData.v1_responsavel : formData.g_responsavel, // Nome do Responsável
-                    razao_social: isV1 ? formData.v1_razao : formData.g_razao, // Razão Social
-                    cnpj: maskCNPJ(isV1 ? formData.v1_cnpj : formData.g_cnpj), // CNPJ
-                    email: isV1 ? formData.v1_email : formData.g_email, // Email
-                    telefone: isV1 ? formData.v1_phone : formData.g_phone, // Telefone
+                    client_name: isV1 ? formData.v1_responsavel : formData.g_responsavel,
+                    razao_social: isV1 ? formData.v1_razao : formData.g_razao,
+                    cnpj: maskCNPJ(isV1 ? formData.v1_cnpj : formData.g_cnpj),
+                    email: isV1 ? formData.v1_email : formData.g_email,
+                    telefone: isV1 ? formData.v1_phone : formData.g_phone,
                     status: "⏳ Em análise",
                     internal_status: "pending",
                     form_type: isV1 ? 'Estruturado' : 'Guiado',
@@ -513,7 +535,7 @@
                     
                     <SectionHeading icon={Sparkles} title="8. Visão de Futuro & Anexos" color="text-[#ff7b00]" />
                     <div className="space-y-5">
-                      <TextAreaField label="Qual é hoje o maior desafio financeiro?" value={formData.g_desafio} onChange={v => setFormData({...formData, g_desafio: v})} error={fieldErrors.g_desafio} readOnly={readOnly} />
+                      <TextAreaField label="Qual é hoje o maior desafio financeiro Hoje" value={formData.g_desafio} onChange={v => setFormData({...formData, g_desafio: v})} error={fieldErrors.g_desafio} readOnly={readOnly} />
                       <TextAreaField label="Se nada mudar, o que acontece com a empresa em 3 meses?" value={formData.g_futuro} onChange={v => setFormData({...formData, g_futuro: v})} error={fieldErrors.g_futuro} readOnly={readOnly} />
                     </div>
                   </>
