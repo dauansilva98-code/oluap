@@ -718,8 +718,8 @@
                                 <tbody className="divide-y divide-slate-100">
                                     {currentClients.length > 0 ? currentClients.map(c => (
                                         <tr key={c.cnpj} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-5 cursor-pointer group" onClick={() => openClientRegistration(c)}>
-                                                <div className="text-[15px] font-medium text-[#05121b] mb-1 group-hover:text-[#137789] transition-colors">{c.razao}</div>
+                                            <td className="px-6 py-5">
+                                                <div className="text-[15px] font-medium text-[#05121b] mb-1 hover:text-[#137789] transition-colors cursor-pointer inline-block" onClick={() => openClientRegistration(c)}>{c.razao}</div>
                                                 <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
                                                     <span>{c.cnpj}</span>
                                                     <span className="text-slate-300">|</span>
@@ -842,11 +842,11 @@
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <p className="text-[10px] text-slate-400 mb-1">E-mail</p>
-                                                <p className="text-sm font-medium text-[#05121b] truncate" title={selectedClient.email}>{selectedClient.email || "-"}</p>
+                                                <p className="text-sm font-medium text-[#05121b] break-all">{selectedClient.email || "-"}</p>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-slate-400 mb-1">Nome do contato</p>
-                                                <p className="text-sm font-medium text-[#05121b] truncate" title={selectedClient.name}>{selectedClient.name || "-"}</p>
+                                                <p className="text-sm font-medium text-[#05121b] break-words">{selectedClient.name || "-"}</p>
                                             </div>
                                         </div>
 
