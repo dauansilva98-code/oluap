@@ -59,7 +59,7 @@
           FileText, Building2, ArrowLeft, BarChart2, Mail, Phone, User, CheckCircle, ChevronRight, ChevronLeft,
           Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote,
           X, Printer, MessageCircle, Send, Download, RefreshCw, Upload, FileBox,
-          FolderOpen, CreditCard, Briefcase, Database, Activity, ChevronDown
+          FolderOpen, CreditCard, Briefcase, Database, Activity, ChevronDown, MoreHorizontal
         } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP ---
@@ -126,7 +126,7 @@
           const [filterDateFrom, setFilterDateFrom] = useState("");
           const [filterDateTo, setFilterDateTo] = useState("");
 
-          // Estados de Filtro (Base de Clientes)
+          // Estados de Filtro (Base de Clientes e Cadastros)
           const [clientSearchTerm, setClientSearchTerm] = useState("");
           const [clientStatusFilter, setClientStatusFilter] = useState("todos");
           const [clientTypeFilter, setClientTypeFilter] = useState("todos");
@@ -171,7 +171,7 @@
               setFilteredDiagnostics(filtered);
           }, [filterSearch, filterDateFrom, filterDateTo, diagnostics]);
 
-          // Aplica filtros na Base de Clientes
+          // Aplica filtros na Base de Clientes (também reutilizado na tela de Cadastros)
           useEffect(() => {
               let filtered = derivedClients;
 
@@ -186,12 +186,15 @@
                   );
               }
 
-              if (clientStatusFilter !== "todos") {
-                  filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.health_status === clientStatusFilter);
-              }
+              // Filtros específicos para view 'clients'
+              if (view === 'clients') {
+                  if (clientStatusFilter !== "todos") {
+                      filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.health_status === clientStatusFilter);
+                  }
 
-              if (clientTypeFilter !== "todos") {
-                  filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.form_type === clientTypeFilter);
+                  if (clientTypeFilter !== "todos") {
+                      filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.form_type === clientTypeFilter);
+                  }
               }
 
               if (clientDateFrom) filtered = filtered.filter(c => new Date(c.firstDate) >= new Date(clientDateFrom));
@@ -203,7 +206,7 @@
 
               setFilteredClients(filtered);
               setCurrentPage(1); 
-          }, [clientSearchTerm, clientStatusFilter, clientTypeFilter, clientDateFrom, clientDateTo, derivedClients]);
+          }, [clientSearchTerm, clientStatusFilter, clientTypeFilter, clientDateFrom, clientDateTo, derivedClients, view]);
 
           const clearFilters = () => {
               setFilterSearch("");
@@ -233,12 +236,14 @@
                         clientsMap[cnpj] = { 
                             name: d.client_name, razao: d.razao_social || d.client_name, email: d.email || "", phone: d.telefone || "", 
                             cnpj: d.cnpj, submissionCount: 0, firstDate: d.created_at, generalNotes: d.client_general_notes || "",
-                            history: [], latestSubmission: null
+                            history: [], latestSubmission: null,
+                            hasDiagnostico: false // Flag para controle de produtos optantes
                         };
                     }
                     if (d.internal_status === 'completed') {
                         clientsMap[cnpj].submissionCount++;
                         clientsMap[cnpj].history.push(d);
+                        clientsMap[cnpj].hasDiagnostico = true; // Confirma que possui diagnóstico
                         if (!clientsMap[cnpj].latestSubmission || new Date(d.created_at) > new Date(clientsMap[cnpj].latestSubmission.created_at)) {
                             clientsMap[cnpj].latestSubmission = d;
                         }
@@ -247,6 +252,8 @@
                     if (d.client_general_notes) clientsMap[cnpj].generalNotes = d.client_general_notes;
                 });
 
+                // Na tela de Cadastros e Base de clientes, mostramos os clientes baseados nas submissões.
+                // No futuro, você pode adaptar para puxar da tabela 'profiles' para pegar todos.
                 const clientsArray = Object.values(clientsMap).filter(c => c.submissionCount > 0);
                 setDerivedClients(clientsArray);
 
@@ -278,6 +285,8 @@
 
           const goDashboard = () => { setView('dashboard'); setSelectedClient(null); setSelectedSubmission(null); };
           const goClients = () => { setView('clients'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goCadastros = () => { setView('cadastros'); setSelectedClient(null); setSelectedSubmission(null); };
+          
           const openClientProfile = (client) => { 
               setSelectedClient(client); setGeneralClientNotes(client.generalNotes); setView('client_profile'); window.scrollTo({ top: 0, behavior: 'smooth' });
           };
@@ -584,9 +593,10 @@
                 
                 <nav className={`flex-1 space-y-3 mt-4 overflow-y-auto no-scrollbar pb-6 ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
                     
-                    {/* 1. CADASTROS (Vazio) */}
-                    <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-sm tracking-wide text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Cadastros (Em breve)">
-                        <FolderOpen size={20} className="shrink-0"/> {isSidebarOpen && <span className="whitespace-nowrap">Cadastros</span>}
+                    {/* 1. CADASTROS (Agora é clicável e tem view 'cadastros') */}
+                    <button onClick={goCadastros} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='cadastros'?'bg-[#05121b] text-white shadow-md':'text-[#05121b] hover:bg-slate-50'} ${!isSidebarOpen && 'justify-center'}`}>
+                        <FolderOpen size={20} className={`shrink-0 ${view==='cadastros'?'text-[#ff7b00]':'text-slate-400'}`}/> 
+                        {isSidebarOpen && <span className="whitespace-nowrap truncate">Cadastros</span>}
                     </button>
 
                     {/* 2. DIAGNÓSTICO FINANCEIRO (Sanfona Ativa) */}
@@ -649,6 +659,115 @@
                     <img src="logo2.png" alt="OLUAP" className="h-10 object-contain" />
                     <h1 className="text-xl font-black uppercase tracking-widest text-[#05121b]">Relatório de Diagnóstico</h1>
                 </div>
+
+                {/* ---------- TELA: CADASTROS UNIFICADOS ---------- */}
+                {view === 'cadastros' && (
+                    <div className="max-w-6xl mx-auto w-full">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                            <header>
+                                <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Cadastros</h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Base unificada de todos os clientes OLUAP</p>
+                            </header>
+                            <div className="flex items-center gap-3">
+                                <button onClick={downloadCSV} className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2 shadow-sm">
+                                    <Download size={16} /> Exportar CSV
+                                </button>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm">
+                                    <RefreshCw size={16} /> Sincronizar
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Barra de Filtros Cadastros */}
+                        <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                            <div className="flex-1 w-full relative">
+                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" placeholder="Pesquisar todos os campos..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                            </div>
+                            <div className="w-full md:w-48 relative">
+                                <input type="text" placeholder="Data de cadastro" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => { if(!e.target.value) e.target.type = 'text'; }} value={clientDateFrom} onChange={(e) => setClientDateFrom(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                            </div>
+                            <div className="w-full md:w-48 relative">
+                                <input type="text" placeholder="Data de cadastro" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => { if(!e.target.value) e.target.type = 'text'; }} value={clientDateTo} onChange={(e) => setClientDateTo(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                            </div>
+                            <div className="w-full md:w-48 relative">
+                                <input type="text" disabled placeholder="" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none cursor-not-allowed"/>
+                            </div>
+                            <button onClick={clearClientFilters} className="flex items-center gap-2 text-slate-500 hover:text-[#137789] font-medium text-sm px-4 whitespace-nowrap transition-colors">
+                                <Filter size={16}/> Filtros avançados <ChevronDown size={14}/>
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-white border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500">Clientes</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500">Data</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Produto Optante</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Status</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Opções</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {currentClients.length > 0 ? currentClients.map(c => (
+                                        <tr key={c.cnpj} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-5">
+                                                <div className="text-[15px] font-medium text-[#05121b] mb-1">{c.razao}</div>
+                                                <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                                                    <span>{c.cnpj}</span>
+                                                    <span className="text-slate-300">|</span>
+                                                    <span>{c.email || "-"}</span>
+                                                    <span className="text-slate-300">|</span>
+                                                    <span>{c.phone || "-"}</span>
+                                                    <span className="text-slate-300">|</span>
+                                                    <span>{c.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 align-top pt-5">
+                                                <div className="text-[13px] text-[#05121b] mb-1">{new Date(c.firstDate).toLocaleDateString()}</div>
+                                                <div className="text-[11px] text-slate-500">Origem: Site</div>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <div className="flex flex-col items-center gap-1.5">
+                                                    {/* Pilulas estáticas de design baseado no seu print, exceto o diagnóstico que é dinâmico por enquanto */}
+                                                    {c.hasDiagnostico && (
+                                                        <span className="bg-[#05121b] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Diagnostico Financeiro</span>
+                                                    )}
+                                                    {/* Exemplos estáticos para mostrar o visual da sua imagem */}
+                                                    <span className="bg-[#137789] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max opacity-30" title="Exemplo visual">ERP Financeiro</span>
+                                                    <span className="bg-[#ff7b00] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max opacity-30" title="Exemplo visual">Credito</span>
+                                                    <span className="bg-slate-500 text-white px-3 py-1 rounded-full text-[10px] font-bold w-max opacity-30" title="Exemplo visual">Consultoria empresarial</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 text-center align-top pt-6">
+                                                <span className="text-[13px] text-[#05121b]">Ativo</span>
+                                            </td>
+                                            <td className="px-6 py-5 text-center align-top pt-6">
+                                                <button className="text-slate-400 hover:text-[#05121b] transition-colors"><MoreHorizontal size={20}/></button>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="5" className="p-16 text-center text-slate-400 text-sm">Nenhum cadastro encontrado.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        {/* Paginação */}
+                        {totalPages > 1 && (
+                            <div className="flex justify-center items-center gap-2 pb-10">
+                                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronLeft size={16} /></button>
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <button key={i} onClick={() => paginate(i + 1)} className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${currentPage === i + 1 ? 'bg-[#137789] text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{i + 1}</button>
+                                ))}
+                                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronRight size={16} /></button>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* ---------- TELA 1: FILA DE ESPERA (SÓ PENDING) ---------- */}
                 {view === 'dashboard' && (
