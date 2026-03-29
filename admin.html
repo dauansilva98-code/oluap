@@ -58,7 +58,8 @@
           LayoutDashboard, Users, LogOut, ShieldCheck, 
           FileText, Building2, ArrowLeft, BarChart2, Mail, Phone, User, CheckCircle, ChevronRight, ChevronLeft,
           Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote,
-          X, Printer, MessageCircle, Send, Download, RefreshCw, Upload, FileBox
+          X, Printer, MessageCircle, Send, Download, RefreshCw, Upload, FileBox,
+          FolderOpen, CreditCard, Briefcase, Database
         } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP ---
@@ -556,16 +557,17 @@
           return (
             <div className="min-h-screen flex text-[#05121b] font-sans bg-slate-50/40 print:bg-white">
               
-              {/* SIDEBAR */}
-              <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64 p-6' : 'w-20 p-4'} flex flex-col z-10 print-hidden`}>
-                <div className="flex items-center gap-3 mb-10 overflow-hidden cursor-pointer" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+              {/* SIDEBAR COM NOVO HUB DE PRODUTOS */}
+              <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-64' : 'w-20'} flex flex-col z-10 print-hidden`}>
+                
+                <div className={`flex items-center gap-3 p-6 pb-2 overflow-hidden cursor-pointer`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                     {isSidebarOpen ? (
                         <img src="logo2.png" alt="OLUAP" className="h-8 object-contain" onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
                         }}/>
                     ) : (
-                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md">
+                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md mx-auto">
                           <ShieldCheck size={20} />
                         </div>
                     )}
@@ -577,18 +579,58 @@
                     </div>
                 </div>
                 
-                <nav className="flex-1 space-y-3">
-                    <button onClick={goDashboard} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view==='dashboard'?'bg-[#05121b] text-white shadow-lg':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
-                        <LayoutDashboard size={18}/> {isSidebarOpen && "Fila de Espera"}
-                    </button>
-                    <button onClick={goClients} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view==='clients'||view==='client_profile'?'bg-[#05121b] text-white shadow-lg':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
-                        <Users size={18}/> {isSidebarOpen && "Base de Clientes"}
-                    </button>
+                <nav className={`flex-1 space-y-6 mt-4 overflow-y-auto no-scrollbar pb-6 ${isSidebarOpen ? 'px-6' : 'px-3'}`}>
+                    
+                    {/* 1. CADASTROS */}
+                    <div className="space-y-1">
+                        {isSidebarOpen && <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2 mb-2">Geral</p>}
+                        <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-slate-300 cursor-not-allowed ${!isSidebarOpen && 'justify-center'}`} title="Em breve">
+                            <FolderOpen size={18} className="shrink-0"/> {isSidebarOpen && "Cadastros"}
+                        </button>
+                    </div>
+
+                    {/* 2. DIAGNÓSTICO FINANCEIRO OLUAP */}
+                    <div className="space-y-1">
+                        {isSidebarOpen && <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2 mb-2">Diagnóstico OLUAP</p>}
+                        <button onClick={goDashboard} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view==='dashboard'?'bg-[#05121b] text-white shadow-lg':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'} ${!isSidebarOpen && 'justify-center'}`}>
+                            <LayoutDashboard size={18} className="shrink-0"/> {isSidebarOpen && "Fila de Espera"}
+                        </button>
+                        <button onClick={goClients} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view==='clients'||view==='client_profile'?'bg-[#05121b] text-white shadow-lg':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'} ${!isSidebarOpen && 'justify-center'}`}>
+                            <Users size={18} className="shrink-0"/> {isSidebarOpen && "Base de Clientes"}
+                        </button>
+                    </div>
+
+                    {/* 3. ERP FINANCEIRO OLUAP */}
+                    <div className="space-y-1">
+                        {isSidebarOpen && <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2 mb-2">ERP OLUAP</p>}
+                        <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-slate-300 cursor-not-allowed ${!isSidebarOpen && 'justify-center'}`} title="Em breve">
+                            <Database size={18} className="shrink-0"/> {isSidebarOpen && "Financeiro"}
+                        </button>
+                    </div>
+
+                    {/* 4. CONSULTORIA EMPRESARIAL OLUAP */}
+                    <div className="space-y-1">
+                        {isSidebarOpen && <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2 mb-2">Consultoria OLUAP</p>}
+                        <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-slate-300 cursor-not-allowed ${!isSidebarOpen && 'justify-center'}`} title="Em breve">
+                            <Briefcase size={18} className="shrink-0"/> {isSidebarOpen && "Projetos"}
+                        </button>
+                    </div>
+
+                    {/* 5. CRÉDITO OLUAP */}
+                    <div className="space-y-1">
+                        {isSidebarOpen && <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-2 mb-2">Crédito OLUAP</p>}
+                        <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-xs uppercase tracking-wider text-slate-300 cursor-not-allowed ${!isSidebarOpen && 'justify-center'}`} title="Em breve">
+                            <CreditCard size={18} className="shrink-0"/> {isSidebarOpen && "Solicitações"}
+                        </button>
+                    </div>
+
                 </nav>
 
-                <button onClick={() => window.location.href='index.html'} className="flex items-center gap-3 p-3 text-slate-400 font-bold text-xs uppercase hover:text-red-500 transition-colors">
-                    <LogOut size={18}/> {isSidebarOpen && "Sair do Admin"}
-                </button>
+                <div className={`p-4 ${!isSidebarOpen && 'px-2'}`}>
+                    <button onClick={() => window.location.href='index.html'} className={`w-full flex items-center gap-3 p-3.5 text-slate-400 font-bold text-xs uppercase hover:text-red-500 transition-colors ${!isSidebarOpen && 'justify-center'}`}>
+                        <LogOut size={18} className="shrink-0"/> {isSidebarOpen && "Sair do Admin"}
+                    </button>
+                </div>
               </aside>
 
               {/* CONTEÚDO PRINCIPAL */}
