@@ -124,6 +124,7 @@
           // Menus Sanfonas
           const [isDiagnosticMenuOpen, setIsDiagnosticMenuOpen] = useState(true);
           const [isCreditoMenuOpen, setIsCreditoMenuOpen] = useState(false);
+          const [isErpMenuOpen, setIsErpMenuOpen] = useState(false); // NOVO: Controle da sanfona ERP
           
           // Dados Brutos
           const [diagnostics, setDiagnostics] = useState([]); 
@@ -193,7 +194,7 @@
               setFilteredDiagnostics(filtered);
           }, [filterSearch, filterDateFrom, filterDateTo, diagnostics]);
 
-          // Aplica filtros nas Bases de Clientes (Cadastros, Base Diagnóstico, Base Crédito)
+          // Aplica filtros nas Bases de Clientes (Cadastros, Base Diagnóstico, Base Crédito, Base ERP)
           useEffect(() => {
               let filtered = derivedClients;
 
@@ -201,6 +202,9 @@
               if (view === 'credito_base') {
                   // Se estiver na aba Crédito, mostra SÓ quem tem Crédito
                   filtered = filtered.filter(c => c.hasCredito === true);
+              } else if (view === 'erp_base') {
+                  // Se estiver na aba ERP, mostra SÓ quem tem ERP
+                  filtered = filtered.filter(c => c.hasERP === true);
               } else if (view === 'clients') {
                   // Na base do Diagnóstico, se no futuro quiser isolar, seria aqui
                   // Por enquanto, todos os que entram vêm do diagnóstico.
@@ -272,13 +276,14 @@
                             
                             // FLAGS DE PRODUTOS
                             hasDiagnostico: false, 
-                            hasCredito: false // Simulando: por enquanto ninguém tem. Quando houver dados, isso mudará.
+                            hasCredito: false, // Simulando
+                            hasERP: false // Simulando: NOVO FLAG DE ERP
                         };
                     }
                     if (d.internal_status === 'completed') {
                         clientsMap[cnpj].submissionCount++;
                         clientsMap[cnpj].history.push(d);
-                        clientsMap[cnpj].hasDiagnostico = true; 
+                        clientsMap[cnpj].hasDiagnostico = true; // Confirma que possui diagnóstico
                         if (!clientsMap[cnpj].latestSubmission || new Date(d.created_at) > new Date(clientsMap[cnpj].latestSubmission.created_at)) {
                             clientsMap[cnpj].latestSubmission = d;
                         }
@@ -287,9 +292,12 @@
                     if (d.client_general_notes) clientsMap[cnpj].generalNotes = d.client_general_notes;
                 });
 
+                // Na tela de Cadastros e Base de clientes, mostramos os clientes baseados nas submissões.
+                // No futuro, você pode adaptar para puxar da tabela 'profiles' para pegar todos.
                 const clientsArray = Object.values(clientsMap).filter(c => c.submissionCount > 0);
                 setDerivedClients(clientsArray);
 
+                // --- CALCULA DADOS (ESTATÍSTICAS) ---
                 const completedDiags = diags.filter(d => d.internal_status === 'completed');
                 setStats({
                     clients: clientsArray.length,
@@ -319,6 +327,7 @@
           const goClients = () => { setView('clients'); setSelectedClient(null); setSelectedSubmission(null); };
           const goCadastros = () => { setView('cadastros'); setSelectedClient(null); setSelectedSubmission(null); };
           const goCreditoBase = () => { setView('credito_base'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goErpBase = () => { setView('erp_base'); setSelectedClient(null); setSelectedSubmission(null); }; // NOVO
           
           const openClientProfile = (client) => { 
               setSelectedClient(client); setGeneralClientNotes(client.generalNotes); setView('client_profile'); window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -666,10 +675,29 @@
                         )}
                     </div>
 
-                    {/* 3. ERP FINANCEIRO (Vazio) */}
-                    <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-sm tracking-wide text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="ERP Financeiro (Em breve)">
-                        <Database size={20} className="shrink-0"/> {isSidebarOpen && <span className="whitespace-nowrap">ERP Financeiro</span>}
-                    </button>
+                    {/* 3. ERP FINANCEIRO (Sanfona) */}
+                    <div className="flex flex-col w-full">
+                        <button onClick={() => {
+                                if (!isSidebarOpen) setIsSidebarOpen(true);
+                                setIsErpMenuOpen(!isErpMenuOpen);
+                            }} 
+                            className={`w-full flex items-center justify-between p-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='erp_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'} ${!isSidebarOpen && 'justify-center'}`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Database size={20} className={`shrink-0 ${view==='erp_base' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
+                                {isSidebarOpen && <span className="whitespace-nowrap truncate">ERP Financeiro</span>}
+                            </div>
+                            {isSidebarOpen && <ChevronDown size={16} className={`shrink-0 transition-transform duration-200 ${isErpMenuOpen ? 'rotate-180' : ''}`} />}
+                        </button>
+                        
+                        {isSidebarOpen && isErpMenuOpen && (
+                            <div className="pl-5 mt-2 space-y-1">
+                                <button onClick={goErpBase} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='erp_base'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='erp_base' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Base de Clientes</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
                     {/* 4. CONSULTORIA EMPRESARIAL (Vazio) */}
                     <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-sm tracking-wide text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Consultoria Empresarial (Em breve)">
@@ -718,16 +746,16 @@
                     <h1 className="text-xl font-black uppercase tracking-widest text-[#05121b]">Relatório de Diagnóstico</h1>
                 </div>
 
-                {/* ---------- TELA: CADASTROS UNIFICADOS e BASE CRÉDITO ---------- */}
-                {(view === 'cadastros' || view === 'credito_base') && (
+                {/* ---------- TELA: CADASTROS UNIFICADOS E BASES (CREDITO / ERP) ---------- */}
+                {(view === 'cadastros' || view === 'credito_base' || view === 'erp_base') && (
                     <div className="max-w-6xl mx-auto w-full">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                             <header>
                                 <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">
-                                    {view === 'cadastros' ? 'Cadastros' : 'Base de Clientes - Crédito'}
+                                    {view === 'cadastros' ? 'Cadastros' : view === 'credito_base' ? 'Base de Clientes - Crédito' : 'Base de Clientes - ERP Financeiro'}
                                 </h1>
                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
-                                    {view === 'cadastros' ? 'Base unificada de todos os clientes OLUAP' : 'Clientes com produto Crédito ativo'}
+                                    {view === 'cadastros' ? 'Base unificada de todos os clientes OLUAP' : view === 'credito_base' ? 'Clientes com produto Crédito ativo' : 'Clientes com produto ERP Financeiro ativo'}
                                 </p>
                             </header>
                             <div className="flex items-center gap-3">
@@ -798,6 +826,9 @@
                                                     {c.hasCredito && (
                                                         <span className="bg-[#ff7b00] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Crédito</span>
                                                     )}
+                                                    {c.hasERP && (
+                                                        <span className="bg-[#137789] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">ERP Financeiro</span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-5 text-center align-top pt-6">
@@ -810,7 +841,7 @@
                                     )) : (
                                         <tr>
                                             <td colSpan="5" className="p-16 text-center text-slate-400 text-sm">
-                                                {view === 'credito_base' ? 'Nenhum cliente possui o produto Crédito ativo no momento.' : 'Nenhum cadastro encontrado.'}
+                                                {view === 'credito_base' ? 'Nenhum cliente possui o produto Crédito ativo no momento.' : view === 'erp_base' ? 'Nenhum cliente possui o produto ERP Financeiro ativo no momento.' : 'Nenhum cadastro encontrado.'}
                                             </td>
                                         </tr>
                                     )}
@@ -982,8 +1013,11 @@
                                             {selectedClient.hasCredito && (
                                                 <span className="bg-[#ff7b00] text-white px-4 py-1.5 rounded-full text-[11px] font-bold">Crédito</span>
                                             )}
+                                            {selectedClient.hasERP && (
+                                                <span className="bg-[#137789] text-white px-4 py-1.5 rounded-full text-[11px] font-bold">ERP Financeiro</span>
+                                            )}
                                         </div>
-                                        {!selectedClient.hasDiagnostico && !selectedClient.hasCredito && (
+                                        {!selectedClient.hasDiagnostico && !selectedClient.hasCredito && !selectedClient.hasERP && (
                                             <p className="text-xs text-slate-400 italic">Nenhum produto contratado ainda.</p>
                                         )}
                                     </div>
@@ -1201,7 +1235,7 @@
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (De)</label>
                                 <input type="date" value={clientDateFrom} onChange={(e) => setClientDateFrom(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
                             </div>
-                            <div className="w-full md:w-32 space-y-1.5">
+                            <div className="w-full md:w-40 space-y-1.5">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (Até)</label>
                                 <input type="date" value={clientDateTo} onChange={(e) => setClientDateTo(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
                             </div>
@@ -1281,7 +1315,7 @@
                     </div>
                 )}
 
-                {/* ---------- TELA 3: FICHA DO CLIENTE (PERFIL) ---------- */}
+                {/* ---------- TELA 3: FICHA DO CLIENTE (PERFIL ANTIGO - Diagnóstico apenas) ---------- */}
                 {view === 'client_profile' && selectedClient && (
                     <div className="max-w-5xl mx-auto pb-20 w-full">
                         <div className="flex justify-between items-center mb-8">
