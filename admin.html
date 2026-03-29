@@ -599,7 +599,7 @@
                         >
                             <div className="flex items-center gap-3">
                                 <Activity size={18} className={`shrink-0 ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
-                                {isSidebarOpen && <span>Diagnóstico OLUAP</span>}
+                                {isSidebarOpen && <span>Diagnóstico Financeiro</span>}
                             </div>
                             {isSidebarOpen && <ChevronDown size={14} className={`transition-transform duration-200 ${isDiagnosticMenuOpen ? 'rotate-180' : ''}`} />}
                         </button>
@@ -623,13 +623,13 @@
                     </button>
 
                     {/* 4. CONSULTORIA EMPRESARIAL OLUAP (Vazio) */}
-                    <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Consultoria (Em breve)">
-                        <Briefcase size={18} className="shrink-0"/> {isSidebarOpen && "Consultoria"}
+                    <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Consultoria Empresarial (Em breve)">
+                        <Briefcase size={18} className="shrink-0"/> {isSidebarOpen && "Consultoria Empresarial"}
                     </button>
 
                     {/* 5. CRÉDITO OLUAP (Vazio) */}
                     <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Crédito (Em breve)">
-                        <CreditCard size={18} className="shrink-0"/> {isSidebarOpen && "Crédito OLUAP"}
+                        <CreditCard size={18} className="shrink-0"/> {isSidebarOpen && "Crédito"}
                     </button>
 
                 </nav>
