@@ -584,7 +584,7 @@
                 
                 <nav className={`flex-1 space-y-2 mt-4 overflow-y-auto no-scrollbar pb-6 ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
                     
-                    {/* 1. CADASTROS (Vazio) */}
+                    {/* 1. CADASTROS */}
                     <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Cadastros (Em breve)">
                         <FolderOpen size={18} className="shrink-0"/> {isSidebarOpen && "Cadastros"}
                     </button>
@@ -599,7 +599,7 @@
                         >
                             <div className="flex items-center gap-3">
                                 <Activity size={18} className={`shrink-0 ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
-                                {isSidebarOpen && <span>Diagnóstico OLUAP</span>}
+                                {isSidebarOpen && <span>Diagnóstico Financeiro</span>}
                             </div>
                             {isSidebarOpen && <ChevronDown size={14} className={`transition-transform duration-200 ${isDiagnosticMenuOpen ? 'rotate-180' : ''}`} />}
                         </button>
@@ -617,19 +617,19 @@
                         )}
                     </div>
 
-                    {/* 3. ERP FINANCEIRO OLUAP (Vazio) */}
+                    {/* 3. ERP FINANCEIRO OLUAP */}
                     <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="ERP Financeiro (Em breve)">
                         <Database size={18} className="shrink-0"/> {isSidebarOpen && "ERP Financeiro"}
                     </button>
 
-                    {/* 4. CONSULTORIA EMPRESARIAL OLUAP (Vazio) */}
+                    {/* 4. CONSULTORIA EMPRESARIAL OLUAP */}
                     <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Consultoria (Em breve)">
-                        <Briefcase size={18} className="shrink-0"/> {isSidebarOpen && "Consultoria"}
+                        <Briefcase size={18} className="shrink-0"/> {isSidebarOpen && "Consultoria Empresarial"}
                     </button>
 
-                    {/* 5. CRÉDITO OLUAP (Vazio) */}
+                    {/* 5. CRÉDITO OLUAP */}
                     <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-[11px] uppercase tracking-wider text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Crédito (Em breve)">
-                        <CreditCard size={18} className="shrink-0"/> {isSidebarOpen && "Crédito OLUAP"}
+                        <CreditCard size={18} className="shrink-0"/> {isSidebarOpen && "Crédito"}
                     </button>
 
                 </nav>
