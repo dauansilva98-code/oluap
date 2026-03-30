@@ -451,7 +451,18 @@
               window.scrollTo({ top: 0, behavior: 'smooth' });
           };
 
-          const handlePrintPDF = () => { window.print(); };
+          // --- NOVA LÓGICA DO BOTÃO PDF PARA O CLIENTE ---
+          const handleDownloadAdminPDF = () => {
+              // Verifica se o admin anexou o PDF final na submissão
+              if (selectedSubmission && selectedSubmission.admin_result_pdf) {
+                  // Se houver, abre o link do arquivo em uma nova aba
+                  window.open(selectedSubmission.admin_result_pdf, '_blank');
+              } else {
+                  // Se não houver, mostra um alerta para o usuário
+                  alert("O arquivo PDF do seu diagnóstico ainda não está disponível para download. Por favor, tente novamente mais tarde ou contate nosso suporte.");
+              }
+          };
+
           const handleContactExpert = () => { window.open("https://wa.me/5511999999999?text=Olá, gostaria de falar com um especialista sobre meu diagnóstico OLUAP.", "_blank"); };
 
           const getStatusLabel = (status) => {
@@ -697,7 +708,7 @@
                     {isSidebarOpen ? <ChevronLeft size={14} /> : <Menu size={14} />}
                 </button>
 
-                <div className={`flex items-center ${isSidebarOpen ? 'gap-3 px-2' : 'justify-center'} mb-8 mt-2`}>
+                <div className={`flex items-center ${isSidebarOpen ? 'justify-start px-2' : 'justify-center'} mb-8 mt-2`}>
                   
                   {/* --- LOGO ATUALIZADA NA SIDEBAR --- */}
                   {isSidebarOpen ? (
@@ -932,11 +943,11 @@
                                            selectedSubmission.health_status === 'warning' ? 'text-amber-600' :
                                            'text-red-600'
                                        }`}>
-                                            Status: {
-                                                selectedSubmission.health_status === 'healthy' ? 'Saudável' :
-                                                selectedSubmission.health_status === 'warning' ? 'Precisa Ajustar' :
-                                                'Atenção'
-                                            }
+                                           Status: {
+                                               selectedSubmission.health_status === 'healthy' ? 'Saudável' :
+                                               selectedSubmission.health_status === 'warning' ? 'Precisa Ajustar' :
+                                               'Atenção'
+                                           }
                                        </p>
                                    </div>
                                </div>
@@ -1053,7 +1064,7 @@
                                    <button onClick={handleContactExpert} className="flex-1 bg-green-500 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-green-600 transition-colors flex items-center justify-center gap-2 shadow-md">
                                        <MessageCircle size={16}/> Falar com Especialista
                                    </button>
-                                   <button onClick={handlePrintPDF} className="flex-1 bg-[#05121b] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-md">
+                                   <button onClick={handleDownloadAdminPDF} className="flex-1 bg-[#05121b] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 shadow-md">
                                        <Printer size={16}/> Baixar em PDF
                                    </button>
                                </div>
