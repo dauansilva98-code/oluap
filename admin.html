@@ -124,7 +124,7 @@
           // Menus Sanfonas
           const [isDiagnosticMenuOpen, setIsDiagnosticMenuOpen] = useState(true);
           const [isCreditoMenuOpen, setIsCreditoMenuOpen] = useState(false);
-          const [isErpMenuOpen, setIsErpMenuOpen] = useState(false); // NOVO: Controle da sanfona ERP
+          const [isErpMenuOpen, setIsErpMenuOpen] = useState(false); 
           
           // Dados Brutos
           const [diagnostics, setDiagnostics] = useState([]); 
@@ -163,6 +163,7 @@
           const [healthStatus, setHealthStatus] = useState("");
           const [saveStatus, setSaveStatus] = useState("");
           const [whatsAppNum, setWhatsAppNum] = useState("");
+          const [adminResultPdf, setAdminResultPdf] = useState(""); // NOVO ESTADO: PDF DO ADMIN
 
           // Estado de Edição das Notas Gerais do Cliente
           const [generalClientNotes, setGeneralClientNotes] = useState("");
@@ -200,16 +201,12 @@
 
               // --- FILTRO PRINCIPAL: ABA ATIVA ---
               if (view === 'credito_base') {
-                  // Se estiver na aba Crédito, mostra SÓ quem tem Crédito
                   filtered = filtered.filter(c => c.hasCredito === true);
               } else if (view === 'erp_base') {
-                  // Se estiver na aba ERP, mostra SÓ quem tem ERP
                   filtered = filtered.filter(c => c.hasERP === true);
               } else if (view === 'clients') {
-                  // Na base do Diagnóstico, se no futuro quiser isolar, seria aqui
-                  // Por enquanto, todos os que entram vêm do diagnóstico.
+                  // Filtros específicos da base de diagnóstico se houver
               }
-              // A aba 'cadastros' mostra todos (não tem filtro de posse de produto)
 
               // Filtros Visuais de Pesquisa e Data
               if (clientSearchTerm.trim() !== "") {
@@ -276,14 +273,14 @@
                             
                             // FLAGS DE PRODUTOS
                             hasDiagnostico: false, 
-                            hasCredito: false, // Simulando
-                            hasERP: false // Simulando: NOVO FLAG DE ERP
+                            hasCredito: false, 
+                            hasERP: false 
                         };
                     }
                     if (d.internal_status === 'completed') {
                         clientsMap[cnpj].submissionCount++;
                         clientsMap[cnpj].history.push(d);
-                        clientsMap[cnpj].hasDiagnostico = true; // Confirma que possui diagnóstico
+                        clientsMap[cnpj].hasDiagnostico = true; 
                         if (!clientsMap[cnpj].latestSubmission || new Date(d.created_at) > new Date(clientsMap[cnpj].latestSubmission.created_at)) {
                             clientsMap[cnpj].latestSubmission = d;
                         }
@@ -292,12 +289,9 @@
                     if (d.client_general_notes) clientsMap[cnpj].generalNotes = d.client_general_notes;
                 });
 
-                // Na tela de Cadastros e Base de clientes, mostramos os clientes baseados nas submissões.
-                // No futuro, você pode adaptar para puxar da tabela 'profiles' para pegar todos.
                 const clientsArray = Object.values(clientsMap).filter(c => c.submissionCount > 0);
                 setDerivedClients(clientsArray);
 
-                // --- CALCULA DADOS (ESTATÍSTICAS) ---
                 const completedDiags = diags.filter(d => d.internal_status === 'completed');
                 setStats({
                     clients: clientsArray.length,
@@ -327,7 +321,7 @@
           const goClients = () => { setView('clients'); setSelectedClient(null); setSelectedSubmission(null); };
           const goCadastros = () => { setView('cadastros'); setSelectedClient(null); setSelectedSubmission(null); };
           const goCreditoBase = () => { setView('credito_base'); setSelectedClient(null); setSelectedSubmission(null); };
-          const goErpBase = () => { setView('erp_base'); setSelectedClient(null); setSelectedSubmission(null); }; // NOVO
+          const goErpBase = () => { setView('erp_base'); setSelectedClient(null); setSelectedSubmission(null); }; 
           
           const openClientProfile = (client) => { 
               setSelectedClient(client); setGeneralClientNotes(client.generalNotes); setView('client_profile'); window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -348,16 +342,47 @@
             setInternalAnalysisNotes(submission.internal_analysis_notes || "");
             setHealthStatus(submission.health_status || "");
             setWhatsAppNum(submission.telefone || "");
+            setAdminResultPdf(submission.admin_result_pdf || ""); // Carrega o link do PDF salvo
             setView('review');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+          };
+
+          const handlePdfUpload = async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              
+              setSaveStatus("Fazendo upload do PDF...");
+              const fileExt = file.name.split('.').pop();
+              const fileName = `${selectedSubmission.cnpj.replace(/\D/g, '')}_${Date.now()}.${fileExt}`;
+              const filePath = `${fileName}`;
+
+              try {
+                  // Requer que o bucket 'relatorios' esteja criado e seja público no Supabase
+                  const { error: uploadError } = await supabase.storage.from('relatorios').upload(filePath, file);
+                  if (uploadError) throw uploadError;
+                  
+                  const { data } = supabase.storage.from('relatorios').getPublicUrl(filePath);
+                  setAdminResultPdf(data.publicUrl);
+                  setSaveStatus("Upload de PDF concluído!");
+                  setTimeout(() => setSaveStatus(""), 2000);
+              } catch (err) {
+                  console.error("Erro no upload:", err);
+                  alert("Erro ao fazer upload. Verifique se o bucket 'relatorios' está criado e público no Supabase. Como alternativa, cole um link direto de nuvem (Drive, etc) no campo.");
+                  setSaveStatus("");
+              }
           };
 
           const handleSaveAnalysis = async () => {
             if(!healthStatus) { alert("Por favor, selecione a Classificação de Saúde Financeira antes de salvar."); return; }
             setSaveStatus("Salvando...");
             const { error } = await supabase.from('diagnosticos').update({
-                analysis: adminAnalysis, chart_data_input: chartDataInput, internal_analysis_notes: internalAnalysisNotes,
-                health_status: healthStatus, status: "✅ Concluído", internal_status: "completed"
+                analysis: adminAnalysis, 
+                chart_data_input: chartDataInput, 
+                internal_analysis_notes: internalAnalysisNotes,
+                health_status: healthStatus, 
+                status: "✅ Concluído", 
+                internal_status: "completed",
+                admin_result_pdf: adminResultPdf // Salva o link do PDF
             }).eq('id', selectedSubmission.id);
 
             if (!error) {
@@ -601,7 +626,7 @@
                               <div className="w-full bg-white border border-slate-100 px-4 py-3 rounded-xl font-bold text-[#137789] text-xs outline-none min-h-[3rem] flex flex-wrap gap-2 items-center">
                                   {(isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos) ? (
                                       (isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos).split(', ').map((file, idx) => (
-                                          <span key={idx} className="bg-[#137789]/10 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                                          <span key={idx} className="bg-[#137789]/10 text-[#137789] px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold shadow-sm">
                                             <FileBox size={14}/> {file}
                                           </span>
                                       ))
@@ -621,19 +646,19 @@
               {/* SIDEBAR COM NOVO HUB DE PRODUTOS E SANFONA */}
               <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-[280px]' : 'w-20'} flex flex-col z-10 print-hidden`}>
                 
-                <div className={`flex items-center gap-3 p-6 pb-2 overflow-hidden cursor-pointer`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                <div className={`flex items-center gap-3 p-6 pb-2 overflow-hidden cursor-pointer ${!isSidebarOpen && 'justify-center'}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                     {isSidebarOpen ? (
                         <img src="logo2.png" alt="OLUAP" className="h-8 object-contain" onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
                         }}/>
                     ) : (
-                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md mx-auto">
+                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md">
                           <ShieldCheck size={20} />
                         </div>
                     )}
-                    <div className="hidden items-center">
-                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md">
+                    <div className={`${!isSidebarOpen && 'hidden'} flex items-center`}>
+                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md hidden">
                           <ShieldCheck size={20} />
                         </div>
                         <span className="font-black italic text-xl tracking-tighter ml-3">OLUAP</span>
@@ -643,7 +668,7 @@
                 <nav className={`flex-1 space-y-3 mt-4 overflow-y-auto no-scrollbar pb-6 ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
                     
                     {/* 1. CADASTROS */}
-                    <button onClick={goCadastros} className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='cadastros'||view==='client_registration'?'bg-[#05121b] text-white shadow-md':'text-[#05121b] hover:bg-slate-50'} ${!isSidebarOpen && 'justify-center'}`}>
+                    <button onClick={goCadastros} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='cadastros'||view==='client_registration'?'bg-[#05121b] text-white shadow-md':'text-[#05121b] hover:bg-slate-50'}`}>
                         <FolderOpen size={20} className={`shrink-0 ${view==='cadastros'||view==='client_registration'?'text-[#ff7b00]':'text-slate-400'}`}/> 
                         {isSidebarOpen && <span className="whitespace-nowrap truncate">Cadastros</span>}
                     </button>
@@ -654,9 +679,9 @@
                                 if (!isSidebarOpen) setIsSidebarOpen(true);
                                 setIsDiagnosticMenuOpen(!isDiagnosticMenuOpen);
                             }} 
-                            className={`w-full flex items-center justify-between p-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'} ${!isSidebarOpen && 'justify-center'}`}
+                            className={`w-full flex items-center justify-between ${isSidebarOpen ? 'px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
                         >
-                            <div className="flex items-center gap-3">
+                            <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
                                 <Activity size={20} className={`shrink-0 ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
                                 {isSidebarOpen && <span className="whitespace-nowrap truncate">Diagnóstico Financeiro</span>}
                             </div>
@@ -681,9 +706,9 @@
                                 if (!isSidebarOpen) setIsSidebarOpen(true);
                                 setIsErpMenuOpen(!isErpMenuOpen);
                             }} 
-                            className={`w-full flex items-center justify-between p-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='erp_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'} ${!isSidebarOpen && 'justify-center'}`}
+                            className={`w-full flex items-center justify-between ${isSidebarOpen ? 'px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='erp_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
                         >
-                            <div className="flex items-center gap-3">
+                            <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
                                 <Database size={20} className={`shrink-0 ${view==='erp_base' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
                                 {isSidebarOpen && <span className="whitespace-nowrap truncate">ERP Financeiro</span>}
                             </div>
@@ -700,7 +725,7 @@
                     </div>
 
                     {/* 4. CONSULTORIA EMPRESARIAL (Vazio) */}
-                    <button className={`w-full flex items-center gap-3 p-3.5 rounded-xl font-bold text-sm tracking-wide text-slate-400 hover:bg-slate-50 transition-colors ${!isSidebarOpen && 'justify-center'}`} title="Consultoria Empresarial (Em breve)">
+                    <button className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide text-slate-400 hover:bg-slate-50 transition-colors`} title="Consultoria Empresarial (Em breve)">
                         <Briefcase size={20} className="shrink-0"/> {isSidebarOpen && <span className="whitespace-nowrap">Consultoria Empresarial</span>}
                     </button>
 
@@ -710,9 +735,9 @@
                                 if (!isSidebarOpen) setIsSidebarOpen(true);
                                 setIsCreditoMenuOpen(!isCreditoMenuOpen);
                             }} 
-                            className={`w-full flex items-center justify-between p-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='credito_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'} ${!isSidebarOpen && 'justify-center'}`}
+                            className={`w-full flex items-center justify-between ${isSidebarOpen ? 'px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='credito_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
                         >
-                            <div className="flex items-center gap-3">
+                            <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
                                 <CreditCard size={20} className={`shrink-0 ${view==='credito_base' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
                                 {isSidebarOpen && <span className="whitespace-nowrap truncate">Crédito</span>}
                             </div>
@@ -731,7 +756,7 @@
                 </nav>
 
                 <div className={`p-4 border-t border-slate-100 ${!isSidebarOpen && 'px-2'}`}>
-                    <button onClick={() => window.location.href='index.html'} className={`w-full flex items-center gap-3 p-3.5 text-slate-400 font-bold text-xs uppercase hover:text-red-500 transition-colors ${!isSidebarOpen && 'justify-center'}`}>
+                    <button onClick={() => window.location.href='index.html'} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3.5 text-slate-400 font-bold text-xs uppercase hover:text-red-500 transition-colors`}>
                         <LogOut size={18} className="shrink-0"/> {isSidebarOpen && <span className="whitespace-nowrap">Sair do Admin</span>}
                     </button>
                 </div>
@@ -1432,6 +1457,28 @@
                                 </div>
                             </div>
 
+                            {/* NOVO CAMPO: UPLOAD DE PDF DO RESULTADO FINAL */}
+                            <div className="mb-12 border-t border-slate-100 pt-8 print-hidden">
+                                <h4 className="text-[11px] font-black uppercase tracking-widest text-[#137789] mb-4 flex items-center gap-2"><Upload size={16} /> Relatório Final (PDF do Cliente)</h4>
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                        <label className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest cursor-pointer transition-colors flex items-center gap-2 shrink-0 border border-slate-200">
+                                            <Upload size={14} /> Fazer Upload de PDF
+                                            <input type="file" accept=".pdf" className="hidden" onChange={handlePdfUpload} />
+                                        </label>
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">OU COLE O LINK ABAIXO:</span>
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        value={adminResultPdf} 
+                                        onChange={(e) => setAdminResultPdf(e.target.value)} 
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789]" 
+                                        placeholder="Cole o link do PDF (Google Drive, Dropbox, etc)..." 
+                                    />
+                                    <p className="text-[9px] text-slate-400 font-bold mt-1">Este arquivo ou link será o que o cliente irá baixar no botão "Baixar em PDF" do painel dele.</p>
+                                </div>
+                            </div>
+
                             <div className="mb-12 print-hidden">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4"><Lock size={14}/> Observações Internas da Análise (Privado)</label>
                                 <textarea value={internalAnalysisNotes} onChange={(e) => setInternalAnalysisNotes(e.target.value)} className="w-full h-32 p-6 bg-yellow-50/50 border-2 border-yellow-100 rounded-3xl text-sm font-medium text-slate-600 outline-none focus:border-yellow-300 resize-none leading-relaxed" placeholder="Anotações internas sobre esta análise específica (não visível para o cliente)..."></textarea>
@@ -1449,7 +1496,7 @@
 
                                 {saveStatus && <p className="text-center font-bold text-xs text-emerald-600 mb-4">{saveStatus}</p>}
                                 <button onClick={handleSaveAnalysis} className="w-full bg-[#05121b] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-[#137789] transition-all shadow-xl flex items-center justify-center gap-3">
-                                    <Save size={18} /> Salvar Diagnóstico e Gráficos
+                                    <Save size={18} /> Salvar Diagnóstico, Gráficos e PDF
                                 </button>
                             </div>
 
@@ -1465,7 +1512,7 @@
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-4 shrink-0">
                                         <button onClick={handleSendEmail} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-blue-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-sm whitespace-nowrap"><Mail size={16} /> Enviar E-mail</button>
-                                        <button onClick={handlePrintPDF} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-[#05121b] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors shadow-sm whitespace-nowrap"><Printer size={16} /> Gerar PDF</button>
+                                        <button onClick={handlePrintPDF} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-[#05121b] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors shadow-sm whitespace-nowrap"><Printer size={16} /> Imprimir Tela</button>
                                     </div>
                                 </div>
                             </div>
