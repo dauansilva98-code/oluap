@@ -627,7 +627,7 @@
                                   {(isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos) ? (
                                       (isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos).split(', ').map((file, idx) => (
                                           <span key={idx} className="bg-[#137789]/10 text-[#137789] px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold shadow-sm">
-                                            <FileBox size={14}/> {file}
+                                              <FileBox size={14}/> {file}
                                           </span>
                                       ))
                                   ) : (
@@ -646,9 +646,9 @@
               {/* SIDEBAR COM NOVO HUB DE PRODUTOS E SANFONA */}
               <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-[280px]' : 'w-20'} flex flex-col z-10 print-hidden`}>
                 
-                <div className={`flex items-center gap-3 p-6 pb-2 overflow-hidden cursor-pointer ${!isSidebarOpen && 'justify-center'}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                <div className={`flex items-center gap-3 p-6 pb-2 overflow-hidden cursor-pointer ${!isSidebarOpen ? 'justify-center' : ''}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                     {isSidebarOpen ? (
-                        <img src="logo2.png" alt="OLUAP" className="h-8 object-contain" onError={(e) => {
+                        <img src="logo2.png" alt="Logo" className="h-8 object-contain" onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
                         }}/>
@@ -657,12 +657,6 @@
                           <ShieldCheck size={20} />
                         </div>
                     )}
-                    <div className={`${!isSidebarOpen && 'hidden'} flex items-center`}>
-                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md hidden">
-                          <ShieldCheck size={20} />
-                        </div>
-                        <span className="font-black italic text-xl tracking-tighter ml-3">OLUAP</span>
-                    </div>
                 </div>
                 
                 <nav className={`flex-1 space-y-3 mt-4 overflow-y-auto no-scrollbar pb-6 ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
@@ -679,7 +673,7 @@
                                 if (!isSidebarOpen) setIsSidebarOpen(true);
                                 setIsDiagnosticMenuOpen(!isDiagnosticMenuOpen);
                             }} 
-                            className={`w-full flex items-center justify-between ${isSidebarOpen ? 'px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
+                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
                         >
                             <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
                                 <Activity size={20} className={`shrink-0 ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
@@ -706,7 +700,7 @@
                                 if (!isSidebarOpen) setIsSidebarOpen(true);
                                 setIsErpMenuOpen(!isErpMenuOpen);
                             }} 
-                            className={`w-full flex items-center justify-between ${isSidebarOpen ? 'px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='erp_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
+                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='erp_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
                         >
                             <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
                                 <Database size={20} className={`shrink-0 ${view==='erp_base' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
@@ -735,7 +729,7 @@
                                 if (!isSidebarOpen) setIsSidebarOpen(true);
                                 setIsCreditoMenuOpen(!isCreditoMenuOpen);
                             }} 
-                            className={`w-full flex items-center justify-between ${isSidebarOpen ? 'px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='credito_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
+                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='credito_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}
                         >
                             <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
                                 <CreditCard size={20} className={`shrink-0 ${view==='credito_base' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
