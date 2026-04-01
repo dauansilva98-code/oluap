@@ -112,7 +112,7 @@
         };
 
         // ─────────────────────────────────────────────────────────────────────
-        // Tela Acompanhar Consultorias
+        // NOVO: Tela Acompanhar Consultorias
         // ─────────────────────────────────────────────────────────────────────
         const TelaAcompanharConsultorias = ({ consultorias, onVerDetalhe }) => {
             const [busca, setBusca] = useState("");
@@ -164,8 +164,6 @@
                             </div>
                             <span className={`ml-auto px-4 py-1.5 rounded-full text-[11px] font-black uppercase border ${faseConf.cor}`}>{faseConf.label}</span>
                         </div>
-
-                        {/* KPIs topo */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                             {[
                                 { label: "Faturamento", value: fmt(parseFloat(c.faturamento) || 0), cor: "text-[#05121b]" },
@@ -179,19 +177,14 @@
                                 </div>
                             ))}
                         </div>
-
-                        {/* Abas */}
                         <div className="flex items-center gap-1 border-b-2 border-slate-200 mb-6">
                             {abas.map(a => (
                                 <button key={a.id} onClick={() => setAbaDetalhe(a.id)} className={`px-5 py-3 text-sm font-bold -mb-0.5 transition-colors ${abaDetalhe === a.id ? 'text-[#ff7b00] border-b-2 border-[#ff7b00]' : 'text-slate-400 hover:text-slate-600'}`}>{a.label}</button>
                             ))}
                         </div>
-
-                        {/* VISÃO GERAL */}
                         {abaDetalhe === "visao" && (
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <div className="lg:col-span-2 space-y-6">
-                                    {/* Jornada */}
                                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
                                         <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-5">Jornada do Cliente</h3>
                                         <div className="flex items-center gap-0">
@@ -212,8 +205,6 @@
                                             })}
                                         </div>
                                     </div>
-
-                                    {/* Progresso tarefas */}
                                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
                                         <div className="flex justify-between items-center mb-3">
                                             <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide">Progresso do Plano</h3>
@@ -224,53 +215,28 @@
                                         </div>
                                         <p className="text-xs text-slate-400 font-bold">{ts.filter(t => t.feita).length} de {ts.length} tarefas concluídas</p>
                                     </div>
-
-                                    {/* Info do contrato */}
                                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
                                         <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-4">Dados do Contrato</h3>
                                         <div className="grid grid-cols-2 gap-4 text-sm">
-                                            {[
-                                                ["Modelo de Cobrança", c.modeloCobranca || "-"],
-                                                ["Prazo do Contrato", c.prazoContrato || "-"],
-                                                ["Início", c.dataInicio ? fmtDate(c.dataInicio) : "-"],
-                                                ["Próxima Reunião", c.proximaReuniao ? fmtDate(c.proximaReuniao) : "-"],
-                                            ].map(([l, v]) => (
-                                                <div key={l}>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{l}</p>
-                                                    <p className="font-bold text-[#05121b]">{v}</p>
-                                                </div>
+                                            {[["Modelo de Cobrança", c.modeloCobranca || "-"],["Prazo do Contrato", c.prazoContrato || "-"],["Início", c.dataInicio ? fmtDate(c.dataInicio) : "-"],["Próxima Reunião", c.proximaReuniao ? fmtDate(c.proximaReuniao) : "-"]].map(([l, v]) => (
+                                                <div key={l}><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{l}</p><p className="font-bold text-[#05121b]">{v}</p></div>
                                             ))}
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Coluna direita */}
                                 <div className="space-y-6">
-                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                                        <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Observações</h3>
-                                        <p className="text-sm text-slate-500 leading-relaxed">{c.observacoes || "Nenhuma observação registrada."}</p>
-                                    </div>
-                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                                        <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Desafio Principal</h3>
-                                        <p className="text-sm text-slate-500 leading-relaxed">{c.desafio || "-"}</p>
-                                    </div>
-                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                                        <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Objetivo 12 Meses</h3>
-                                        <p className="text-sm text-slate-500 leading-relaxed">{c.objetivo || "-"}</p>
-                                    </div>
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"><h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Observações</h3><p className="text-sm text-slate-500 leading-relaxed">{c.observacoes || "Nenhuma observação registrada."}</p></div>
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"><h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Desafio Principal</h3><p className="text-sm text-slate-500 leading-relaxed">{c.desafio || "-"}</p></div>
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"><h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Objetivo 12 Meses</h3><p className="text-sm text-slate-500 leading-relaxed">{c.objetivo || "-"}</p></div>
                                 </div>
                             </div>
                         )}
-
-                        {/* PLANO DE AÇÃO */}
                         {abaDetalhe === "plano" && (
                             <div className="space-y-4">
                                 <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{ts.filter(t => t.feita).length} de {ts.length} concluídas · clique para marcar</p>
                                 {ts.map(t => (
                                     <div key={t.id} onClick={() => toggleTarefa(c.id, t.id)} className={`flex items-center gap-4 p-5 bg-white rounded-2xl border cursor-pointer transition-all ${t.feita ? 'border-emerald-200 opacity-60' : 'border-slate-100 hover:border-slate-200'} shadow-sm`}>
-                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${t.feita ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'}`}>
-                                            {t.feita && <CheckSquare size={14} className="text-white" />}
-                                        </div>
+                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${t.feita ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'}`}>{t.feita && <CheckSquare size={14} className="text-white" />}</div>
                                         <span className={`text-sm font-bold flex-1 ${t.feita ? 'line-through text-slate-400' : 'text-[#05121b]'}`}>{t.texto}</span>
                                     </div>
                                 ))}
@@ -281,24 +247,18 @@
                                 </div>
                             </div>
                         )}
-
-                        {/* REUNIÕES */}
                         {abaDetalhe === "reunioes" && (
                             <div className="space-y-4">
                                 {(c.reunioes || []).map((r, i) => (
                                     <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex gap-4">
                                         <div className="w-1 bg-[#137789] rounded-full flex-shrink-0" />
                                         <div className="flex-1">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-[#137789] font-black text-sm">{r.tipo}</span>
-                                                <span className="text-xs text-slate-400 font-bold">{r.data ? fmtDate(r.data) : "-"}</span>
-                                            </div>
+                                            <div className="flex justify-between items-center mb-2"><span className="text-[#137789] font-black text-sm">{r.tipo}</span><span className="text-xs text-slate-400 font-bold">{r.data ? fmtDate(r.data) : "-"}</span></div>
                                             <p className="text-sm text-slate-500 leading-relaxed">{r.nota}</p>
                                         </div>
                                     </div>
                                 ))}
                                 {(!c.reunioes || c.reunioes.length === 0) && <div className="text-center py-10 text-slate-400 text-sm">Nenhuma reunião registrada ainda.</div>}
-                                {/* Mini form nova reunião */}
                                 <div className="bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-5">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Registrar nova reunião</p>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
@@ -310,8 +270,6 @@
                                 </div>
                             </div>
                         )}
-
-                        {/* FINANCEIRO */}
                         {abaDetalhe === "financeiro" && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -338,7 +296,6 @@
                 );
             }
 
-            // Lista de consultorias
             return (
                 <div className="max-w-6xl mx-auto w-full">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -347,8 +304,6 @@
                             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Visão geral dos seus clientes em consultoria</p>
                         </header>
                     </div>
-
-                    {/* KPIs resumo */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                         {[
                             { label: "Clientes em Consultoria", value: consultorias.length, sub: "ativos", cor: "text-[#05121b]" },
@@ -363,8 +318,6 @@
                             </div>
                         ))}
                     </div>
-
-                    {/* Filtros */}
                     <div className="flex flex-col md:flex-row gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-6">
                         <div className="relative flex-1">
                             <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -376,8 +329,6 @@
                             </button>
                         ))}
                     </div>
-
-                    {/* Tabela de consultorias */}
                     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-slate-50 border-b border-slate-100">
@@ -396,24 +347,13 @@
                                     const comissao = (parseFloat(c.lucroLiquido) || 0) * 0.1;
                                     return (
                                         <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="p-5">
-                                                <div className="font-black text-sm text-[#05121b]">{c.empresa}</div>
-                                                <div className="text-[10px] text-slate-400 font-bold mt-0.5">{c.tipo} · {c.segmento}</div>
-                                            </td>
-                                            <td className="p-5 text-center">
-                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${faseConf.cor}`}>{faseConf.label}</span>
-                                            </td>
-                                            <td className="p-5 text-center text-sm font-bold text-[#05121b]">
-                                                {(parseFloat(c.faturamento) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                            </td>
-                                            <td className="p-5 text-center text-sm font-black text-purple-600">
-                                                {comissao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                            </td>
+                                            <td className="p-5"><div className="font-black text-sm text-[#05121b]">{c.empresa}</div><div className="text-[10px] text-slate-400 font-bold mt-0.5">{c.tipo} · {c.segmento}</div></td>
+                                            <td className="p-5 text-center"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${faseConf.cor}`}>{faseConf.label}</span></td>
+                                            <td className="p-5 text-center text-sm font-bold text-[#05121b]">{(parseFloat(c.faturamento) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                            <td className="p-5 text-center text-sm font-black text-purple-600">{comissao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                                             <td className="p-5 text-center text-[11px] font-bold text-slate-500">{c.modeloCobranca || "-"}</td>
                                             <td className="p-5 text-right">
-                                                <button onClick={() => { setConsultoriaSelecionada(c); setAbaDetalhe("visao"); }} className="bg-[#137789] text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] transition-all flex items-center gap-2 ml-auto shadow-sm">
-                                                    Abrir <ChevronRight size={14} />
-                                                </button>
+                                                <button onClick={() => { setConsultoriaSelecionada(c); setAbaDetalhe("visao"); }} className="bg-[#137789] text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] transition-all flex items-center gap-2 ml-auto shadow-sm">Abrir <ChevronRight size={14} /></button>
                                             </td>
                                         </tr>
                                     );
@@ -428,28 +368,23 @@
         };
 
         // ─────────────────────────────────────────────────────────────────────
-        // Tela Nova Consultoria (formulário completo)
+        // NOVO: Tela Nova Consultoria (formulário completo)
         // ─────────────────────────────────────────────────────────────────────
         const TelaNovaConsultoria = ({ onSalvar, derivedClients }) => {
             const [step, setStep] = useState(1);
             const [salvando, setSalvando] = useState(false);
             const [salvoOk, setSalvoOk] = useState(false);
             const [form, setForm] = useState({
-                // Passo 1 – Identificação
                 empresa: "", cnpj: "", responsavel: "", email: "", telefone: "",
                 tipo: "MEI", segmento: "", tempoOperacao: "", numFuncionarios: "",
-                // Passo 2 – Financeiro
                 faturamento: "", lucroLiquido: "", custoFixo: "", inadimplencia: "",
                 ticketMedio: "", numVendas: "", impostos: "", meiosRecebimento: "",
-                // Passo 3 – Desafios
                 desafio: "", objetivo: "", pontosFracos: "", pontoFortes: "",
-                // Passo 4 – Contrato
                 fase: "diagnostico", modeloCobranca: "10% Lucro Líquido", prazoContrato: "6 meses",
                 dataInicio: "", proximaReuniao: "", observacoes: "", reunioes: [],
             });
 
             const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
             const inputClass = "w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all";
             const labelClass = "text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5";
             const Field = ({ label, children }) => <div className="space-y-1">{label && <label className={labelClass}>{label}</label>}{children}</div>;
@@ -477,221 +412,95 @@
                         <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Nova Consultoria</h1>
                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Cadastre um novo cliente de consultoria empresarial</p>
                     </header>
-
-                    {/* Steps */}
                     <div className="flex items-center gap-0 mb-10">
                         {steps.map((s, i) => (
                             <div key={s} className="flex items-center flex-1">
                                 <div className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => setStep(i + 1)}>
-                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black transition-all ${step > i + 1 ? 'bg-emerald-500 text-white' : step === i + 1 ? 'bg-[#05121b] text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>
-                                        {step > i + 1 ? "✓" : i + 1}
-                                    </div>
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black transition-all ${step > i + 1 ? 'bg-emerald-500 text-white' : step === i + 1 ? 'bg-[#05121b] text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{step > i + 1 ? "✓" : i + 1}</div>
                                     <span className={`text-[9px] font-bold uppercase tracking-wide whitespace-nowrap ${step === i + 1 ? 'text-[#05121b]' : 'text-slate-400'}`}>{s}</span>
                                 </div>
                                 {i < steps.length - 1 && <div className={`flex-1 h-0.5 mx-2 mb-4 ${step > i + 1 ? 'bg-emerald-500' : 'bg-slate-200'}`} />}
                             </div>
                         ))}
                     </div>
-
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 mb-6">
-
-                        {/* PASSO 1: Identificação */}
                         {step === 1 && (
                             <div>
-                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
-                                    <Building2 size={20} className="text-[#ff7b00]" />
-                                    <h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Identificação da Empresa</h2>
-                                </div>
+                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><Building2 size={20} className="text-[#ff7b00]" /><h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Identificação da Empresa</h2></div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div className="md:col-span-2">
-                                        <Field label="Razão Social / Nome da Empresa *">
-                                            <input value={form.empresa} onChange={e => set('empresa', e.target.value)} placeholder="Ex: Padaria do João LTDA" className={inputClass} />
-                                        </Field>
-                                    </div>
-                                    <Field label="CNPJ / CPF *">
-                                        <input value={form.cnpj} onChange={e => set('cnpj', e.target.value)} placeholder="00.000.000/0001-00" className={inputClass} />
-                                    </Field>
-                                    <Field label="Nome do Responsável">
-                                        <input value={form.responsavel} onChange={e => set('responsavel', e.target.value)} placeholder="Nome completo" className={inputClass} />
-                                    </Field>
-                                    <Field label="E-mail">
-                                        <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="email@empresa.com" className={inputClass} />
-                                    </Field>
-                                    <Field label="Celular / WhatsApp">
-                                        <input value={form.telefone} onChange={e => set('telefone', e.target.value)} placeholder="(11) 99999-9999" className={inputClass} />
-                                    </Field>
-                                    <Field label="Tipo de Empresa">
-                                        <select value={form.tipo} onChange={e => set('tipo', e.target.value)} className={inputClass}>
-                                            <option value="MEI">MEI</option>
-                                            <option value="ME">ME (Microempresa)</option>
-                                            <option value="EPP">EPP (Pequeno Porte)</option>
-                                            <option value="LTDA">LTDA / SA</option>
-                                        </select>
-                                    </Field>
-                                    <Field label="Segmento de Atuação">
-                                        <input value={form.segmento} onChange={e => set('segmento', e.target.value)} placeholder="Ex: Alimentação, Varejo, Serviços" className={inputClass} />
-                                    </Field>
-                                    <Field label="Tempo de Operação">
-                                        <input value={form.tempoOperacao} onChange={e => set('tempoOperacao', e.target.value)} placeholder="Ex: 3 anos" className={inputClass} />
-                                    </Field>
-                                    <Field label="Nº de Funcionários">
-                                        <input value={form.numFuncionarios} onChange={e => set('numFuncionarios', e.target.value)} placeholder="Ex: 5" className={inputClass} />
-                                    </Field>
+                                    <div className="md:col-span-2"><Field label="Razão Social / Nome da Empresa *"><input value={form.empresa} onChange={e => set('empresa', e.target.value)} placeholder="Ex: Padaria do João LTDA" className={inputClass} /></Field></div>
+                                    <Field label="CNPJ / CPF *"><input value={form.cnpj} onChange={e => set('cnpj', e.target.value)} placeholder="00.000.000/0001-00" className={inputClass} /></Field>
+                                    <Field label="Nome do Responsável"><input value={form.responsavel} onChange={e => set('responsavel', e.target.value)} placeholder="Nome completo" className={inputClass} /></Field>
+                                    <Field label="E-mail"><input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="email@empresa.com" className={inputClass} /></Field>
+                                    <Field label="Celular / WhatsApp"><input value={form.telefone} onChange={e => set('telefone', e.target.value)} placeholder="(11) 99999-9999" className={inputClass} /></Field>
+                                    <Field label="Tipo de Empresa"><select value={form.tipo} onChange={e => set('tipo', e.target.value)} className={inputClass}><option value="MEI">MEI</option><option value="ME">ME (Microempresa)</option><option value="EPP">EPP (Pequeno Porte)</option><option value="LTDA">LTDA / SA</option></select></Field>
+                                    <Field label="Segmento de Atuação"><input value={form.segmento} onChange={e => set('segmento', e.target.value)} placeholder="Ex: Alimentação, Varejo, Serviços" className={inputClass} /></Field>
+                                    <Field label="Tempo de Operação"><input value={form.tempoOperacao} onChange={e => set('tempoOperacao', e.target.value)} placeholder="Ex: 3 anos" className={inputClass} /></Field>
+                                    <Field label="Nº de Funcionários"><input value={form.numFuncionarios} onChange={e => set('numFuncionarios', e.target.value)} placeholder="Ex: 5" className={inputClass} /></Field>
                                 </div>
                             </div>
                         )}
-
-                        {/* PASSO 2: Financeiro */}
                         {step === 2 && (
                             <div>
-                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
-                                    <Landmark size={20} className="text-[#ff7b00]" />
-                                    <h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Situação Financeira</h2>
-                                </div>
+                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><Landmark size={20} className="text-[#ff7b00]" /><h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Situação Financeira</h2></div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <Field label="Faturamento Médio Mensal (R$)">
-                                        <input value={form.faturamento} onChange={e => set('faturamento', e.target.value)} placeholder="Ex: 50000" className={inputClass} />
-                                    </Field>
-                                    <Field label="Lucro Líquido Mensal (R$)">
-                                        <input value={form.lucroLiquido} onChange={e => set('lucroLiquido', e.target.value)} placeholder="Ex: 8000" className={inputClass} />
-                                    </Field>
-                                    <Field label="Custo Fixo Mensal (R$)">
-                                        <input value={form.custoFixo} onChange={e => set('custoFixo', e.target.value)} placeholder="Ex: 15000" className={inputClass} />
-                                    </Field>
-                                    <Field label="Inadimplência (%)">
-                                        <input value={form.inadimplencia} onChange={e => set('inadimplencia', e.target.value)} placeholder="Ex: 5" className={inputClass} />
-                                    </Field>
-                                    <Field label="Ticket Médio (R$)">
-                                        <input value={form.ticketMedio} onChange={e => set('ticketMedio', e.target.value)} placeholder="Ex: 250" className={inputClass} />
-                                    </Field>
-                                    <Field label="Nº Médio de Vendas/Mês">
-                                        <input value={form.numVendas} onChange={e => set('numVendas', e.target.value)} placeholder="Ex: 200" className={inputClass} />
-                                    </Field>
-                                    <Field label="Carga Tributária (%)">
-                                        <input value={form.impostos} onChange={e => set('impostos', e.target.value)} placeholder="Ex: 6" className={inputClass} />
-                                    </Field>
-                                    <Field label="Meios de Recebimento">
-                                        <input value={form.meiosRecebimento} onChange={e => set('meiosRecebimento', e.target.value)} placeholder="Ex: Pix, Cartão, Boleto" className={inputClass} />
-                                    </Field>
+                                    <Field label="Faturamento Médio Mensal (R$)"><input value={form.faturamento} onChange={e => set('faturamento', e.target.value)} placeholder="Ex: 50000" className={inputClass} /></Field>
+                                    <Field label="Lucro Líquido Mensal (R$)"><input value={form.lucroLiquido} onChange={e => set('lucroLiquido', e.target.value)} placeholder="Ex: 8000" className={inputClass} /></Field>
+                                    <Field label="Custo Fixo Mensal (R$)"><input value={form.custoFixo} onChange={e => set('custoFixo', e.target.value)} placeholder="Ex: 15000" className={inputClass} /></Field>
+                                    <Field label="Inadimplência (%)"><input value={form.inadimplencia} onChange={e => set('inadimplencia', e.target.value)} placeholder="Ex: 5" className={inputClass} /></Field>
+                                    <Field label="Ticket Médio (R$)"><input value={form.ticketMedio} onChange={e => set('ticketMedio', e.target.value)} placeholder="Ex: 250" className={inputClass} /></Field>
+                                    <Field label="Nº Médio de Vendas/Mês"><input value={form.numVendas} onChange={e => set('numVendas', e.target.value)} placeholder="Ex: 200" className={inputClass} /></Field>
+                                    <Field label="Carga Tributária (%)"><input value={form.impostos} onChange={e => set('impostos', e.target.value)} placeholder="Ex: 6" className={inputClass} /></Field>
+                                    <Field label="Meios de Recebimento"><input value={form.meiosRecebimento} onChange={e => set('meiosRecebimento', e.target.value)} placeholder="Ex: Pix, Cartão, Boleto" className={inputClass} /></Field>
                                 </div>
-
-                                {/* Preview comissão */}
                                 {form.lucroLiquido && (
                                     <div className="mt-6 p-5 bg-purple-50 rounded-2xl border border-purple-100 flex items-center gap-4">
                                         <DollarSign size={24} className="text-purple-600 flex-shrink-0" />
                                         <div>
                                             <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1">Sua comissão mensal estimada</p>
-                                            <p className="text-2xl font-black text-purple-700">
-                                                {(parseFloat(form.lucroLiquido) * 0.1).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                            </p>
+                                            <p className="text-2xl font-black text-purple-700">{(parseFloat(form.lucroLiquido) * 0.1).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                                         </div>
                                     </div>
                                 )}
                             </div>
                         )}
-
-                        {/* PASSO 3: Diagnóstico */}
                         {step === 3 && (
                             <div>
-                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
-                                    <Target size={20} className="text-[#ff7b00]" />
-                                    <h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Diagnóstico Inicial</h2>
-                                </div>
+                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><Target size={20} className="text-[#ff7b00]" /><h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Diagnóstico Inicial</h2></div>
                                 <div className="space-y-5">
-                                    <Field label="Maior Desafio Financeiro da Empresa">
-                                        <textarea value={form.desafio} onChange={e => set('desafio', e.target.value)} rows={3} placeholder="Descreva o principal problema que motivou a consultoria..." className={`${inputClass} resize-none`} />
-                                    </Field>
-                                    <Field label="Objetivo para os próximos 12 meses">
-                                        <textarea value={form.objetivo} onChange={e => set('objetivo', e.target.value)} rows={3} placeholder="O que o cliente quer alcançar?" className={`${inputClass} resize-none`} />
-                                    </Field>
-                                    <Field label="Pontos Fracos Identificados">
-                                        <textarea value={form.pontosFracos} onChange={e => set('pontosFracos', e.target.value)} rows={3} placeholder="Precificação, custo fixo alto, inadimplência, falta de controle..." className={`${inputClass} resize-none`} />
-                                    </Field>
-                                    <Field label="Pontos Fortes da Empresa">
-                                        <textarea value={form.pontoFortes} onChange={e => set('pontoFortes', e.target.value)} rows={3} placeholder="O que já funciona bem..." className={`${inputClass} resize-none`} />
-                                    </Field>
+                                    <Field label="Maior Desafio Financeiro da Empresa"><textarea value={form.desafio} onChange={e => set('desafio', e.target.value)} rows={3} placeholder="Descreva o principal problema que motivou a consultoria..." className={`${inputClass} resize-none`} /></Field>
+                                    <Field label="Objetivo para os próximos 12 meses"><textarea value={form.objetivo} onChange={e => set('objetivo', e.target.value)} rows={3} placeholder="O que o cliente quer alcançar?" className={`${inputClass} resize-none`} /></Field>
+                                    <Field label="Pontos Fracos Identificados"><textarea value={form.pontosFracos} onChange={e => set('pontosFracos', e.target.value)} rows={3} placeholder="Precificação, custo fixo alto, inadimplência..." className={`${inputClass} resize-none`} /></Field>
+                                    <Field label="Pontos Fortes da Empresa"><textarea value={form.pontoFortes} onChange={e => set('pontoFortes', e.target.value)} rows={3} placeholder="O que já funciona bem..." className={`${inputClass} resize-none`} /></Field>
                                 </div>
                             </div>
                         )}
-
-                        {/* PASSO 4: Contrato */}
                         {step === 4 && (
                             <div>
-                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100">
-                                    <FileText size={20} className="text-[#ff7b00]" />
-                                    <h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Contrato e Acompanhamento</h2>
-                                </div>
+                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><FileText size={20} className="text-[#ff7b00]" /><h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Contrato e Acompanhamento</h2></div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <Field label="Fase Inicial">
-                                        <select value={form.fase} onChange={e => set('fase', e.target.value)} className={inputClass}>
-                                            <option value="diagnostico">Diagnóstico</option>
-                                            <option value="plano">Plano de Ação</option>
-                                            <option value="execucao">Execução</option>
-                                            <option value="escala">Escala</option>
-                                        </select>
-                                    </Field>
-                                    <Field label="Modelo de Cobrança">
-                                        <select value={form.modeloCobranca} onChange={e => set('modeloCobranca', e.target.value)} className={inputClass}>
-                                            <option value="10% Lucro Líquido">10% sobre Lucro Líquido</option>
-                                            <option value="Fee Mensal">Fee Mensal Fixo</option>
-                                            <option value="Fee + Bônus">Fee Mensal + Bônus por Meta</option>
-                                            <option value="Sócio (Equity)">Entrada como Sócio (Equity)</option>
-                                        </select>
-                                    </Field>
-                                    <Field label="Prazo do Contrato">
-                                        <select value={form.prazoContrato} onChange={e => set('prazoContrato', e.target.value)} className={inputClass}>
-                                            <option value="3 meses">3 meses</option>
-                                            <option value="6 meses">6 meses</option>
-                                            <option value="12 meses">12 meses</option>
-                                            <option value="Indeterminado">Indeterminado</option>
-                                        </select>
-                                    </Field>
-                                    <Field label="Data de Início">
-                                        <input type="date" value={form.dataInicio} onChange={e => set('dataInicio', e.target.value)} className={inputClass} />
-                                    </Field>
-                                    <Field label="Data da Próxima Reunião">
-                                        <input type="date" value={form.proximaReuniao} onChange={e => set('proximaReuniao', e.target.value)} className={inputClass} />
-                                    </Field>
-                                    <div className="md:col-span-2">
-                                        <Field label="Observações Iniciais">
-                                            <textarea value={form.observacoes} onChange={e => set('observacoes', e.target.value)} rows={4} placeholder="Contexto inicial, alinhamentos, acordos verbais..." className={`${inputClass} resize-none`} />
-                                        </Field>
-                                    </div>
+                                    <Field label="Fase Inicial"><select value={form.fase} onChange={e => set('fase', e.target.value)} className={inputClass}><option value="diagnostico">Diagnóstico</option><option value="plano">Plano de Ação</option><option value="execucao">Execução</option><option value="escala">Escala</option></select></Field>
+                                    <Field label="Modelo de Cobrança"><select value={form.modeloCobranca} onChange={e => set('modeloCobranca', e.target.value)} className={inputClass}><option value="10% Lucro Líquido">10% sobre Lucro Líquido</option><option value="Fee Mensal">Fee Mensal Fixo</option><option value="Fee + Bônus">Fee Mensal + Bônus por Meta</option><option value="Sócio (Equity)">Entrada como Sócio (Equity)</option></select></Field>
+                                    <Field label="Prazo do Contrato"><select value={form.prazoContrato} onChange={e => set('prazoContrato', e.target.value)} className={inputClass}><option value="3 meses">3 meses</option><option value="6 meses">6 meses</option><option value="12 meses">12 meses</option><option value="Indeterminado">Indeterminado</option></select></Field>
+                                    <Field label="Data de Início"><input type="date" value={form.dataInicio} onChange={e => set('dataInicio', e.target.value)} className={inputClass} /></Field>
+                                    <Field label="Data da Próxima Reunião"><input type="date" value={form.proximaReuniao} onChange={e => set('proximaReuniao', e.target.value)} className={inputClass} /></Field>
+                                    <div className="md:col-span-2"><Field label="Observações Iniciais"><textarea value={form.observacoes} onChange={e => set('observacoes', e.target.value)} rows={4} placeholder="Contexto inicial, alinhamentos, acordos verbais..." className={`${inputClass} resize-none`} /></Field></div>
                                 </div>
-
-                                {/* Resumo final */}
                                 <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
                                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Resumo da Consultoria</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                                        {[
-                                            ["Empresa", form.empresa || "-"],
-                                            ["Tipo", form.tipo || "-"],
-                                            ["Faturamento", form.faturamento ? `R$ ${parseFloat(form.faturamento).toLocaleString('pt-BR')}` : "-"],
-                                            ["Lucro Líquido", form.lucroLiquido ? `R$ ${parseFloat(form.lucroLiquido).toLocaleString('pt-BR')}` : "-"],
-                                            ["Comissão Est.", form.lucroLiquido ? (parseFloat(form.lucroLiquido) * 0.1).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "-"],
-                                            ["Cobrança", form.modeloCobranca || "-"],
-                                        ].map(([l, v]) => (
-                                            <div key={l}>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{l}</p>
-                                                <p className="font-black text-[#05121b] mt-0.5">{v}</p>
-                                            </div>
+                                        {[["Empresa", form.empresa || "-"],["Tipo", form.tipo || "-"],["Faturamento", form.faturamento ? `R$ ${parseFloat(form.faturamento).toLocaleString('pt-BR')}` : "-"],["Lucro Líquido", form.lucroLiquido ? `R$ ${parseFloat(form.lucroLiquido).toLocaleString('pt-BR')}` : "-"],["Comissão Est.", form.lucroLiquido ? (parseFloat(form.lucroLiquido) * 0.1).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "-"],["Cobrança", form.modeloCobranca || "-"]].map(([l, v]) => (
+                                            <div key={l}><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{l}</p><p className="font-black text-[#05121b] mt-0.5">{v}</p></div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
-
-                    {/* Navegação */}
                     <div className="flex justify-between items-center">
-                        <button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} className="flex items-center gap-2 text-slate-400 hover:text-[#05121b] font-black text-[10px] uppercase tracking-widest disabled:opacity-30 transition-colors">
-                            <ArrowLeft size={16} /> Anterior
-                        </button>
-
+                        <button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} className="flex items-center gap-2 text-slate-400 hover:text-[#05121b] font-black text-[10px] uppercase tracking-widest disabled:opacity-30 transition-colors"><ArrowLeft size={16} /> Anterior</button>
                         {step < 4 ? (
-                            <button onClick={() => setStep(s => s + 1)} className="bg-[#05121b] text-white px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#137789] transition-all flex items-center gap-2 shadow-md">
-                                Próximo <ChevronRight size={16} />
-                            </button>
+                            <button onClick={() => setStep(s => s + 1)} className="bg-[#05121b] text-white px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#137789] transition-all flex items-center gap-2 shadow-md">Próximo <ChevronRight size={16} /></button>
                         ) : (
                             <button onClick={handleSalvar} disabled={salvando || salvoOk} className={`px-10 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-md ${salvoOk ? 'bg-emerald-500 text-white' : 'bg-[#ff7b00] text-white hover:bg-[#e66e00]'}`}>
                                 {salvando ? <><RefreshCw size={16} className="animate-spin" /> Salvando...</> : salvoOk ? <><CheckCircle size={16} /> Salvo!</> : <><Save size={16} /> Salvar Consultoria</>}
@@ -703,7 +512,7 @@
         };
 
         // ─────────────────────────────────────────────────────────────────────
-        // APP PRINCIPAL (original + adições)
+        // APP PRINCIPAL
         // ─────────────────────────────────────────────────────────────────────
         const App = () => {
           const [view, setView] = useState('dashboard');
@@ -719,10 +528,6 @@
           const [diagnostics, setDiagnostics] = useState([]); 
           const [derivedClients, setDerivedClients] = useState([]); 
           const [allDiagnostics, setAllDiagnostics] = useState([]); 
-          
-          // NOVO: armazena os dados vindos direto da tabela `profiles`
-          const [allProfiles, setAllProfiles] = useState([]);
-
           const [stats, setStats] = useState({ clients: 0, completed: 0, healthy: 0, warning: 0, critical: 0, structured: 0, guided: 0 });
           const [filteredDiagnostics, setFilteredDiagnostics] = useState([]);
           const [filteredClients, setFilteredClients] = useState([]);
@@ -756,7 +561,7 @@
 
           const fetchConsultorias = async () => {
               try {
-                  const { data, error } = await supabase.from('consultorias').select('*').order('created_at', { ascending: false });
+                  const { data } = await supabase.from('consultorias').select('*').order('created_at', { ascending: false });
                   if (data) setConsultorias(data);
               } catch (e) {}
           };
@@ -815,88 +620,155 @@
           const clearFilters = () => { setFilterSearch(""); setFilterDateFrom(""); setFilterDateTo(""); };
           const clearClientFilters = () => { setClientSearchTerm(""); setClientStatusFilter("todos"); setClientTypeFilter("todos"); setClientDateFrom(""); setClientDateTo(""); };
 
-          // AQUI ESTÁ A LÓGICA DE CRUZAMENTO DE DADOS (PROFILES + DIAGNOSTICOS)
+          // ─────────────────────────────────────────────────────────────────────
+          // AJUSTE PRINCIPAL: fetchData agora lê todas as tabelas em paralelo
+          // e monta clientsMap unificado a partir de profiles + produtos.
+          // Clientes aparecem assim que existem em qualquer tabela.
+          // Status = "Pendente" sem produtos, "Ativo" com ao menos 1 produto.
+          // ─────────────────────────────────────────────────────────────────────
           const fetchData = async () => {
-            // 1. Busca perfis (Cadastros puros)
-            const { data: profs, error: profsError } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-            
-            // 2. Busca diagnósticos (Produtos)
-            const { data: diags, error: diagsError } = await supabase.from('diagnosticos').select('*').order('created_at', { ascending: false });
+            // Busca paralela em todas as tabelas
+            const [
+              { data: diags },
+              { data: profiles },
+              { data: creditosData },
+              { data: erpData },
+              { data: consultoriasData }
+            ] = await Promise.all([
+              supabase.from('diagnosticos').select('*').order('created_at', { ascending: false }),
+              supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+              supabase.from('creditos').select('cnpj, user_id, created_at'),
+              supabase.from('erp_financeiro').select('cnpj, user_id, created_at'),
+              supabase.from('consultorias').select('cnpj, user_id, created_at, empresa, responsavel, email, telefone')
+            ]);
 
-            if (profs && diags) {
-                setAllDiagnostics(diags);
-                setAllProfiles(profs);
+            const safeDialgs = diags || [];
+            const safeProfiles = profiles || [];
+            const safeCreditos = creditosData || [];
+            const safeErp = erpData || [];
+            const safeConsultorias = consultoriasData || [];
 
-                const pendingDiags = diags.filter(d => d.internal_status === 'pending');
-                setDiagnostics(pendingDiags);
-                
-                const clientsMap = {};
+            setAllDiagnostics(safeDialgs);
+            const pendingDiags = safeDialgs.filter(d => d.internal_status === 'pending');
+            setDiagnostics(pendingDiags);
 
-                // A) Primeiro, joga todos os "Cadastros" no mapa
-                profs.forEach(p => {
-                    const cnpjOuId = p.cnpj || p.id; 
-                    clientsMap[cnpjOuId] = {
-                        name: p.full_name || "Sem Nome",
-                        razao: p.razao_social || p.full_name || "Sem Razão Social",
-                        email: p.email || "",
-                        phone: p.phone || "",
-                        cnpj: p.cnpj || "N/A",
-                        submissionCount: 0,
-                        firstDate: p.created_at,
-                        generalNotes: "",
-                        history: [],
-                        latestSubmission: null,
-                        
-                        hasDiagnostico: false, 
-                        hasCredito: false, 
-                        hasERP: false, 
-                        hasConsultoria: false
-                    };
-                });
+            // ── Constrói o mapa unificado de clientes ──────────────────────
+            // Chave: cnpj (normalizado) ou user_id como fallback
+            const clientsMap = {};
 
-                // B) Depois, cruza com os Diagnósticos
-                diags.forEach(d => {
-                    const cnpj = d.cnpj || d.user_id; 
-                    
-                    if (!clientsMap[cnpj]) {
-                        clientsMap[cnpj] = { 
-                            name: d.client_name, razao: d.razao_social || d.client_name, email: d.email || "", phone: d.telefone || "", 
-                            cnpj: d.cnpj, submissionCount: 0, firstDate: d.created_at, generalNotes: d.client_general_notes || "",
-                            history: [], latestSubmission: null,
-                            hasDiagnostico: false, hasCredito: false, hasERP: false, hasConsultoria: false
-                        };
-                    }
-                    
-                    if (d.client_general_notes) clientsMap[cnpj].generalNotes = d.client_general_notes;
-                    clientsMap[cnpj].hasDiagnostico = true;
+            const normCnpj = (v) => (v || '').replace(/\D/g, '');
 
-                    if (d.internal_status === 'completed') {
-                        clientsMap[cnpj].submissionCount++;
-                        clientsMap[cnpj].history.push(d);
-                        if (!clientsMap[cnpj].latestSubmission || new Date(d.created_at) > new Date(clientsMap[cnpj].latestSubmission.created_at)) {
-                            clientsMap[cnpj].latestSubmission = d;
-                        }
-                    }
-                });
+            const ensureClient = (cnpj, name, razao, email, phone, date, userId) => {
+              const key = normCnpj(cnpj) || userId || `noid_${date}`;
+              if (!clientsMap[key]) {
+                clientsMap[key] = {
+                  name: name || razao || "",
+                  razao: razao || name || "",
+                  email: email || "",
+                  phone: phone || "",
+                  cnpj: cnpj || "",
+                  submissionCount: 0,
+                  firstDate: date || new Date().toISOString(),
+                  generalNotes: "",
+                  history: [],
+                  latestSubmission: null,
+                  // flags de produto — todos false até confirmar
+                  hasDiagnostico: false,
+                  hasCredito: false,
+                  hasERP: false,
+                  hasConsultoria: false,
+                  // status calculado no final
+                  clientStatus: "Pendente"
+                };
+              }
+              // atualiza data mais antiga
+              if (date && new Date(date) < new Date(clientsMap[key].firstDate)) {
+                clientsMap[key].firstDate = date;
+              }
+              return key;
+            };
 
-                const clientsArray = Object.values(clientsMap);
-                setDerivedClients(clientsArray);
+            // 1. Seed a partir de profiles (base central)
+            safeProfiles.forEach(p => {
+              ensureClient(p.cnpj, p.full_name || p.name, p.razao_social || p.full_name || p.name, p.email, p.phone || p.telefone, p.created_at, p.user_id || p.id);
+            });
 
-                const completedDiags = diags.filter(d => d.internal_status === 'completed');
-                setStats({
-                    clients: clientsArray.length,
-                    completed: completedDiags.length,
-                    healthy: completedDiags.filter(d => d.health_status === 'healthy').length,
-                    warning: completedDiags.filter(d => d.health_status === 'warning').length,
-                    critical: completedDiags.filter(d => d.health_status === 'critical').length,
-                    structured: diags.filter(d => d.form_type === 'Estruturado').length,
-                    guided: diags.filter(d => d.form_type === 'Guiado').length
-                });
+            // 2. Seed a partir de diagnosticos (todos, pending ou completed)
+            safeDialgs.forEach(d => {
+              const key = ensureClient(d.cnpj, d.client_name, d.razao_social || d.client_name, d.email, d.telefone, d.created_at, d.user_id);
+              if (d.client_general_notes) clientsMap[key].generalNotes = d.client_general_notes;
 
-                if (selectedClient) {
-                    const updatedClient = clientsArray.find(c => c.cnpj === selectedClient.cnpj || c.email === selectedClient.email);
-                    if (updatedClient) setSelectedClient(updatedClient);
+              if (d.internal_status === 'completed') {
+                clientsMap[key].submissionCount++;
+                clientsMap[key].history.push(d);
+                clientsMap[key].hasDiagnostico = true;
+                if (!clientsMap[key].latestSubmission || new Date(d.created_at) > new Date(clientsMap[key].latestSubmission.created_at)) {
+                  clientsMap[key].latestSubmission = d;
                 }
+              }
+              // mesmo pending já mostra o cliente
+              if (!clientsMap[key].hasDiagnostico && d.internal_status === 'pending') {
+                clientsMap[key].hasDiagnostico = true;
+              }
+            });
+
+            // 3. Seed a partir de creditos
+            safeCreditos.forEach(c => {
+              const key = ensureClient(c.cnpj, null, null, null, null, c.created_at, c.user_id);
+              clientsMap[key].hasCredito = true;
+            });
+
+            // 4. Seed a partir de erp_financeiro
+            safeErp.forEach(e => {
+              const key = ensureClient(e.cnpj, null, null, null, null, e.created_at, e.user_id);
+              clientsMap[key].hasERP = true;
+            });
+
+            // 5. Seed a partir de consultorias
+            safeConsultorias.forEach(c => {
+              const key = ensureClient(
+                c.cnpj,
+                c.responsavel || c.empresa,
+                c.empresa,
+                c.email,
+                c.telefone,
+                c.created_at,
+                c.user_id
+              );
+              clientsMap[key].hasConsultoria = true;
+              // enriquece dados se o cliente veio só de consultoria
+              if (!clientsMap[key].razao && c.empresa) clientsMap[key].razao = c.empresa;
+              if (!clientsMap[key].name && c.responsavel) clientsMap[key].name = c.responsavel;
+              if (!clientsMap[key].email && c.email) clientsMap[key].email = c.email;
+              if (!clientsMap[key].phone && c.telefone) clientsMap[key].phone = c.telefone;
+            });
+
+            // 6. Calcula status final de cada cliente
+            Object.values(clientsMap).forEach(c => {
+              c.clientStatus = (c.hasDiagnostico || c.hasCredito || c.hasERP || c.hasConsultoria)
+                ? "Ativo"
+                : "Pendente";
+            });
+
+            const clientsArray = Object.values(clientsMap);
+            setDerivedClients(clientsArray);
+
+            // Stats (baseados em diagnósticos completados, sem alteração)
+            const completedDiags = safeDialgs.filter(d => d.internal_status === 'completed');
+            setStats({
+              clients: clientsArray.length,
+              completed: completedDiags.length,
+              healthy: completedDiags.filter(d => d.health_status === 'healthy').length,
+              warning: completedDiags.filter(d => d.health_status === 'warning').length,
+              critical: completedDiags.filter(d => d.health_status === 'critical').length,
+              structured: safeDialgs.filter(d => d.form_type === 'Estruturado').length,
+              guided: safeDialgs.filter(d => d.form_type === 'Guiado').length
+            });
+
+            if (selectedClient) {
+              const normKey = normCnpj(selectedClient.cnpj) || selectedClient.cnpj;
+              const updated = clientsMap[normKey];
+              if (updated) setSelectedClient(updated);
             }
           };
 
@@ -1004,9 +876,12 @@
           const handlePrintPDF = () => window.print();
           const downloadCSV = () => {
               if (filteredClients.length === 0) return;
-              const headers = ["Razao Social", "CNPJ", "Nome", "Email", "Telefone", "Data de Cadastro", "Total de Diagnosticos"];
+              const headers = ["Razao Social", "CNPJ", "Nome", "Email", "Telefone", "Data de Cadastro", "Status", "Diagnostico", "Credito", "ERP", "Consultoria"];
               const csvRows = filteredClients.map(c => [
-                  `"${c.razao || ''}"`, `"${c.cnpj || ''}"`, `"${c.name || ''}"`, `"${c.email || ''}"`, `"${c.phone || ''}"`, `"${new Date(c.firstDate).toLocaleDateString()}"`, `"${c.submissionCount}"`
+                  `"${c.razao || ''}"`, `"${c.cnpj || ''}"`, `"${c.name || ''}"`, `"${c.email || ''}"`, `"${c.phone || ''}"`,
+                  `"${new Date(c.firstDate).toLocaleDateString()}"`, `"${c.clientStatus || ''}"`,
+                  `"${c.hasDiagnostico ? 'Sim' : 'Não'}"`, `"${c.hasCredito ? 'Sim' : 'Não'}"`,
+                  `"${c.hasERP ? 'Sim' : 'Não'}"`, `"${c.hasConsultoria ? 'Sim' : 'Não'}"`
               ].join(","));
               const csvContent = [headers.join(","), ...csvRows].join("\n");
               const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1162,9 +1037,7 @@
                               <div className="w-full bg-white border border-slate-100 px-4 py-3 rounded-xl font-bold text-[#137789] text-xs outline-none min-h-[3rem] flex flex-wrap gap-2 items-center">
                                   {(isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos) ? (
                                       (isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos).split(', ').map((file, idx) => (
-                                          <span key={idx} className="bg-[#137789]/10 text-[#137789] px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold shadow-sm">
-                                              <FileBox size={14}/> {file}
-                                          </span>
+                                          <span key={idx} className="bg-[#137789]/10 text-[#137789] px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold shadow-sm"><FileBox size={14}/> {file}</span>
                                       ))
                                   ) : (
                                       <span className="text-slate-400">Nenhum arquivo anexado.</span>
@@ -1181,26 +1054,18 @@
               
               {/* SIDEBAR */}
               <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-[280px]' : 'w-20'} flex flex-col z-10 print-hidden`}>
-                
                 <div className={`flex items-center gap-3 p-6 pb-2 overflow-hidden cursor-pointer ${!isSidebarOpen ? 'justify-center' : ''}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                     {isSidebarOpen ? (
                         <img src="logo2.png" alt="Logo" className="h-8 object-contain" onError={(e) => { e.target.style.display = 'none'; }}/>
                     ) : (
-                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md">
-                          <ShieldCheck size={20} />
-                        </div>
+                        <div className="w-8 h-8 bg-[#ff7b00] rounded-lg shrink-0 flex items-center justify-center text-white shadow-md"><ShieldCheck size={20} /></div>
                     )}
                 </div>
-                
                 <nav className={`flex-1 space-y-3 mt-4 overflow-y-auto no-scrollbar pb-6 ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
-                    
-                    {/* 1. CADASTROS */}
                     <button onClick={goCadastros} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='cadastros'||view==='client_registration'?'bg-[#05121b] text-white shadow-md':'text-[#05121b] hover:bg-slate-50'}`}>
                         <FolderOpen size={20} className={`shrink-0 ${view==='cadastros'||view==='client_registration'?'text-[#ff7b00]':'text-slate-400'}`}/> 
                         {isSidebarOpen && <span className="whitespace-nowrap truncate">Cadastros</span>}
                     </button>
-
-                    {/* 2. DIAGNÓSTICO FINANCEIRO */}
                     <div className="flex flex-col w-full">
                         <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsDiagnosticMenuOpen(!isDiagnosticMenuOpen); }} 
                             className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
@@ -1221,8 +1086,6 @@
                             </div>
                         )}
                     </div>
-
-                    {/* 3. ERP FINANCEIRO */}
                     <div className="flex flex-col w-full">
                         <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsErpMenuOpen(!isErpMenuOpen); }} 
                             className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='erp_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
@@ -1240,8 +1103,6 @@
                             </div>
                         )}
                     </div>
-
-                    {/* 4. CONSULTORIA EMPRESARIAL */}
                     <div className="flex flex-col w-full">
                         <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsConsultoriaMenuOpen(!isConsultoriaMenuOpen); }} 
                             className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${isConsultoriaView ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
@@ -1253,26 +1114,18 @@
                         </button>
                         {isSidebarOpen && isConsultoriaMenuOpen && (
                             <div className="pl-5 mt-2 space-y-1">
-                                {/* Base de Clientes */}
                                 <button onClick={goConsultoriaBase} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='consultoria_base'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
-                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_base' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div>
-                                    <span className="whitespace-nowrap">Base de Clientes</span>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_base' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div><span className="whitespace-nowrap">Base de Clientes</span>
                                 </button>
-                                {/* Acompanhar Consultorias */}
                                 <button onClick={goConsultoriaAcompanhar} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='consultoria_acompanhar'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
-                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_acompanhar' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div>
-                                    <span className="whitespace-nowrap">Acompanhar Consultorias</span>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_acompanhar' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div><span className="whitespace-nowrap">Acompanhar Consultorias</span>
                                 </button>
-                                {/* Nova Consultoria */}
                                 <button onClick={goConsultoriaNova} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='consultoria_nova'?'bg-slate-100 text-[#ff7b00]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
-                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_nova' ? 'bg-[#ff7b00]' : 'bg-slate-300'}`}></div>
-                                    <span className="whitespace-nowrap">Nova Consultoria</span>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_nova' ? 'bg-[#ff7b00]' : 'bg-slate-300'}`}></div><span className="whitespace-nowrap">Nova Consultoria</span>
                                 </button>
                             </div>
                         )}
                     </div>
-
-                    {/* 5. CRÉDITO */}
                     <div className="flex flex-col w-full">
                         <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsCreditoMenuOpen(!isCreditoMenuOpen); }} 
                             className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='credito_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
@@ -1290,9 +1143,7 @@
                             </div>
                         )}
                     </div>
-
                 </nav>
-
                 <div className={`p-4 border-t border-slate-100 ${!isSidebarOpen && 'px-2'}`}>
                     <button onClick={() => window.location.href='index.html'} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3.5 text-slate-400 font-bold text-xs uppercase hover:text-red-500 transition-colors`}>
                         <LogOut size={18} className="shrink-0"/> {isSidebarOpen && <span className="whitespace-nowrap">Sair do Admin</span>}
@@ -1321,12 +1172,8 @@
                                 </p>
                             </header>
                             <div className="flex items-center gap-3">
-                                <button onClick={downloadCSV} className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2 shadow-sm">
-                                    <Download size={16} /> Exportar CSV
-                                </button>
-                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm">
-                                    <RefreshCw size={16} /> Sincronizar
-                                </button>
+                                <button onClick={downloadCSV} className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2 shadow-sm"><Download size={16} /> Exportar CSV</button>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><RefreshCw size={16} /> Sincronizar</button>
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
@@ -1359,19 +1206,15 @@
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {currentClients.length > 0 ? currentClients.map(c => {
-                                        // VERIFICA SE TEM ALGUM PRODUTO PARA DEFINIR STATUS ATIVO
-                                        const isAtivo = c.hasDiagnostico || c.hasCredito || c.hasERP || c.hasConsultoria;
-                                        
-                                        return (
-                                        <tr key={c.cnpjOuId} className="hover:bg-slate-50 transition-colors">
+                                    {currentClients.length > 0 ? currentClients.map(c => (
+                                        <tr key={c.cnpj || c.email || c.name} className="hover:bg-slate-50 transition-colors">
                                             <td className="px-6 py-5">
-                                                <div className="text-[15px] font-medium text-[#05121b] mb-1 hover:text-[#137789] transition-colors cursor-pointer inline-block" onClick={() => openClientRegistration(c)}>{c.razao}</div>
-                                                <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                                                    <span>{c.cnpj}</span><span className="text-slate-300">|</span>
+                                                <div className="text-[15px] font-medium text-[#05121b] mb-1 hover:text-[#137789] transition-colors cursor-pointer inline-block" onClick={() => openClientRegistration(c)}>{c.razao || c.name || "-"}</div>
+                                                <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium flex-wrap">
+                                                    <span>{c.cnpj || "-"}</span><span className="text-slate-300">|</span>
                                                     <span>{c.email || "-"}</span><span className="text-slate-300">|</span>
                                                     <span>{c.phone || "-"}</span><span className="text-slate-300">|</span>
-                                                    <span>{c.name}</span>
+                                                    <span>{c.name || "-"}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-5 align-top pt-5">
@@ -1380,25 +1223,26 @@
                                             </td>
                                             <td className="px-6 py-5 text-center">
                                                 <div className="flex flex-col items-center gap-1.5">
-                                                    {!isAtivo && <span className="text-slate-400 text-xs italic">-</span>}
                                                     {c.hasDiagnostico && <span className="bg-[#05121b] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Diagnóstico Financeiro</span>}
                                                     {c.hasCredito && <span className="bg-[#ff7b00] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Crédito</span>}
                                                     {c.hasERP && <span className="bg-[#137789] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">ERP Financeiro</span>}
                                                     {c.hasConsultoria && <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Consultoria</span>}
+                                                    {!c.hasDiagnostico && !c.hasCredito && !c.hasERP && !c.hasConsultoria && (
+                                                        <span className="text-slate-300 text-[10px] font-bold">Nenhum produto</span>
+                                                    )}
                                                 </div>
                                             </td>
+                                            {/* STATUS: Pendente ou Ativo baseado nos produtos */}
                                             <td className="px-6 py-5 text-center align-top pt-6">
-                                                {isAtivo ? (
-                                                    <span className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">Ativo</span>
-                                                ) : (
-                                                    <span className="bg-slate-100 text-slate-500 border border-slate-200 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">Pendente</span>
-                                                )}
+                                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.clientStatus === 'Ativo' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                                                    {c.clientStatus || "Pendente"}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-5 text-center align-top pt-6">
                                                 <button className="text-slate-400 hover:text-[#05121b] transition-colors"><MoreHorizontal size={20}/></button>
                                             </td>
                                         </tr>
-                                    )}) : (
+                                    )) : (
                                         <tr><td colSpan="5" className="p-16 text-center text-slate-400 text-sm">
                                             {view === 'credito_base' ? 'Nenhum cliente possui o produto Crédito ativo.' : view === 'erp_base' ? 'Nenhum cliente possui o produto ERP Financeiro ativo.' : view === 'consultoria_base' ? 'Nenhum cliente possui o produto Consultoria ativo.' : 'Nenhum cadastro encontrado.'}
                                         </td></tr>
@@ -1423,7 +1267,7 @@
                     <div className="max-w-6xl mx-auto w-full pb-20">
                         <div className="flex items-center gap-4 mb-6">
                             <button onClick={goCadastros} className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"><ArrowLeft size={18} /></button>
-                            <h1 className="text-xl font-medium text-slate-500">{selectedClient.razao}</h1>
+                            <h1 className="text-xl font-medium text-slate-500">{selectedClient.razao || selectedClient.name}</h1>
                         </div>
                         <div className="flex items-center gap-8 border-b-2 border-slate-200 mb-6">
                             <button onClick={() => setClientTab('cadastro')} className={`px-2 py-3 text-sm font-bold ${clientTab === 'cadastro' ? 'text-[#ff7b00] border-b-2 border-[#ff7b00]' : 'text-slate-400 hover:text-slate-600'} -mb-0.5 transition-colors`}>Cadastro</button>
@@ -1436,8 +1280,8 @@
                                     <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
                                         <h3 className="text-base font-bold text-[#05121b] mb-4">Resumo</h3>
                                         <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                                            <div><p className="text-[10px] text-slate-400 mb-1">Razão social</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.razao}</p></div>
-                                            <div><p className="text-[10px] text-slate-400 mb-1">CNPJ</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.cnpj}</p></div>
+                                            <div><p className="text-[10px] text-slate-400 mb-1">Razão social</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.razao || "-"}</p></div>
+                                            <div><p className="text-[10px] text-slate-400 mb-1">CNPJ</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.cnpj || "-"}</p></div>
                                             <div className="col-span-2 border-t border-slate-100"></div>
                                             <div><p className="text-[10px] text-slate-400 mb-1">Data de fundação</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.latestSubmission?.data?.v1_tempoOperacao || selectedClient.latestSubmission?.data?.g_tempoExistencia || "-"}</p></div>
                                             <div className="grid grid-cols-2 gap-4">
@@ -1618,9 +1462,7 @@
                                             <td className="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">{new Date(d.created_at).toLocaleDateString()}</td>
                                             <td className="p-5 text-center"><span className="bg-orange-50 text-[#ff7b00] px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-orange-200">Analisar</span></td>
                                             <td className="p-5 text-right">
-                                                <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] shadow-sm transition-all hover:scale-[1.05] flex items-center gap-2 ml-auto">
-                                                    Abrir <ChevronRight size={14} />
-                                                </button>
+                                                <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] shadow-sm transition-all hover:scale-[1.05] flex items-center gap-2 ml-auto">Abrir <ChevronRight size={14} /></button>
                                             </td>
                                         </tr>
                                     )) : (
@@ -1628,6 +1470,152 @@
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* BASE DE CLIENTES DIAGNÓSTICO */}
+                {view === 'clients' && (
+                    <div className="max-w-6xl mx-auto w-full">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                            <header>
+                                <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Banco de Clientes</h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Clientes com diagnósticos concluídos</p>
+                            </header>
+                            <div className="flex items-center gap-3">
+                                <button onClick={downloadCSV} className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2 shadow-sm"><Download size={16} /> Baixar Planilha</button>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><RefreshCw size={16} /> Sincronizar</button>
+                            </div>
+                        </div>
+                        <div className="flex flex-col md:flex-row gap-4 items-end bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                            <div className="flex-1 w-full space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Buscar</label>
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Digite para buscar..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
+                                </div>
+                            </div>
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Diagnóstico</label>
+                                <select value={clientStatusFilter} onChange={(e) => setClientStatusFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] transition-all appearance-none cursor-pointer">
+                                    <option value="todos">Todos</option>
+                                    <option value="healthy">Saudável</option>
+                                    <option value="warning">Ajustar</option>
+                                    <option value="critical">Atenção</option>
+                                </select>
+                            </div>
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Tipo</label>
+                                <select value={clientTypeFilter} onChange={(e) => setClientTypeFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] transition-all appearance-none cursor-pointer">
+                                    <option value="todos">Todos</option>
+                                    <option value="Estruturado">Estruturado</option>
+                                    <option value="Guiado">Guiado</option>
+                                </select>
+                            </div>
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (De)</label>
+                                <input type="date" value={clientDateFrom} onChange={(e) => setClientDateFrom(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] transition-all"/>
+                            </div>
+                            <div className="w-full md:w-40 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (Até)</label>
+                                <input type="date" value={clientDateTo} onChange={(e) => setClientDateTo(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] transition-all"/>
+                            </div>
+                            <button onClick={clearClientFilters} title="Limpar Filtros" className="h-[42px] w-[42px] shrink-0 bg-slate-50 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"><X size={16} /></button>
+                        </div>
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 border-b border-slate-100">
+                                    <tr>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Contato</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Histórico</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Data Cadastro</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Diagnóstico</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Tipo</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {currentClients.length > 0 ? currentClients.map(c => {
+                                        const lastSub = c.latestSubmission || c.history[0];
+                                        return (
+                                        <tr key={c.cnpj || c.email} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-5"><div className="font-black text-sm uppercase text-[#05121b] tracking-tight">{c.razao}</div><div className="text-[10px] text-slate-400 font-bold mt-0.5 tracking-widest">{c.cnpj}</div></td>
+                                            <td className="p-5"><div className="text-[10px] font-bold text-slate-500 mb-0.5">{c.email || "-"}</div><div className="text-[10px] font-bold text-slate-500">{c.phone || "-"}</div></td>
+                                            <td className="p-5 text-center"><span className="text-sm font-black text-[#137789]">{c.submissionCount}</span></td>
+                                            <td className="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">{new Date(c.firstDate).toLocaleDateString()}</td>
+                                            <td className="p-5 text-center flex justify-center mt-2.5">{lastSub ? getDiagnosticoBadge(lastSub.health_status) : "-"}</td>
+                                            <td className="p-5 text-center"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-3 py-1 rounded-md">{lastSub ? lastSub.form_type : "-"}</span></td>
+                                            <td className="p-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button onClick={() => handleSendWhatsApp(c.phone)} className="bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 p-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors" title="Chamar no WhatsApp"><MessageCircle size={16} /></button>
+                                                    <button onClick={() => openClientProfile(c)} className="border-2 border-slate-200 text-slate-500 px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-[#137789] hover:text-[#137789] transition-all flex items-center gap-2">Ver <Eye size={14} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}) : (
+                                        <tr><td colSpan="7" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum cliente encontrado.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {totalPages > 1 && (
+                            <div className="flex justify-center items-center gap-2 pb-10">
+                                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronLeft size={16} /></button>
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <button key={i} onClick={() => paginate(i + 1)} className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${currentPage === i + 1 ? 'bg-[#137789] text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{i + 1}</button>
+                                ))}
+                                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronRight size={16} /></button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* FICHA DO CLIENTE */}
+                {view === 'client_profile' && selectedClient && (
+                    <div className="max-w-5xl mx-auto pb-20 w-full">
+                        <div className="flex justify-between items-center mb-8">
+                            <button onClick={goClients} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors"><ArrowLeft size={16}/> Voltar para clientes</button>
+                            <span className="bg-slate-100 text-slate-500 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200">Ficha do Cliente</span>
+                        </div>
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-8 flex items-center gap-6">
+                            <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center text-[#ff7b00] shrink-0"><Building2 size={32} /></div>
+                            <div>
+                                <h2 className="text-2xl font-black italic uppercase text-[#05121b] tracking-tighter mb-3">{selectedClient.razao}</h2>
+                                <div className="flex flex-wrap gap-4 text-[11px] font-bold text-slate-400">
+                                    <span className="flex items-center gap-1.5"><FileText size={14}/> {selectedClient.cnpj}</span>
+                                    <span className="flex items-center gap-1.5"><Mail size={14}/> {selectedClient.email || "Sem e-mail"}</span>
+                                    <span className="flex items-center gap-1.5"><Phone size={14}/> {selectedClient.phone || "Sem telefone"}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-12">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-[#05121b] flex items-center gap-2 mb-4"><StickyNote size={16} className="text-[#137789]"/> Observações Gerais do Cliente (Admin)</label>
+                            <textarea value={generalClientNotes} onChange={(e) => setGeneralClientNotes(e.target.value)} className="w-full h-32 p-5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed mb-4"></textarea>
+                            <div className="flex justify-end items-center gap-4">
+                                {clientNotesSaveStatus && <span className="text-xs font-bold text-emerald-600">{clientNotesSaveStatus}</span>}
+                                <button onClick={handleSaveClientNotes} className="bg-[#05121b] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-all flex items-center gap-2 shadow-md"><Save size={14} /> Salvar Observação</button>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black italic uppercase text-[#05121b] tracking-tighter mb-6">Histórico de Diagnósticos ({selectedClient.history.length})</h3>
+                            <div className="space-y-4">
+                                {selectedClient.history.map(submission => (
+                                    <div key={submission.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 hover:shadow-md transition-shadow">
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest">{submission.form_type}</span>
+                                                <span className="text-[10px] font-bold text-slate-400">{new Date(submission.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <h4 className="font-black text-sm uppercase text-[#05121b]">{submission.razao_social || submission.client_name}</h4>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            {getDiagnosticoBadge(submission.health_status)}
+                                            <button onClick={() => handleAdminAnalyze(submission)} className="bg-[#137789] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] transition-all flex items-center gap-2 shadow-sm">Ver Análise <ChevronRight size={14} /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1712,12 +1700,12 @@
                     </div>
                 )}
 
-                {/* ─── NOVO: ACOMPANHAR CONSULTORIAS ─── */}
+                {/* ACOMPANHAR CONSULTORIAS */}
                 {view === 'consultoria_acompanhar' && (
                     <TelaAcompanharConsultorias consultorias={consultorias} />
                 )}
 
-                {/* ─── NOVO: NOVA CONSULTORIA ─── */}
+                {/* NOVA CONSULTORIA */}
                 {view === 'consultoria_nova' && (
                     <TelaNovaConsultoria 
                         derivedClients={derivedClients}
