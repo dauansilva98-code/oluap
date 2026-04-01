@@ -442,7 +442,8 @@
             const checkSession = async () => {
                 const { data: { session } } = await supabase.auth.getSession();
                 
-                if (session) {
+                // Verifica se tem sessão E se o usuário tem e-mail (para barrar os anônimos antigos)
+                if (session && session.user && session.user.email) {
                     const currentUser = session.user;
                     setUser(currentUser);
                     fetchDiagnostics(currentUser.id);
@@ -458,11 +459,12 @@
                             g_responsavel: meta.full_name || prev.g_responsavel, g_email: currentUser.email || prev.g_email, g_phone: meta.phone || prev.g_phone, g_cnpj: meta.cnpj || prev.g_cnpj, g_razao: meta.razao_social || prev.g_razao,
                         }));
                     }
+                    setAuthChecking(false);
                 } else {
-                    // SE NÃO TIVER SESSÃO, REDIRECIONA PARA O LOGIN
+                    // Se for anônimo fantasma ou não tiver logado, limpa a memória e joga pro login
+                    await supabase.auth.signOut();
                     window.location.href = 'login.html';
                 }
-                setAuthChecking(false);
             };
             checkSession();
           }, []);
@@ -587,6 +589,7 @@
           const handleDownloadAdminPDF = () => { if (selectedSubmission && selectedSubmission.admin_result_pdf) window.open(selectedSubmission.admin_result_pdf, '_blank'); else alert("O arquivo PDF do seu diagnóstico ainda não está disponível para download. Por favor, tente novamente mais tarde ou contate nosso suporte."); };
           const handleContactExpert = () => { window.open("https://wa.me/5511999999999?text=Olá, gostaria de falar com um especialista sobre meu diagnóstico OLUAP.", "_blank"); };
 
+          // Se estiver verificando autenticação, mostra apenas loading. Não renderiza landing.
           if (authChecking) return <div className="min-h-screen bg-[#05121b] flex items-center justify-center"><Loader2 className="animate-spin text-[#ff7b00]" size={32}/></div>;
 
           const parsedCharts = selectedSubmission?.chart_data_input ? parseChartData(selectedSubmission.chart_data_input) : null;
