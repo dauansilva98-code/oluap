@@ -45,8 +45,9 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
+        // AJUSTE: O ícone 'User' agora está importado corretamente
         import { 
-          Activity, Database, Briefcase, CreditCard, Lock, ArrowRight, LogOut, Loader2, ShieldCheck, Sparkles, CheckCircle
+          Activity, Database, Briefcase, CreditCard, Lock, ArrowRight, LogOut, Loader2, ShieldCheck, Sparkles, CheckCircle, User
         } from 'lucide-react';
 
         // --- CONEXÃO SUPABASE OLUAP ---
@@ -88,27 +89,31 @@
                 const fullName = session.user.user_metadata?.full_name || 'Cliente';
                 setUserName(fullName.split(' ')[0]);
 
-                // Busca o perfil do usuário para ver quais produtos ele comprou
-                // IMPORTANTE: Você precisará criar essas colunas (booleanas) na tabela 'profiles' no Supabase
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('has_diagnostico, has_erp, has_consultoria, has_credito')
-                    .eq('id', session.user.id)
-                    .single();
+                try {
+                    // Busca o perfil do usuário para ver quais produtos ele comprou
+                    const { data: profile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('has_diagnostico, has_erp, has_consultoria, has_credito')
+                        .eq('id', session.user.id)
+                        .single();
 
-                if (profile) {
-                    setAccess({
-                        diagnostico: profile.has_diagnostico === true,
-                        erp: profile.has_erp === true,
-                        consultoria: profile.has_consultoria === true,
-                        credito: profile.has_credito === true
-                    });
-                } else {
-                    // Fallback para teste: Libera o diagnóstico por padrão para não travar a tela
-                    setAccess(prev => ({ ...prev, diagnostico: true }));
+                    if (profile) {
+                        setAccess({
+                            diagnostico: profile.has_diagnostico === true,
+                            erp: profile.has_erp === true,
+                            consultoria: profile.has_consultoria === true,
+                            credito: profile.has_credito === true
+                        });
+                    } else {
+                        // Fallback para teste: Libera o diagnóstico por padrão
+                        setAccess(prev => ({ ...prev, diagnostico: true }));
+                    }
+                } catch (err) {
+                    console.error("Erro ao buscar acesso no banco:", err);
+                    setAccess(prev => ({ ...prev, diagnostico: true })); // Previne a tela de travar caso a coluna ainda não exista
+                } finally {
+                    setLoading(false);
                 }
-
-                setLoading(false);
             };
 
             const handleLogout = async () => {
@@ -282,7 +287,7 @@
                                 </div>
                                 
                                 {/* Corpo do Modal */}
-                                <div className="p-8">
+                                <div className="p-8 text-[#05121b]">
                                     <p className="text-slate-600 font-medium text-center mb-6">{upsellModal.desc}</p>
                                     
                                     <div className="space-y-3 mb-8">
@@ -305,8 +310,6 @@
                                             Agora não
                                         </button>
                                         <button onClick={() => {
-                                            // Aqui você coloca o link de checkout correspondente a cada produto
-                                            // Exemplo: if(upsellModal.id === 'erp') window.open('LINK_CHECKOUT_ERP')
                                             alert(`Redirecionando para o checkout de ${upsellModal.title}...`);
                                         }} className={`flex-1 py-4 rounded-xl text-xs font-black text-white uppercase tracking-widest transition-transform hover:scale-[1.02] shadow-md ${upsellModal.bgBtn}`}>
                                             Assinar Agora
