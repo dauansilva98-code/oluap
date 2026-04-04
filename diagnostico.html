@@ -772,7 +772,7 @@
               <aside className={`bg-white h-screen border-r border-slate-100 py-6 flex flex-col fixed left-0 top-0 z-40 print:hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-56 px-5' : 'w-16 px-2'}`}>
                 <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="absolute -right-3 top-8 bg-white border border-slate-200 p-1.5 rounded-full shadow-sm text-slate-400 hover:text-[#ff7b00] z-50 flex items-center justify-center transition-colors hover:scale-110"><ChevronLeft size={14} /></button>
                 <div className={`flex items-center ${isSidebarOpen ? 'justify-start px-2' : 'justify-center'} mb-8 mt-2`}>
-                  {isSidebarOpen ? <img src="logo2.png" alt="OLUAP" className="h-8 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}/> : <div className="w-6 h-6 shrink-0 bg-[#ff7b00] rounded flex items-center justify-center shadow-sm"><ShieldCheck className="text-white" size={14} /></div>}
+                  {isSidebarOpen ? <img src="logo2.png" alt="OLUAP" className="h-8 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}/> : <img src="icone.png" alt="Ícone OLUAP" className="w-7 h-7 object-contain shrink-0" />}
                   <div className="hidden"><div className="w-6 h-6 shrink-0 bg-[#ff7b00] rounded flex items-center justify-center shadow-sm"><ShieldCheck className="text-white" size={14} /></div><span className="text-lg font-black text-[#05121b] tracking-tighter italic whitespace-nowrap ml-2">OLUAP</span></div>
                 </div>
                 <nav className="flex-1 space-y-2 mt-4">
