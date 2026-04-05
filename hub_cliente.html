@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OLUAP - Meu Ecossistema</title>
+    <title>oluap - Meu Ecossistema</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -45,7 +45,6 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        // AJUSTE: O ícone 'User' agora está importado corretamente
         import { 
           Activity, Database, Briefcase, CreditCard, Lock, ArrowRight, LogOut, Loader2, ShieldCheck, Sparkles, CheckCircle, User
         } from 'lucide-react';
@@ -54,6 +53,17 @@
         const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Funções de Máscara
+        const maskCNPJ = (value) => {
+            if (!value) return "";
+            return value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').replace(/(-\d{2})\d+?$/, '$1');
+        };
+
+        const maskPhone = (value) => {
+            if (!value) return "";
+            return value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d)(\d{4})$/, '$1-$2').substring(0, 15);
+        };
 
         const App = () => {
             const [loading, setLoading] = useState(true);
@@ -68,8 +78,14 @@
                 credito: false
             });
 
-            // Controle do Modal de Upsell
+            // Controles de Modais
             const [upsellModal, setUpsellModal] = useState(null);
+            const [profileModalOpen, setProfileModalOpen] = useState(false);
+            
+            // Estados do Perfil
+            const [profileData, setProfileData] = useState({ full_name: '', email: '', phone: '', cnpj: '', razao_social: '' });
+            const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+            const [profileSuccess, setProfileSuccess] = useState("");
 
             useEffect(() => {
                 checkAuthAndAccess();
@@ -85,9 +101,18 @@
 
                 setUser(session.user);
                 
-                // Extrai o primeiro nome do usuário
-                const fullName = session.user.user_metadata?.full_name || 'Cliente';
+                // Extrai metadados do usuário para preencher o perfil base
+                const meta = session.user.user_metadata || {};
+                const fullName = meta.full_name || 'Cliente';
                 setUserName(fullName.split(' ')[0]);
+
+                setProfileData({
+                    full_name: meta.full_name || '',
+                    email: session.user.email || '',
+                    phone: meta.phone || '',
+                    cnpj: meta.cnpj || '',
+                    razao_social: meta.razao_social || ''
+                });
 
                 try {
                     // Busca o perfil do usuário para ver quais produtos ele comprou
@@ -110,9 +135,31 @@
                     }
                 } catch (err) {
                     console.error("Erro ao buscar acesso no banco:", err);
-                    setAccess(prev => ({ ...prev, diagnostico: true })); // Previne a tela de travar caso a coluna ainda não exista
+                    setAccess(prev => ({ ...prev, diagnostico: true })); 
                 } finally {
                     setLoading(false);
+                }
+            };
+
+            const handleUpdateProfile = async (e) => {
+                e.preventDefault();
+                setIsUpdatingProfile(true);
+                setProfileSuccess("");
+                
+                const { error } = await supabase.auth.updateUser({ 
+                    data: { 
+                        full_name: profileData.full_name, 
+                        phone: profileData.phone, 
+                        cnpj: profileData.cnpj, 
+                        razao_social: profileData.razao_social 
+                    } 
+                });
+                
+                setIsUpdatingProfile(false);
+                if (!error) {
+                    setProfileSuccess("Perfil salvo com sucesso!");
+                    setUserName((profileData.full_name || 'Cliente').split(' ')[0]);
+                    setTimeout(() => setProfileSuccess(""), 3000);
                 }
             };
 
@@ -123,15 +170,12 @@
 
             const handleProductClick = (produtoInfo) => {
                 if (access[produtoInfo.id]) {
-                    // Produto Ativo -> Redireciona para a URL do produto
                     window.location.href = produtoInfo.url;
                 } else {
-                    // Produto Bloqueado -> Abre o modal de Upsell
                     setUpsellModal(produtoInfo);
                 }
             };
 
-            // Informações dos 4 Produtos da Empresa
             const productsInfo = [
                 {
                     id: 'diagnostico',
@@ -141,7 +185,7 @@
                     color: 'text-[#ff7b00]',
                     bgLight: 'bg-[#ff7b00]/10',
                     bgBtn: 'bg-[#ff7b00] hover:bg-[#e66e00]',
-                    url: 'diagnostico.html', // A URL da plataforma do diagnóstico
+                    url: 'diagnostico.html',
                     price: 'R$ 289,90',
                     benefits: ['Análise de Dívidas', 'Visão de Lucratividade', 'Plano de Ação']
                 },
@@ -153,7 +197,7 @@
                     color: 'text-[#137789]',
                     bgLight: 'bg-[#137789]/10',
                     bgBtn: 'bg-[#137789] hover:bg-[#0f5c6b]',
-                    url: 'erp.html', // A URL do ERP (quando for criado)
+                    url: 'erp.html',
                     price: 'R$ 99,90/mês',
                     benefits: ['Fluxo de Caixa', 'Contas a Pagar/Receber', 'Relatórios Automáticos']
                 },
@@ -165,7 +209,7 @@
                     color: 'text-blue-500',
                     bgLight: 'bg-blue-500/10',
                     bgBtn: 'bg-blue-600 hover:bg-blue-700',
-                    url: 'consultoria.html', // URL da área de consultoria
+                    url: 'consultoria.html',
                     price: 'Sob Consulta',
                     benefits: ['Reuniões Mensais', 'Planejamento Estratégico', 'Mentoria Exclusiva']
                 },
@@ -177,7 +221,7 @@
                     color: 'text-emerald-500',
                     bgLight: 'bg-emerald-500/10',
                     bgBtn: 'bg-emerald-600 hover:bg-emerald-700',
-                    url: 'credito.html', // URL da área de crédito
+                    url: 'credito.html',
                     price: 'Primeira operação sem cadastro até 50 mil, Taxas a partir de 2%',
                     benefits: ['Antecipação de Recebiveis', 'Sem burocracia', 'Análise Rápida']
                 }
@@ -196,19 +240,24 @@
                     {/* Header Pessoal */}
                     <header className="px-6 py-8 md:px-12 md:py-10 max-w-7xl mx-auto w-full flex flex-col md:flex-row items-center justify-between gap-6 border-b border-white/5">
                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/20">
+                            {/* Botão de Perfil */}
+                            <button 
+                                onClick={() => setProfileModalOpen(true)} 
+                                className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/20 hover:bg-white/20 transition-colors cursor-pointer shadow-lg"
+                                title="Editar Meu Perfil"
+                            >
                                 <User className="text-white" size={24} />
-                            </div>
+                            </button>
                             <div>
                                 <p className="text-slate-400 text-xs md:text-sm font-bold uppercase tracking-widest mb-0.5">Bem-vindo(a) de volta,</p>
                                 <h1 className="text-2xl md:text-3xl font-black text-white italic tracking-tighter">{userName}</h1>
                             </div>
                         </div>
                         <div className="flex items-center gap-6">
-                            <img src="logo2.png" alt="OLUAP" className="h-8 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}/>
+                            <img src="logo2.png" alt="oluap" className="h-8 object-contain" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}/>
                             <div className="hidden items-center">
                                 <ShieldCheck className="text-[#ff7b00]" size={24} />
-                                <span className="font-black italic text-xl tracking-tighter ml-2">OLUAP</span>
+                                <span className="font-bold text-xl tracking-tighter ml-2">oluap</span>
                             </div>
                             <button onClick={handleLogout} className="text-slate-400 hover:text-rose-500 transition-colors" title="Sair da Conta">
                                 <LogOut size={20} />
@@ -219,7 +268,7 @@
                     {/* Área Central: Cards dos Produtos */}
                     <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-12 flex flex-col justify-center">
                         <div className="text-center mb-12">
-                            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">Seu Ecossistema <span className="text-[#137789] italic">OLUAP</span></h2>
+                            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">Seu Ecossistema <span className="text-[#137789] font-bold">oluap</span></h2>
                             <p className="text-slate-400 font-medium text-sm md:text-base max-w-xl mx-auto">Selecione a plataforma que deseja acessar. Soluções inativas podem ser ativadas a qualquer momento para impulsionar seu negócio.</p>
                         </div>
 
@@ -238,7 +287,6 @@
                                                 : 'bg-[#05121b] hover:bg-white/5 border-slate-800/80 opacity-80 hover:opacity-100'
                                             }`}
                                     >
-                                        {/* Status Tag */}
                                         <div className="absolute top-6 right-6">
                                             {isActive ? (
                                                 <div className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
@@ -251,7 +299,6 @@
                                             )}
                                         </div>
 
-                                        {/* Ícone e Título */}
                                         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 ${isActive ? prod.bgLight : 'bg-slate-800'}`}>
                                             <IconComp size={24} className={isActive ? prod.color : 'text-slate-500'} />
                                         </div>
@@ -263,7 +310,6 @@
                                             {prod.desc}
                                         </p>
 
-                                        {/* Botão Inferior */}
                                         <div className={`w-full py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-colors
                                             ${isActive ? `${prod.bgBtn} text-white shadow-md` : 'bg-slate-800 text-slate-300 group-hover:bg-slate-700'}
                                         `}>
@@ -275,18 +321,63 @@
                         </div>
                     </main>
 
+                    {/* MODAL DE PERFIL */}
+                    {profileModalOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05121b]/80 backdrop-blur-md px-4">
+                            <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+                                <div className="p-6 md:p-8 text-[#05121b]">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="text-2xl font-black text-[#05121b] tracking-tight">Meu Perfil</h3>
+                                        <button onClick={() => setProfileModalOpen(false)} className="text-slate-400 hover:text-red-500 font-bold text-2xl transition-colors">&times;</button>
+                                    </div>
+                                    <p className="text-xs text-slate-500 font-medium mb-6">Mantenha seus dados atualizados aqui. Eles serão preenchidos automaticamente nas plataformas do seu ecossistema.</p>
+                                    
+                                    <form onSubmit={handleUpdateProfile} className="space-y-4">
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Nome Completo</label>
+                                            <input type="text" value={profileData.full_name} onChange={e => setProfileData({...profileData, full_name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789] text-xs transition-all" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">E-mail de Acesso</label>
+                                            <input type="email" value={profileData.email} readOnly className="w-full bg-slate-100 border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-slate-400 outline-none text-xs cursor-not-allowed" />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Celular / WhatsApp</label>
+                                                <input type="text" value={profileData.phone} onChange={e => setProfileData({...profileData, phone: maskPhone(e.target.value)})} maxLength={15} placeholder="(00) 00000-0000" className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789] text-xs transition-all" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">CNPJ</label>
+                                                <input type="text" value={profileData.cnpj} onChange={e => setProfileData({...profileData, cnpj: maskCNPJ(e.target.value)})} maxLength={18} placeholder="00.000.000/0000-00" className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789] text-xs transition-all" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Razão Social da Empresa</label>
+                                            <input type="text" value={profileData.razao_social} onChange={e => setProfileData({...profileData, razao_social: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789] text-xs transition-all" />
+                                        </div>
+                                        
+                                        <div className="pt-4 flex items-center justify-between">
+                                            <span className="text-xs font-bold text-emerald-600">{profileSuccess}</span>
+                                            <button type="submit" disabled={isUpdatingProfile} className="bg-[#137789] hover:bg-[#0f5c6b] text-white px-6 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-md hover:scale-[1.02]">
+                                                {isUpdatingProfile ? <Loader2 size={14} className="animate-spin" /> : "Salvar Dados"}
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* MODAL DE UPSELL */}
                     {upsellModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05121b]/80 backdrop-blur-md px-4">
                             <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
-                                {/* Header do Modal Colorido */}
                                 <div className={`${upsellModal.bgBtn} p-8 text-center relative overflow-hidden`}>
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
                                     <upsellModal.icon size={48} className="text-white mx-auto mb-4 relative z-10 opacity-90" />
                                     <h3 className="text-2xl font-black text-white tracking-tight relative z-10">{upsellModal.title}</h3>
                                 </div>
                                 
-                                {/* Corpo do Modal */}
                                 <div className="p-8 text-[#05121b]">
                                     <p className="text-slate-600 font-medium text-center mb-6">{upsellModal.desc}</p>
                                     
