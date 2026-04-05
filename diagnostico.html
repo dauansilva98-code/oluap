@@ -611,6 +611,10 @@
 
           const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = 'login.html'; };
 
+          const handleBackToHub = () => {
+              window.location.href = 'hub_cliente.html';
+          };
+
           // NOVO: retomar rascunho
           const handleResumeDraft = () => {
               try {
@@ -785,7 +789,15 @@
                   <button onClick={() => {setFormMode(null); setFormStep(0); setView('form');}} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view === 'form' ? 'bg-[#05121b] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}><Plus size={isSidebarOpen ? 18 : 22}/> {isSidebarOpen && <span>Nova Análise</span>}</button>
                   <button onClick={() => setView('profile')} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${view === 'profile' ? 'bg-[#05121b] text-white shadow-md' : 'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}><User size={isSidebarOpen ? 18 : 22}/> {isSidebarOpen && <span>Meu Perfil</span>}</button>
                 </nav>
-                <button onClick={handleLogout} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-4 text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-red-500 transition-colors mt-6`}><LogOut size={isSidebarOpen ? 18 : 22} /> {isSidebarOpen && <span>Sair</span>}</button>
+                
+                <div className="mt-6 flex flex-col gap-2">
+                    <button onClick={handleBackToHub} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3 text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-[#137789] hover:bg-slate-50 rounded-xl transition-colors`}>
+                        <ArrowLeft size={isSidebarOpen ? 18 : 22} /> {isSidebarOpen && <span>Voltar ao Hub</span>}
+                    </button>
+                    <button onClick={handleLogout} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3 text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-red-500 hover:bg-slate-50 rounded-xl transition-colors`}>
+                        <LogOut size={isSidebarOpen ? 18 : 22} /> {isSidebarOpen && <span>Sair</span>}
+                    </button>
+                </div>
               </aside>
 
               <main className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-56' : 'ml-16'} p-6 md:p-8 lg:p-10 overflow-y-auto bg-slate-50/40 min-h-screen min-w-0 w-full`}>
