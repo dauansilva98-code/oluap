@@ -205,7 +205,8 @@
                     color: 'text-emerald-500',
                     bgLight: 'bg-emerald-500/10',
                     bgBtn: 'bg-emerald-600 hover:bg-emerald-700',
-                    url: "produto-credito.html",
+                    url: "credito.html",
+                    landingUrl: "produto-credito.html",
                     isFree: true,
                     price: 'Taxas a partir de 2% · Gratuito para você',
                     benefits: ['Antecipação de Recebíveis', 'Primeira operação até R$ 50k', 'Aprovação em até 24h']
@@ -441,7 +442,7 @@
                                         <button onClick={() => setModalInfo(null)} className="flex-1 py-3.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors">
                                             Fechar
                                         </button>
-                                        <a href={modalInfo.url} className="flex-1 py-3.5 rounded-xl text-xs font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 transition-colors">
+                                        <a href={modalInfo.landingUrl || modalInfo.url} className="flex-1 py-3.5 rounded-xl text-xs font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 transition-colors">
                                             Ver página completa <ArrowRight size={13} />
                                         </a>
                                     </div>
