@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultoria Empresarial — Sócio Estratégico · OLUAP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #05121b; color: white; }
+        .text-gradient-blue { background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-image: linear-gradient(to right, #3b82f6, #93c5fd); }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        .fade-up { animation: fadeUp 0.5s ease forwards; }
+    </style>
+</head>
+<body class="relative overflow-x-hidden antialiased">
+
+    <div class="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-600/6 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div class="fixed top-[40%] right-[-10%] w-[500px] h-[500px] bg-[#137789]/6 rounded-full blur-[120px] pointer-events-none z-0"></div>
+
+    <!-- NAV -->
+    <nav class="fixed top-0 w-full z-50 bg-[#05121b]/80 backdrop-blur-md border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3">
+                <img src="logo2.png" alt="OLUAP" class="h-8 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                <div class="hidden items-center gap-2">
+                    <div class="w-8 h-8 bg-[#ff7b00] rounded-lg flex items-center justify-center"><i data-lucide="shield-check" class="text-white w-5 h-5"></i></div>
+                    <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="login.html" class="text-sm font-bold text-slate-300 hover:text-white transition-colors uppercase tracking-widest hidden sm:block">Entrar</a>
+                <a href="cadastro.html?produto=consultoria" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]">
+                    Solicitar sem custo
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="relative z-10 pt-40 pb-24 px-6">
+        <div class="max-w-4xl mx-auto text-center fade-up">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 mb-8">
+                <span class="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-blue-400">Consultoria Empresarial · Modelo Sócio</span>
+            </div>
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1] mb-6">
+                Um sócio que só<br/>
+                <span class="text-gradient-blue italic">ganha quando você ganha.</span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Nossa consultoria não cobra mensalidade fixa. Atuamos como sócios estratégicos — entramos nos processos, no comercial, no financeiro e nas estratégias, e só lucramos quando você escala.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="cadastro.html?produto=consultoria" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
+                    Solicitar sem custo <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </a>
+                <div class="flex items-center gap-2 text-xs text-slate-400 font-bold">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-blue-400"></i>
+                    Sem custo inicial · Pagamento após contrato
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DIFERENCIAL CENTRAL -->
+    <section class="relative z-10 py-16 px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-gradient-to-br from-blue-900/30 to-[#05121b] border border-blue-500/20 rounded-3xl p-8 md:p-12 relative overflow-hidden text-center">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-[80px]"></div>
+                <div class="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="handshake" class="w-8 h-8 text-blue-400"></i>
+                </div>
+                <h2 class="text-2xl md:text-3xl font-black tracking-tighter mb-4 relative z-10">
+                    O modelo de consultoria que <span class="text-gradient-blue italic">alinha interesses</span>
+                </h2>
+                <p class="text-slate-400 text-sm leading-relaxed max-w-2xl mx-auto mb-8 relative z-10">
+                    Consultoria tradicional cobra mensalidade independente dos resultados. A OLUAP funciona diferente: construímos um modelo onde nossa remuneração está atrelada ao crescimento da sua empresa. Se você não crescer, não faz sentido para nenhum dos lados.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+                        <p class="text-lg font-black text-blue-400 mb-1">Sem mensalidade fixa</p>
+                        <p class="text-xs text-slate-400">Você não paga nada antes de ver resultado. Nossa remuneração vem do crescimento que geramos juntos.</p>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+                        <p class="text-lg font-black text-blue-400 mb-1">Valor personalizado</p>
+                        <p class="text-xs text-slate-400">Cada empresa tem um desafio diferente. Definimos juntos o modelo de remuneração baseado no tamanho e objetivo.</p>
+                    </div>
+                    <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+                        <p class="text-lg font-black text-blue-400 mb-1">Contrato após alinhamento</p>
+                        <p class="text-xs text-slate-400">Primeiro conversamos, entendemos seu negócio e apresentamos um plano. Você só assina se fizer sentido.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ÁREAS DE ATUAÇÃO -->
+    <section class="relative z-10 py-20 border-t border-white/5 bg-[#030a0f]">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="text-center mb-14">
+                <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">Onde atuamos</p>
+                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">As 4 frentes onde <span class="text-gradient-blue italic">aceleramos sua empresa</span></h2>
+                <p class="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">Não somos consultores que entregam relatório e somem. Entramos no operacional junto com você.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-[#05121b] border border-white/8 rounded-2xl p-7">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center">
+                            <i data-lucide="settings" class="w-6 h-6 text-blue-400"></i>
+                        </div>
+                        <h3 class="font-black text-base text-white">Processos</h3>
+                    </div>
+                    <p class="text-sm text-slate-400 leading-relaxed">Mapeamos e otimizamos os processos internos da empresa. Identificamos onde você perde tempo, dinheiro e qualidade — e construímos sistemas que funcionam sem depender de você.</p>
+                </div>
+                <div class="bg-[#05121b] border border-white/8 rounded-2xl p-7">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center">
+                            <i data-lucide="trending-up" class="w-6 h-6 text-emerald-400"></i>
+                        </div>
+                        <h3 class="font-black text-base text-white">Comercial</h3>
+                    </div>
+                    <p class="text-sm text-slate-400 leading-relaxed">Analisamos o processo de vendas, ticket médio, conversão e retenção. Construímos junto a estratégia para escalar o faturamento com previsibilidade e sem aumentar custo proporcionalmente.</p>
+                </div>
+                <div class="bg-[#05121b] border border-white/8 rounded-2xl p-7">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-xl flex items-center justify-center">
+                            <i data-lucide="bar-chart-2" class="w-6 h-6 text-[#ff7b00]"></i>
+                        </div>
+                        <h3 class="font-black text-base text-white">Financeiro</h3>
+                    </div>
+                    <p class="text-sm text-slate-400 leading-relaxed">Cuidamos da saúde financeira junto com você: controle de caixa, redução de custos, indicadores de margem e planejamento para crescer com segurança financeira e sem surpresas.</p>
+                </div>
+                <div class="bg-[#05121b] border border-white/8 rounded-2xl p-7">
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="w-12 h-12 bg-[#137789]/10 border border-[#137789]/20 rounded-xl flex items-center justify-center">
+                            <i data-lucide="compass" class="w-6 h-6 text-[#22d3ee]"></i>
+                        </div>
+                        <h3 class="font-black text-base text-white">Estratégia</h3>
+                    </div>
+                    <p class="text-sm text-slate-400 leading-relaxed">Definimos junto o posicionamento de mercado, os próximos passos e as prioridades que vão realmente mover o negócio. Nada de teoria — plano acionável com metas e responsáveis.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PARA QUEM É -->
+    <section class="relative z-10 py-20 border-t border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="text-center mb-14">
+                <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-3">Para quem é</p>
+                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">Sua empresa está pronta para <span class="text-gradient-blue italic">dar o próximo salto?</span></h2>
+            </div>
+            <div class="space-y-4">
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <i data-lucide="check" class="w-4 h-4 text-blue-400"></i>
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed">Empresas que faturam mas não conseguem crescer além de um teto e não sabem por quê o crescimento parou.</p>
+                </div>
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <i data-lucide="check" class="w-4 h-4 text-blue-400"></i>
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed">Empreendedores que precisam de uma visão de fora para identificar oportunidades que estão sendo ignoradas no dia a dia.</p>
+                </div>
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <i data-lucide="check" class="w-4 h-4 text-blue-400"></i>
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed">Negócios com processos desorganizados que dependem demais do fundador e precisam construir um time que funcione.</p>
+                </div>
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <i data-lucide="check" class="w-4 h-4 text-blue-400"></i>
+                    </div>
+                    <p class="text-sm text-slate-300 leading-relaxed">Empresas que querem crescer com solidez financeira, não apenas vender mais e ter mais dor de cabeça.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA FINAL -->
+    <section class="relative z-10 py-28 overflow-hidden border-t border-white/5 bg-[#030a0f]">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-900/15 to-transparent"></div>
+        <div class="max-w-3xl mx-auto px-6 text-center relative z-10">
+            <h2 class="text-3xl md:text-5xl font-black tracking-tighter mb-6">
+                Pronto para ter um sócio<br/>
+                <span class="text-gradient-blue italic">que trabalha por você?</span>
+            </h2>
+            <p class="text-slate-400 text-base mb-10 max-w-xl mx-auto leading-relaxed">
+                Sem custo inicial. A primeira conversa é gratuita e sem compromisso. Entendemos seu negócio e apresentamos como podemos ajudar. Você decide se faz sentido.
+            </p>
+            <a href="cadastro.html?produto=consultoria" class="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-10 py-5 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 transition-all hover:scale-[1.02]">
+                Solicitar consultoria sem custo <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </a>
+            <p class="text-xs text-slate-500 mt-6">
+                Já tem uma conta? <a href="login.html" class="text-blue-400 hover:underline font-bold">Faça login aqui</a>.
+            </p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-[#030a0f] border-t border-white/5 py-10">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            <a href="index.html" class="flex items-center gap-3">
+                <img src="logo2.png" alt="OLUAP" class="h-7 object-contain opacity-70" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                <div class="hidden items-center gap-2 opacity-50">
+                    <i data-lucide="shield-check" class="text-white w-5 h-5"></i>
+                    <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-6 text-xs font-bold text-slate-500">
+                <a href="index.html" class="hover:text-slate-300 transition-colors">Início</a>
+                <a href="produto-diagnostico.html" class="hover:text-slate-300 transition-colors">Diagnóstico</a>
+                <a href="credito.html" class="hover:text-slate-300 transition-colors">Crédito</a>
+                <a href="login.html" class="hover:text-slate-300 transition-colors">Login</a>
+            </div>
+            <p class="text-xs text-slate-600">© 2026 OLUAP. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>

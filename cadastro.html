@@ -74,13 +74,24 @@
         const maskCNPJ = (value) => value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').replace(/(-\d{2})\d+?$/, '$1');
         const maskPhone = (value) => value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d)(\d{4})$/, '$1-$2').substring(0, 15);
 
+        // Lê qual produto veio na URL (ex: cadastro.html?produto=diagnostico)
+        const urlParams = new URLSearchParams(window.location.search);
+        const produtoParam = urlParams.get('produto') || '';
+
+        const produtoLabels = {
+            diagnostico: 'Diagnóstico Financeiro',
+            credito: 'Crédito Inteligente',
+            consultoria: 'Consultoria Empresarial',
+            erp: 'ERP Financeiro'
+        };
+
         const Cadastro = () => {
             const [name, setName] = useState("");
             const [email, setEmail] = useState("");
             const [phone, setPhone] = useState("");
             const [cnpj, setCnpj] = useState("");
             const [password, setPassword] = useState("");
-            
+
             const [showPassword, setShowPassword] = useState(false);
             const [loading, setLoading] = useState(false);
             const [error, setError] = useState("");
@@ -111,13 +122,32 @@
 
                 if (error) {
                     setError(error.message);
-                } else {
-                    setSuccess(true);
-                    setTimeout(() => {
-                        window.location.href = 'hub_cliente.html';
-                    }, 3000);
+                    setLoading(false);
+                    return;
                 }
+
+                // Cria o perfil no banco com os produtos liberados
+                if (data?.user) {
+                    try {
+                        await supabase.from('profiles').upsert({
+                            id: data.user.id,
+                            full_name: name,
+                            has_consultoria: true,
+                            has_credito: true,
+                            has_diagnostico: produtoParam === 'diagnostico',
+                            has_erp: false,
+                            produto_origem: produtoParam || null
+                        }, { onConflict: 'id' });
+                    } catch (_) {
+                        // Ignora erro de perfil — o hub vai tentar criar ao carregar
+                    }
+                }
+
+                setSuccess(true);
                 setLoading(false);
+                setTimeout(() => {
+                    window.location.href = 'hub_cliente.html';
+                }, 2500);
             };
 
             return (
@@ -140,7 +170,13 @@
                         
                         <div className="text-center mb-10">
                             <h2 className="text-3xl font-black tracking-tighter mb-2 text-[#05121b]">Criar Conta</h2>
-                            <p className="text-slate-500 text-sm font-medium">Preencha seus dados para iniciar o diagnóstico.</p>
+                            {produtoParam && produtoLabels[produtoParam] ? (
+                                <p className="text-slate-500 text-sm font-medium">
+                                    Você está acessando: <strong className="text-[#ff7b00]">{produtoLabels[produtoParam]}</strong>
+                                </p>
+                            ) : (
+                                <p className="text-slate-500 text-sm font-medium">Preencha seus dados para acessar o ecossistema OLUAP.</p>
+                            )}
                         </div>
 
                         {error && (

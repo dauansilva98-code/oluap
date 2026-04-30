@@ -115,27 +115,45 @@
                 });
 
                 try {
-                    // Busca o perfil do usuário para ver quais produtos ele comprou
-                    const { data: profile, error: profileError } = await supabase
+                    // Busca o perfil do usuário para ver quais produtos ele tem acesso
+                    const { data: profile } = await supabase
                         .from('profiles')
                         .select('has_diagnostico, has_erp, has_consultoria, has_credito')
                         .eq('id', session.user.id)
                         .single();
 
+                    // Consultoria e crédito são sempre gratuitos — garante acesso automaticamente
+                    const precisaAtualizar = profile && (!profile.has_consultoria || !profile.has_credito);
+                    if (precisaAtualizar) {
+                        await supabase.from('profiles').upsert({
+                            id: session.user.id,
+                            has_consultoria: true,
+                            has_credito: true
+                        }, { onConflict: 'id' });
+                    }
+
                     if (profile) {
                         setAccess({
                             diagnostico: profile.has_diagnostico === true,
-                            erp: profile.has_erp === true,
-                            consultoria: profile.has_consultoria === true,
-                            credito: profile.has_credito === true
+                            erp: false, // ERP em desenvolvimento — nunca libera ainda
+                            consultoria: true, // sempre gratuito
+                            credito: true      // sempre gratuito
                         });
                     } else {
-                        // Fallback para teste: Libera o diagnóstico por padrão
-                        setAccess(prev => ({ ...prev, diagnostico: true }));
+                        // Perfil não existe ainda — cria com produtos gratuitos liberados
+                        await supabase.from('profiles').upsert({
+                            id: session.user.id,
+                            has_consultoria: true,
+                            has_credito: true,
+                            has_diagnostico: false,
+                            has_erp: false
+                        }, { onConflict: 'id' });
+                        setAccess({ diagnostico: false, erp: false, consultoria: true, credito: true });
                     }
                 } catch (err) {
                     console.error("Erro ao buscar acesso no banco:", err);
-                    setAccess(prev => ({ ...prev, diagnostico: true })); 
+                    // Em caso de erro, libera ao menos os gratuitos
+                    setAccess({ diagnostico: false, erp: false, consultoria: true, credito: true });
                 } finally {
                     setLoading(false);
                 }
@@ -180,50 +198,51 @@
                 {
                     id: 'diagnostico',
                     title: 'Diagnóstico Financeiro',
-                    desc: 'Raio-X completo da saúde financeira da sua empresa com IA.',
+                    desc: 'CFO Virtual: indicadores financeiros em tempo real, alertas proativos e simulação de cenários.',
                     icon: Activity,
                     color: 'text-[#ff7b00]',
                     bgLight: 'bg-[#ff7b00]/10',
                     bgBtn: 'bg-[#ff7b00] hover:bg-[#e66e00]',
                     url: 'diagnostico.html',
-                    price: 'R$ 289,90',
-                    benefits: ['Análise de Dívidas', 'Visão de Lucratividade', 'Plano de Ação']
-                },
-                {
-                    id: 'erp',
-                    title: 'ERP Financeiro',
-                    desc: 'Sistema completo para gestão de caixa, notas e orçamentos.',
-                    icon: Database,
-                    color: 'text-[#137789]',
-                    bgLight: 'bg-[#137789]/10',
-                    bgBtn: 'bg-[#137789] hover:bg-[#0f5c6b]',
-                    url: 'erp.html',
-                    price: 'R$ 99,90/mês',
-                    benefits: ['Fluxo de Caixa', 'Contas a Pagar/Receber', 'Relatórios Automáticos']
-                },
-                {
-                    id: 'consultoria',
-                    title: 'Consultoria Empresarial',
-                    desc: 'Acompanhamento direto com nossos especialistas para escalar seu negócio.',
-                    icon: Briefcase,
-                    color: 'text-blue-500',
-                    bgLight: 'bg-blue-500/10',
-                    bgBtn: 'bg-blue-600 hover:bg-blue-700',
-                    url: 'consultoria.html',
-                    price: 'Sob Consulta',
-                    benefits: ['Reuniões Mensais', 'Planejamento Estratégico', 'Mentoria Exclusiva']
+                    price: 'R$ 289,90/mês',
+                    benefits: ['Score de Saúde Financeira', 'Margem, Runway e Ponto de Equilíbrio', 'Simulador de Cenários + PDF']
                 },
                 {
                     id: 'credito',
                     title: 'Crédito Inteligente',
-                    desc: 'Acesso a linhas de crédito com as melhores taxas do mercado.',
+                    desc: 'Antecipação de recebíveis de cartão e duplicatas. Taxas a partir de 2%. Sem burocracia.',
                     icon: CreditCard,
                     color: 'text-emerald-500',
                     bgLight: 'bg-emerald-500/10',
                     bgBtn: 'bg-emerald-600 hover:bg-emerald-700',
                     url: 'credito.html',
-                    price: 'Primeira operação sem cadastro até 50 mil, Taxas a partir de 2%',
-                    benefits: ['Antecipação de Recebiveis', 'Sem burocracia', 'Análise Rápida']
+                    price: 'Taxas a partir de 2% · Gratuito para você',
+                    benefits: ['Antecipação de Recebíveis', 'Primeira operação até R$ 50k', 'Aprovação em até 24h']
+                },
+                {
+                    id: 'consultoria',
+                    title: 'Consultoria Empresarial',
+                    desc: 'Sócio estratégico nos seus processos, comercial, financeiro e estratégias. Só ganhamos quando você ganha.',
+                    icon: Briefcase,
+                    color: 'text-blue-500',
+                    bgLight: 'bg-blue-500/10',
+                    bgBtn: 'bg-blue-600 hover:bg-blue-700',
+                    url: 'consultoria.html',
+                    price: 'Valor personalizado · Sem custo inicial',
+                    benefits: ['Estratégia e Processos', 'Comercial e Financeiro', 'Contrato após alinhamento']
+                },
+                {
+                    id: 'erp',
+                    title: 'ERP Financeiro',
+                    desc: 'Sistema integrado para gestão de caixa, notas fiscais, contas a pagar e receber.',
+                    icon: Database,
+                    color: 'text-slate-400',
+                    bgLight: 'bg-slate-700/30',
+                    bgBtn: 'bg-slate-700 hover:bg-slate-600',
+                    url: 'erp.html',
+                    price: 'Em breve',
+                    benefits: ['Fluxo de Caixa', 'Contas a Pagar/Receber', 'Relatórios Automáticos'],
+                    emDesenvolvimento: true
                 }
             ];
 
@@ -275,35 +294,48 @@
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {productsInfo.map((prod) => {
                                 const isActive = access[prod.id];
+                                const isErp = prod.emDesenvolvimento;
                                 const IconComp = prod.icon;
 
                                 return (
-                                    <div 
-                                        key={prod.id} 
-                                        onClick={() => handleProductClick(prod)}
+                                    <div
+                                        key={prod.id}
+                                        onClick={() => {
+                                            if (isErp) {
+                                                window.location.href = prod.url;
+                                            } else {
+                                                handleProductClick(prod);
+                                            }
+                                        }}
                                         className={`relative rounded-3xl p-6 flex flex-col cursor-pointer transition-all duration-300 border h-full min-h-[280px]
-                                            ${isActive 
-                                                ? 'bg-white/10 hover:bg-white/15 border-white/20 shadow-lg hover:-translate-y-1' 
-                                                : 'bg-[#05121b] hover:bg-white/5 border-slate-800/80 opacity-80 hover:opacity-100'
+                                            ${isErp
+                                                ? 'bg-[#05121b]/40 border-dashed border-slate-700/50 opacity-50 hover:opacity-70'
+                                                : isActive
+                                                    ? 'bg-white/10 hover:bg-white/15 border-white/20 shadow-lg hover:-translate-y-1'
+                                                    : 'bg-[#05121b] hover:bg-white/5 border-slate-800/80 opacity-80 hover:opacity-100'
                                             }`}
                                     >
                                         <div className="absolute top-6 right-6">
-                                            {isActive ? (
+                                            {isErp ? (
+                                                <div className="bg-slate-800/80 text-slate-500 border border-slate-700/50 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">
+                                                    Em breve
+                                                </div>
+                                            ) : isActive ? (
                                                 <div className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
                                                     <CheckCircle size={10} /> Ativo
                                                 </div>
                                             ) : (
                                                 <div className="bg-slate-800 text-slate-400 border border-slate-700 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 shadow-sm">
-                                                    <Lock size={10} /> Bloqueado
+                                                    <Lock size={10} /> Contratar
                                                 </div>
                                             )}
                                         </div>
 
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 ${isActive ? prod.bgLight : 'bg-slate-800'}`}>
-                                            <IconComp size={24} className={isActive ? prod.color : 'text-slate-500'} />
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-5 ${isErp ? 'bg-slate-800/50' : isActive ? prod.bgLight : 'bg-slate-800'}`}>
+                                            <IconComp size={24} className={isErp ? 'text-slate-600' : isActive ? prod.color : 'text-slate-500'} />
                                         </div>
-                                        
-                                        <h3 className={`text-lg font-black tracking-tight mb-2 ${isActive ? 'text-white' : 'text-slate-300'}`}>
+
+                                        <h3 className={`text-lg font-black tracking-tight mb-2 ${isErp ? 'text-slate-500' : isActive ? 'text-white' : 'text-slate-300'}`}>
                                             {prod.title}
                                         </h3>
                                         <p className="text-xs text-slate-400 font-medium leading-relaxed flex-1 mb-8">
@@ -311,9 +343,14 @@
                                         </p>
 
                                         <div className={`w-full py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-colors
-                                            ${isActive ? `${prod.bgBtn} text-white shadow-md` : 'bg-slate-800 text-slate-300 group-hover:bg-slate-700'}
+                                            ${isErp
+                                                ? 'bg-slate-800/50 text-slate-600 cursor-default'
+                                                : isActive
+                                                    ? `${prod.bgBtn} text-white shadow-md`
+                                                    : 'bg-slate-800 text-slate-300'
+                                            }
                                         `}>
-                                            {isActive ? 'Acessar Plataforma' : 'Conhecer Solução'} {isActive ? <ArrowRight size={14} /> : <Lock size={12} />}
+                                            {isErp ? 'Em Desenvolvimento' : isActive ? <><span>Acessar Plataforma</span><ArrowRight size={14} /></> : <><span>Contratar</span><ArrowRight size={14} /></>}
                                         </div>
                                     </div>
                                 );
@@ -400,11 +437,9 @@
                                         <button onClick={() => setUpsellModal(null)} className="flex-1 py-4 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 transition-colors">
                                             Agora não
                                         </button>
-                                        <button onClick={() => {
-                                            alert(`Redirecionando para o checkout de ${upsellModal.title}...`);
-                                        }} className={`flex-1 py-4 rounded-xl text-xs font-black text-white uppercase tracking-widest transition-transform hover:scale-[1.02] shadow-md ${upsellModal.bgBtn}`}>
-                                            Assinar Agora
-                                        </button>
+                                        <a href={`pagamento_${upsellModal.id}.html`} className={`flex-1 py-4 rounded-xl text-xs font-black text-white uppercase tracking-widest transition-transform hover:scale-[1.02] shadow-md flex items-center justify-center gap-2 ${upsellModal.bgBtn}`}>
+                                            Contratar Agora <ArrowRight size={14} />
+                                        </a>
                                     </div>
                                 </div>
                             </div>

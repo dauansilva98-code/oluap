@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico Financeiro — OLUAP CFO Virtual</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #05121b; color: white; }
+        .text-gradient-orange { background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-image: linear-gradient(to right, #ff7b00, #ffb067); }
+        .text-gradient-teal { background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-image: linear-gradient(to right, #137789, #22d3ee); }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        .fade-up { animation: fadeUp 0.5s ease forwards; }
+    </style>
+</head>
+<body class="relative overflow-x-hidden antialiased">
+
+    <div class="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#ff7b00]/6 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div class="fixed top-[40%] right-[-10%] w-[500px] h-[500px] bg-blue-600/6 rounded-full blur-[120px] pointer-events-none z-0"></div>
+
+    <!-- NAV -->
+    <nav class="fixed top-0 w-full z-50 bg-[#05121b]/80 backdrop-blur-md border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3">
+                <img src="logo2.png" alt="OLUAP" class="h-8 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                <div class="hidden items-center gap-2">
+                    <div class="w-8 h-8 bg-[#ff7b00] rounded-lg flex items-center justify-center"><i data-lucide="shield-check" class="text-white w-5 h-5"></i></div>
+                    <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="login.html" class="text-sm font-bold text-slate-300 hover:text-white transition-colors uppercase tracking-widest hidden sm:block">Entrar</a>
+                <a href="cadastro.html?produto=diagnostico" class="bg-[#ff7b00] hover:bg-[#e66e00] text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-[#ff7b00]/20 transition-all hover:scale-[1.02]">
+                    Teste grátis
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="relative z-10 pt-40 pb-24 px-6">
+        <div class="max-w-4xl mx-auto text-center fade-up">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#ff7b00]/10 border border-[#ff7b00]/20 mb-8">
+                <span class="w-2 h-2 rounded-full bg-[#ff7b00] animate-pulse"></span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-[#ff7b00]">CFO Virtual · Diagnóstico Financeiro</span>
+            </div>
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1] mb-6">
+                A saúde financeira<br/>
+                <span class="text-gradient-orange italic">da sua empresa, em tempo real.</span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                O Diagnóstico OLUAP age como seu CFO virtual: coleta os dados da empresa, calcula indicadores financeiros e entrega um painel vivo com alertas e decisões acionáveis — todo dia.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="cadastro.html?produto=diagnostico" class="w-full sm:w-auto bg-[#ff7b00] hover:bg-[#e66e00] text-white px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-[#ff7b00]/20 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
+                    Comece o teste grátis <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </a>
+                <div class="flex items-center gap-2 text-xs text-slate-400 font-bold">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+                    7 dias grátis · Sem cartão de crédito
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PAINEL VISUAL DEMO -->
+    <section class="relative z-10 py-16 px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-gradient-to-br from-[#0a1e2a] to-[#05121b] border border-[#ff7b00]/20 rounded-3xl p-8 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-[#ff7b00]/5 rounded-full blur-[80px]"></div>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-5">Prévia do seu painel — dados do exemplo</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-emerald-900/20 border border-emerald-500/20 rounded-xl p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Margem Líquida</p>
+                        <p class="text-2xl font-black text-emerald-400">18,3%</p>
+                        <p class="text-[9px] text-slate-500 mt-0.5">Por R$ 100 vendidos</p>
+                    </div>
+                    <div class="bg-amber-900/20 border border-amber-500/20 rounded-xl p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Runway</p>
+                        <p class="text-2xl font-black text-amber-400">2,4 meses</p>
+                        <p class="text-[9px] text-slate-500 mt-0.5">Fôlego de caixa atual</p>
+                    </div>
+                    <div class="bg-[#137789]/10 border border-[#137789]/20 rounded-xl p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Ponto de Equilíbrio</p>
+                        <p class="text-2xl font-black text-[#22d3ee]">R$ 42k</p>
+                        <p class="text-[9px] text-slate-500 mt-0.5">Faturamento mínimo/mês</p>
+                    </div>
+                    <div class="bg-blue-900/20 border border-blue-500/20 rounded-xl p-4">
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Score de Saúde</p>
+                        <p class="text-2xl font-black text-blue-400">72/100</p>
+                        <p class="text-[9px] text-slate-500 mt-0.5">Financeiramente saudável</p>
+                    </div>
+                </div>
+                <div class="bg-[#05121b] border border-[#ff7b00]/20 rounded-xl p-4 flex items-start gap-3">
+                    <div class="w-8 h-8 bg-[#ff7b00]/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                        <i data-lucide="bell" class="w-4 h-4 text-[#ff7b00]"></i>
+                    </div>
+                    <div>
+                        <p class="text-[9px] font-black text-[#ff7b00] uppercase tracking-widest mb-1">Alerta do CFO Virtual</p>
+                        <p class="text-xs text-slate-300 leading-relaxed">Seu runway está abaixo de 3 meses. Considere reduzir custos fixos ou antecipar recebíveis para ampliar o fôlego de caixa antes do próximo mês.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- O QUE É -->
+    <section class="relative z-10 py-20 border-t border-white/5 bg-[#030a0f]">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="text-center mb-14">
+                <p class="text-[10px] font-black text-[#ff7b00] uppercase tracking-widest mb-3">O que é o Diagnóstico OLUAP</p>
+                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">Seu CFO virtual, <span class="text-gradient-teal italic">disponível todo dia.</span></h2>
+                <p class="text-slate-400 max-w-2xl mx-auto text-sm leading-relaxed">
+                    A maioria das empresas não sabe se está crescendo ou apenas sobrevivendo. O Diagnóstico OLUAP muda isso: transforma os números da sua empresa em clareza financeira real, com indicadores calculados automaticamente e decisões recomendadas.
+                </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                    <div class="w-12 h-12 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-xl flex items-center justify-center mb-4">
+                        <i data-lucide="stethoscope" class="w-6 h-6 text-[#ff7b00]"></i>
+                    </div>
+                    <h3 class="font-black text-base text-white mb-2">Diagnóstico Completo</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Avalia mais de 8 indicadores financeiros em tempo real: margem, runway, burn rate, ponto de equilíbrio e muito mais — tudo calculado automaticamente.</p>
+                </div>
+                <div class="bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                    <div class="w-12 h-12 bg-[#137789]/10 border border-[#137789]/20 rounded-xl flex items-center justify-center mb-4">
+                        <i data-lucide="layout-dashboard" class="w-6 h-6 text-[#137789]"></i>
+                    </div>
+                    <h3 class="font-black text-base text-white mb-2">Painel Vivo</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Dashboard atualizado com os dados da sua empresa. Você acompanha a saúde financeira em tempo real, sem precisar abrir uma planilha.</p>
+                </div>
+                <div class="bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                    <div class="w-12 h-12 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <i data-lucide="zap" class="w-6 h-6 text-blue-400"></i>
+                    </div>
+                    <h3 class="font-black text-base text-white mb-2">Decisões Acionáveis</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Alertas proativos quando algo merece atenção, simulador de cenários para testar decisões antes de tomar e relatório em PDF pronto para apresentar.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- INDICADORES -->
+    <section class="relative z-10 py-20 border-t border-white/5">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="text-center mb-14">
+                <p class="text-[10px] font-black text-[#137789] uppercase tracking-widest mb-3">Indicadores calculados</p>
+                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">O que você vai <span class="text-gradient-orange italic">descobrir sobre sua empresa</span></h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-10 h-10 bg-[#ff7b00]/10 rounded-xl flex items-center justify-center shrink-0">
+                        <i data-lucide="percent" class="w-5 h-5 text-[#ff7b00]"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Margem Bruta, de Contribuição e Líquida</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Saiba exatamente o que sobra de cada real vendido, em qual etapa do processo você perde margem e onde recuperar.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center shrink-0">
+                        <i data-lucide="clock" class="w-5 h-5 text-amber-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Runway e Cash Burn Rate</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Descubra por quantos meses sua empresa sobrevive sem novas vendas. Essencial para planejar captação ou corte de custos.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center shrink-0">
+                        <i data-lucide="target" class="w-5 h-5 text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Ponto de Equilíbrio</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Saiba o faturamento mínimo para cobrir todos os custos fixos e variáveis. Nunca mais opere no escuro sobre se vai fechar o mês.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center shrink-0">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-blue-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Simulador de Cenários</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Projete o impacto antes de decidir: "e se eu contratar alguém?", "e se a receita cair 20%?". A IA mostra o impacto real no seu caixa.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-10 h-10 bg-[#137789]/10 rounded-xl flex items-center justify-center shrink-0">
+                        <i data-lucide="bell" class="w-5 h-5 text-[#137789]"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Alertas Proativos</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">A plataforma avisa quando algo merece atenção antes que vire problema: caixa crítico, margem caindo, prazo de dívida se aproximando.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4 bg-[#05121b]/60 border border-white/5 rounded-2xl p-5">
+                    <div class="w-10 h-10 bg-slate-700/50 rounded-xl flex items-center justify-center shrink-0">
+                        <i data-lucide="file-text" class="w-5 h-5 text-slate-300"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Relatório em PDF</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Documento profissional com diagnóstico completo, pronto para imprimir, arquivar ou apresentar ao banco, sócio ou contador.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section class="relative z-10 py-20 border-t border-white/5 bg-[#030a0f]">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="text-center mb-14">
+                <p class="text-[10px] font-black text-[#ff7b00] uppercase tracking-widest mb-3">Passo a passo</p>
+                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">Do cadastro ao diagnóstico <span class="text-gradient-orange italic">em minutos</span></h2>
+            </div>
+            <div class="space-y-4">
+                <div class="flex items-start gap-5 bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                    <div class="w-10 h-10 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-full flex items-center justify-center shrink-0 font-black text-[#ff7b00] text-sm">1</div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Crie sua conta grátis</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Cadastro em menos de 2 minutos. Sem cartão de crédito para o período de teste de 7 dias.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-5 bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                    <div class="w-10 h-10 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-full flex items-center justify-center shrink-0 font-black text-[#ff7b00] text-sm">2</div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Preencha o formulário financeiro</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Responda perguntas sobre faturamento, custos, dívidas e caixa. Leva menos de 10 minutos e você não precisa de contador para isso.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-5 bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                    <div class="w-10 h-10 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-full flex items-center justify-center shrink-0 font-black text-[#ff7b00] text-sm">3</div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Receba o diagnóstico completo</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Score de saúde, indicadores calculados, alertas e recomendações personalizadas para a sua empresa — tudo em um painel vivo.</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-5 bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                    <div class="w-10 h-10 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-full flex items-center justify-center shrink-0 font-black text-[#ff7b00] text-sm">4</div>
+                    <div>
+                        <h4 class="font-black text-sm text-white mb-1">Tome decisões com base em dados</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed">Use o simulador de cenários, acompanhe os alertas e atualize os dados mensalmente para ter sempre a visão mais atual da sua saúde financeira.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA FINAL -->
+    <section class="relative z-10 py-28 overflow-hidden border-t border-white/5">
+        <div class="absolute inset-0 bg-gradient-to-br from-[#ff7b00]/8 to-transparent"></div>
+        <div class="max-w-3xl mx-auto px-6 text-center relative z-10">
+            <h2 class="text-3xl md:text-5xl font-black tracking-tighter mb-6">
+                Pronto para saber a verdade<br/>
+                <span class="text-gradient-orange italic">sobre suas finanças?</span>
+            </h2>
+            <p class="text-slate-400 text-base mb-10 max-w-xl mx-auto leading-relaxed">
+                7 dias grátis. Sem cartão de crédito. Configure em menos de 15 minutos e receba o diagnóstico completo da saúde financeira da sua empresa.
+            </p>
+            <a href="cadastro.html?produto=diagnostico" class="inline-flex items-center justify-center gap-2 bg-[#ff7b00] hover:bg-[#e66e00] text-white px-10 py-5 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-[#ff7b00]/20 transition-all hover:scale-[1.02]">
+                Comece o teste grátis — 7 dias <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </a>
+            <p class="text-xs text-slate-500 mt-6">
+                Já tem uma conta? <a href="login.html" class="text-[#ff7b00] hover:underline font-bold">Faça login aqui</a>.
+            </p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-[#030a0f] border-t border-white/5 py-10">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            <a href="index.html" class="flex items-center gap-3">
+                <img src="logo2.png" alt="OLUAP" class="h-7 object-contain opacity-70" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                <div class="hidden items-center gap-2 opacity-50">
+                    <i data-lucide="shield-check" class="text-white w-5 h-5"></i>
+                    <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-6 text-xs font-bold text-slate-500">
+                <a href="index.html" class="hover:text-slate-300 transition-colors">Início</a>
+                <a href="credito.html" class="hover:text-slate-300 transition-colors">Crédito</a>
+                <a href="consultoria.html" class="hover:text-slate-300 transition-colors">Consultoria</a>
+                <a href="login.html" class="hover:text-slate-300 transition-colors">Login</a>
+            </div>
+            <p class="text-xs text-slate-600">© 2026 OLUAP. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>

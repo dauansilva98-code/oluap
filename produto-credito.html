@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crédito Inteligente — Antecipação de Recebíveis · OLUAP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #05121b; color: white; }
+        .text-gradient-green { background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-image: linear-gradient(to right, #10b981, #6ee7b7); }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        .fade-up { animation: fadeUp 0.5s ease forwards; }
+    </style>
+</head>
+<body class="relative overflow-x-hidden antialiased">
+
+    <div class="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-emerald-600/6 rounded-full blur-[120px] pointer-events-none z-0"></div>
+    <div class="fixed top-[40%] right-[-10%] w-[500px] h-[500px] bg-[#137789]/6 rounded-full blur-[120px] pointer-events-none z-0"></div>
+
+    <!-- NAV -->
+    <nav class="fixed top-0 w-full z-50 bg-[#05121b]/80 backdrop-blur-md border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3">
+                <img src="logo2.png" alt="OLUAP" class="h-8 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                <div class="hidden items-center gap-2">
+                    <div class="w-8 h-8 bg-[#ff7b00] rounded-lg flex items-center justify-center"><i data-lucide="shield-check" class="text-white w-5 h-5"></i></div>
+                    <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="login.html" class="text-sm font-bold text-slate-300 hover:text-white transition-colors uppercase tracking-widest hidden sm:block">Entrar</a>
+                <a href="cadastro.html?produto=credito" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02]">
+                    Simular Antecipação
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="relative z-10 pt-40 pb-24 px-6">
+        <div class="max-w-4xl mx-auto text-center fade-up">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-8">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-emerald-400">Crédito Inteligente · Antecipação de Recebíveis</span>
+            </div>
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1] mb-6">
+                Transforme suas notas fiscais<br/>
+                <span class="text-gradient-green italic">em dinheiro agora.</span>
+            </h1>
+            <p class="text-lg md:text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Antecipe recebíveis de cartão e duplicatas sem burocracia. Primeira operação até R$ 50.000 sem cadastro prévio. Taxas a partir de 2% ao mês. Você tem a nota fiscal — nós fazemos o resto.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="cadastro.html?produto=credito" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
+                    Simular antecipação <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </a>
+                <div class="flex items-center gap-2 text-xs text-slate-400 font-bold">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+                    Sem análise de crédito · Aprovação rápida
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- DESTAQUES NUMÉRICOS -->
+    <section class="relative z-10 py-12 px-6">
+        <div class="max-w-4xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gradient-to-br from-emerald-900/30 to-emerald-900/10 border border-emerald-500/20 rounded-2xl p-7 text-center">
+                    <p class="text-4xl font-black text-emerald-400 mb-2">R$ 50k</p>
+                    <p class="text-sm font-bold text-white mb-1">Primeira operação</p>
+                    <p class="text-xs text-slate-400">Sem cadastro prévio para antecipar até R$ 50.000 na sua primeira operação.</p>
+                </div>
+                <div class="bg-gradient-to-br from-[#137789]/20 to-[#137789]/5 border border-[#137789]/30 rounded-2xl p-7 text-center">
+                    <p class="text-4xl font-black text-[#22d3ee] mb-2">2%</p>
+                    <p class="text-sm font-bold text-white mb-1">Taxa a partir de</p>
+                    <p class="text-xs text-slate-400">Taxas competitivas a partir de 2% ao mês, sem taxas ocultas ou cobranças surpresa.</p>
+                </div>
+                <div class="bg-gradient-to-br from-blue-900/20 to-blue-900/5 border border-blue-500/20 rounded-2xl p-7 text-center">
+                    <p class="text-4xl font-black text-blue-400 mb-2">24h</p>
+                    <p class="text-sm font-bold text-white mb-1">Aprovação rápida</p>
+                    <p class="text-xs text-slate-400">Análise e aprovação em até 24 horas. Dinheiro na conta sem esperar semanas.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- O QUE É -->
+    <section class="relative z-10 py-20 border-t border-white/5 bg-[#030a0f]">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div>
+                    <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-4">O que é antecipação de recebíveis</p>
+                    <h2 class="text-3xl md:text-4xl font-black tracking-tighter leading-tight mb-6">
+                        Você vendeu e vai receber — só que <span class="text-gradient-green italic">precisa do dinheiro agora.</span>
+                    </h2>
+                    <p class="text-slate-400 text-sm leading-relaxed mb-5">
+                        Antecipação de recebíveis é quando você transforma um pagamento futuro — seja de cartão de crédito ou de uma duplicata (nota fiscal a prazo) — em dinheiro imediato. Você recebe hoje, e o parceiro financeiro aguarda o pagamento do seu cliente.
+                    </p>
+                    <p class="text-slate-400 text-sm leading-relaxed mb-8">
+                        A OLUAP é a ponte entre você e nosso parceiro financeiro especializado. Você não paga nada pela plataforma — a operação é financiada pelo nosso parceiro, que cobra apenas a taxa da antecipação.
+                    </p>
+                    <div class="bg-emerald-900/20 border border-emerald-500/20 rounded-2xl p-5">
+                        <div class="flex items-center gap-3 mb-3">
+                            <i data-lucide="info" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                            <p class="text-xs font-black text-emerald-400 uppercase tracking-widest">Importante saber</p>
+                        </div>
+                        <p class="text-xs text-slate-300 leading-relaxed">Para antecipar, você precisa ter a <strong class="text-white">nota fiscal de venda de produto ou de serviço</strong> emitida. A nota fiscal é o documento que comprova que a venda aconteceu e que o pagamento está a caminho.</p>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                                <i data-lucide="credit-card" class="w-4 h-4 text-emerald-400"></i>
+                            </div>
+                            <h4 class="font-black text-sm text-white">Recebíveis de Cartão</h4>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">Antecipe vendas no cartão de crédito parceladas ou a receber. Transforme parcelamentos em 12x em pagamento à vista na sua conta.</p>
+                    </div>
+                    <div class="bg-[#05121b] border border-white/8 rounded-2xl p-6">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-8 h-8 bg-[#137789]/10 rounded-lg flex items-center justify-center">
+                                <i data-lucide="file-text" class="w-4 h-4 text-[#22d3ee]"></i>
+                            </div>
+                            <h4 class="font-black text-sm text-white">Duplicatas (Nota Fiscal a Prazo)</h4>
+                        </div>
+                        <p class="text-xs text-slate-400 leading-relaxed">Emitiu nota fiscal com prazo de 30, 60 ou 90 dias? Antecipe esse valor e receba agora sem esperar o vencimento do boleto.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section class="relative z-10 py-20 border-t border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="text-center mb-14">
+                <p class="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-3">Passo a passo</p>
+                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">Como funciona a <span class="text-gradient-green italic">antecipação</span></h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="flex flex-col items-center text-center p-5">
+                    <div class="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mb-4">
+                        <i data-lucide="file-check" class="w-6 h-6 text-emerald-400"></i>
+                    </div>
+                    <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-2">Passo 1</p>
+                    <h4 class="font-black text-sm text-white mb-2">Tenha sua nota fiscal</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Nota fiscal de venda de produto ou serviço com valor a receber futuro.</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-5">
+                    <div class="w-14 h-14 bg-[#137789]/10 border border-[#137789]/20 rounded-2xl flex items-center justify-center mb-4">
+                        <i data-lucide="calculator" class="w-6 h-6 text-[#22d3ee]"></i>
+                    </div>
+                    <p class="text-[9px] font-black text-[#22d3ee] uppercase tracking-widest mb-2">Passo 2</p>
+                    <h4 class="font-black text-sm text-white mb-2">Simule o valor</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Preencha o valor e o prazo. Veja exatamente quanto vai receber hoje.</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-5">
+                    <div class="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center mb-4">
+                        <i data-lucide="user-check" class="w-6 h-6 text-blue-400"></i>
+                    </div>
+                    <p class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-2">Passo 3</p>
+                    <h4 class="font-black text-sm text-white mb-2">Finalize o cadastro</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Nosso parceiro analisa rapidamente. Aprovação em até 24 horas.</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-5">
+                    <div class="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mb-4">
+                        <i data-lucide="banknote" class="w-6 h-6 text-emerald-400"></i>
+                    </div>
+                    <p class="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-2">Passo 4</p>
+                    <h4 class="font-black text-sm text-white mb-2">Dinheiro na conta</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Valor liberado diretamente na sua conta bancária. Simples assim.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA FINAL -->
+    <section class="relative z-10 py-28 overflow-hidden border-t border-white/5 bg-[#030a0f]">
+        <div class="absolute inset-0 bg-gradient-to-br from-emerald-900/15 to-transparent"></div>
+        <div class="max-w-3xl mx-auto px-6 text-center relative z-10">
+            <h2 class="text-3xl md:text-5xl font-black tracking-tighter mb-6">
+                Precisa de capital agora?<br/>
+                <span class="text-gradient-green italic">Simule sua antecipação.</span>
+            </h2>
+            <p class="text-slate-400 text-base mb-10 max-w-xl mx-auto leading-relaxed">
+                Sem burocracia, sem análise de crédito no primeiro acesso. Se você tem nota fiscal, você tem capital disponível.
+            </p>
+            <a href="cadastro.html?produto=credito" class="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-5 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-emerald-600/20 transition-all hover:scale-[1.02]">
+                Simular antecipação agora <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            </a>
+            <p class="text-xs text-slate-500 mt-6">
+                Já tem uma conta? <a href="login.html" class="text-emerald-400 hover:underline font-bold">Faça login aqui</a>.
+            </p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="bg-[#030a0f] border-t border-white/5 py-10">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6">
+            <a href="index.html" class="flex items-center gap-3">
+                <img src="logo2.png" alt="OLUAP" class="h-7 object-contain opacity-70" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                <div class="hidden items-center gap-2 opacity-50">
+                    <i data-lucide="shield-check" class="text-white w-5 h-5"></i>
+                    <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
+                </div>
+            </a>
+            <div class="flex items-center gap-6 text-xs font-bold text-slate-500">
+                <a href="index.html" class="hover:text-slate-300 transition-colors">Início</a>
+                <a href="produto-diagnostico.html" class="hover:text-slate-300 transition-colors">Diagnóstico</a>
+                <a href="consultoria.html" class="hover:text-slate-300 transition-colors">Consultoria</a>
+                <a href="login.html" class="hover:text-slate-300 transition-colors">Login</a>
+            </div>
+            <p class="text-xs text-slate-600">© 2026 OLUAP. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>
