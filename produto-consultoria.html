@@ -21,16 +21,46 @@
     <div class="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-600/6 rounded-full blur-[120px] pointer-events-none z-0"></div>
     <div class="fixed top-[40%] right-[-10%] w-[500px] h-[500px] bg-[#137789]/6 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-    <!-- NAV -->
+    <!-- NAV FIXO -->
     <nav class="fixed top-0 w-full z-50 bg-[#05121b]/80 backdrop-blur-md border-b border-white/5">
         <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <a href="index.html" class="flex items-center gap-3">
+            <a href="index.html" class="flex items-center gap-3 shrink-0">
                 <img src="logo2.png" alt="OLUAP" class="h-8 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
                 <div class="hidden items-center gap-2">
                     <div class="w-8 h-8 bg-[#ff7b00] rounded-lg flex items-center justify-center"><i data-lucide="shield-check" class="text-white w-5 h-5"></i></div>
                     <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
                 </div>
             </a>
+            <div class="hidden md:flex items-center gap-8 text-sm font-bold text-slate-300">
+                <div class="relative" id="nav-produtos">
+                    <button onclick="toggleProdutosMenu()" class="flex items-center gap-1.5 hover:text-white transition-colors font-bold text-slate-300" id="btn-produtos">
+                        Produtos <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform duration-200" id="chevron-produtos"></i>
+                    </button>
+                    <div id="menu-produtos" class="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-[540px] bg-[#05121b] border border-white/10 rounded-2xl shadow-2xl shadow-black/60 p-4 opacity-0 invisible transition-all duration-200 z-50">
+                        <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest px-2 mb-3">Ecossistema OLUAP</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <a href="produto-diagnostico.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item">
+                                <div class="w-10 h-10 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-xl flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="activity" class="w-5 h-5 text-[#ff7b00]"></i></div>
+                                <div><p class="text-sm font-black text-white group-hover/item:text-[#ff7b00] transition-colors">Diagnóstico Financeiro</p><p class="text-xs text-slate-400 mt-0.5">CFO Virtual · Saúde financeira com IA</p></div>
+                            </a>
+                            <a href="produto-credito.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item">
+                                <div class="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="credit-card" class="w-5 h-5 text-emerald-400"></i></div>
+                                <div><p class="text-sm font-black text-white group-hover/item:text-emerald-400 transition-colors">Crédito Inteligente</p><p class="text-xs text-slate-400 mt-0.5">Antecipação de recebíveis · A partir de 2%</p></div>
+                            </a>
+                            <a href="produto-consultoria.html" class="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-blue-500/20 transition-colors">
+                                <div class="w-10 h-10 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="briefcase" class="w-5 h-5 text-blue-400"></i></div>
+                                <div><p class="text-sm font-black text-blue-400">Consultoria Empresarial</p><p class="text-xs text-slate-400 mt-0.5">Sócio estratégico · Crescimento acelerado</p></div>
+                            </a>
+                            <a href="produto-erp.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item opacity-60">
+                                <div class="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="database" class="w-5 h-5 text-slate-500"></i></div>
+                                <div><p class="text-sm font-black text-slate-400 flex items-center gap-2">ERP Financeiro <span class="text-[8px] bg-white/10 px-1.5 py-0.5 rounded-full text-slate-500 uppercase tracking-widest">Em breve</span></p><p class="text-xs text-slate-500 mt-0.5">Gestão integrada · Caixa e notas fiscais</p></div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <a href="index.html#como-funciona" class="hover:text-white transition-colors">Como Funciona</a>
+                <a href="index.html#quem-somos" class="hover:text-white transition-colors">Quem Somos</a>
+            </div>
             <div class="flex items-center gap-4">
                 <a href="login.html" class="text-sm font-bold text-slate-300 hover:text-white transition-colors uppercase tracking-widest hidden sm:block">Entrar</a>
                 <a href="cadastro.html?produto=consultoria" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]">
@@ -216,13 +246,31 @@
             <div class="flex items-center gap-6 text-xs font-bold text-slate-500">
                 <a href="index.html" class="hover:text-slate-300 transition-colors">Início</a>
                 <a href="produto-diagnostico.html" class="hover:text-slate-300 transition-colors">Diagnóstico</a>
-                <a href="credito.html" class="hover:text-slate-300 transition-colors">Crédito</a>
+                <a href="produto-credito.html" class="hover:text-slate-300 transition-colors">Crédito</a>
                 <a href="login.html" class="hover:text-slate-300 transition-colors">Login</a>
             </div>
             <p class="text-xs text-slate-600">© 2026 OLUAP. Todos os direitos reservados.</p>
         </div>
     </footer>
 
-    <script>lucide.createIcons();</script>
+    <script>
+        lucide.createIcons();
+        let menuAberto = false;
+        function toggleProdutosMenu() {
+            menuAberto = !menuAberto;
+            const menu = document.getElementById('menu-produtos');
+            const chevron = document.getElementById('chevron-produtos');
+            if (menuAberto) { menu.classList.remove('opacity-0','invisible'); menu.classList.add('opacity-100','visible'); chevron.style.transform='rotate(180deg)'; }
+            else { menu.classList.add('opacity-0','invisible'); menu.classList.remove('opacity-100','visible'); chevron.style.transform='rotate(0deg)'; }
+        }
+        document.addEventListener('click', function(e) {
+            if (document.getElementById('nav-produtos') && !document.getElementById('nav-produtos').contains(e.target)) {
+                menuAberto = false;
+                const menu = document.getElementById('menu-produtos');
+                const chevron = document.getElementById('chevron-produtos');
+                menu.classList.add('opacity-0','invisible'); menu.classList.remove('opacity-100','visible'); chevron.style.transform='rotate(0deg)';
+            }
+        });
+    </script>
 </body>
 </html>

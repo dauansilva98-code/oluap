@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OLUAP - CFO Virtual para Empresas</title>
+    <title>OLUAP — Inteligência Financeira e Estratégia para Empresas</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,7 +19,9 @@
         .text-gradient-teal { background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-image: linear-gradient(to right, #137789, #22d3ee); }
         @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
         .fade-up { animation: fadeUp 0.6s ease forwards; }
-        .step-line::after { content:''; position:absolute; left:50%; top:100%; width:2px; height:100%; background:linear-gradient(to bottom, #137789, transparent); transform:translateX(-50%); }
+        /* Card produto hover lift */
+        .produto-card { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease; }
+        .produto-card:hover { transform: translateY(-6px); }
     </style>
 </head>
 <body class="relative overflow-x-hidden antialiased">
@@ -28,10 +30,11 @@
     <div class="fixed top-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-600/8 rounded-full blur-[120px] pointer-events-none z-0"></div>
     <div class="fixed top-[40%] right-[-10%] w-[500px] h-[500px] bg-[#ff7b00]/8 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
-    <!-- NAV -->
+    <!-- ========== NAV FIXO ========== -->
     <nav class="fixed top-0 w-full z-50 bg-[#05121b]/80 backdrop-blur-md border-b border-white/5">
         <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
+            <!-- Logo -->
+            <a href="index.html" class="flex items-center gap-3 shrink-0">
                 <img src="logo2.png" alt="OLUAP" class="h-8 object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
                 <div class="hidden items-center gap-2">
                     <div class="w-8 h-8 bg-[#ff7b00] rounded-lg flex items-center justify-center shadow-lg">
@@ -39,8 +42,9 @@
                     </div>
                     <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
                 </div>
-            </div>
+            </a>
 
+            <!-- Nav links desktop -->
             <div class="hidden md:flex items-center gap-8 text-sm font-bold text-slate-300">
                 <!-- Dropdown Produtos -->
                 <div class="relative" id="nav-produtos">
@@ -59,7 +63,7 @@
                                     <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">CFO Virtual · Saúde financeira com IA</p>
                                 </div>
                             </a>
-                            <a href="credito.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item">
+                            <a href="produto-credito.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item">
                                 <div class="w-10 h-10 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
                                     <i data-lucide="credit-card" class="w-5 h-5 text-emerald-400"></i>
                                 </div>
@@ -68,7 +72,7 @@
                                     <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Antecipação de recebíveis · A partir de 2%</p>
                                 </div>
                             </a>
-                            <a href="consultoria.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item">
+                            <a href="produto-consultoria.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item">
                                 <div class="w-10 h-10 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
                                     <i data-lucide="briefcase" class="w-5 h-5 text-blue-400"></i>
                                 </div>
@@ -77,7 +81,7 @@
                                     <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">Sócio estratégico · Crescimento acelerado</p>
                                 </div>
                             </a>
-                            <a href="erp.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item opacity-60">
+                            <a href="produto-erp.html" class="flex items-start gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors group/item opacity-60">
                                 <div class="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
                                     <i data-lucide="database" class="w-5 h-5 text-slate-500"></i>
                                 </div>
@@ -93,6 +97,7 @@
                 <a href="#quem-somos" class="hover:text-white transition-colors">Quem Somos</a>
             </div>
 
+            <!-- CTA -->
             <div class="flex items-center gap-4">
                 <a href="login.html" class="text-sm font-bold text-slate-300 hover:text-white transition-colors uppercase tracking-widest hidden sm:block">Entrar</a>
                 <a href="cadastro.html" class="bg-[#ff7b00] hover:bg-[#e66e00] text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-[#ff7b00]/20 transition-all hover:scale-[1.02]">
@@ -102,305 +107,253 @@
         </div>
     </nav>
 
-    <!-- HERO -->
-    <section class="relative z-10 pt-36 pb-24 lg:pt-52 lg:pb-36 px-6">
-        <div class="max-w-4xl mx-auto text-center">
+    <!-- ========== HERO ========== -->
+    <section class="relative z-10 pt-40 pb-24 lg:pt-52 lg:pb-36 px-6">
+        <div class="max-w-5xl mx-auto text-center fade-up">
             <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8">
                 <span class="w-2 h-2 rounded-full bg-[#ff7b00] animate-pulse"></span>
-                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">CFO Virtual · Inteligência Financeira para Empresas</span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">Ecossistema Financeiro · Diagnóstico · Crédito · Consultoria · ERP</span>
             </div>
 
-            <h1 class="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.1] mb-6">
-                Seu CFO Virtual,<br class="hidden md:block"/>
-                <span class="text-gradient-orange italic">disponível todo dia.</span>
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter leading-[1.08] mb-6">
+                Impulsione sua empresa com<br class="hidden md:block"/>
+                <span class="text-gradient-orange italic">inteligência financeira e estratégia.</span>
             </h1>
 
             <p class="text-lg md:text-xl text-slate-400 mb-10 max-w-2xl mx-auto leading-relaxed">
-                Diagnóstico financeiro com IA, simulação de cenários em tempo real e alertas proativos. Tudo que um CFO de alto nível faria pela sua empresa — a uma fração do custo.
+                Da saúde financeira ao crédito inteligente, da consultoria estratégica ao ERP — a OLUAP é o ecossistema completo que sua empresa precisa para crescer com clareza.
             </p>
 
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <a href="cadastro.html" class="w-full sm:w-auto bg-[#ff7b00] hover:bg-[#e66e00] text-white px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-[#ff7b00]/20 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
-                    Solicitar diagnóstico grátis <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                <a href="#produtos" class="w-full sm:w-auto bg-[#ff7b00] hover:bg-[#e66e00] text-white px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-[#ff7b00]/20 transition-all hover:scale-[1.02] flex items-center justify-center gap-2">
+                    Conheça as soluções <i data-lucide="arrow-down" class="w-4 h-4"></i>
                 </a>
                 <a href="login.html" class="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white border border-white/10 px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2">
                     Acessar minha conta <i data-lucide="user" class="w-4 h-4"></i>
                 </a>
             </div>
 
-            <!-- Trust bar -->
-            <div class="mt-16 flex flex-wrap items-center justify-center gap-8 opacity-40">
+            <!-- 4 pilares em linha -->
+            <div class="flex flex-wrap items-center justify-center gap-6 opacity-50">
                 <div class="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-widest">
-                    <i data-lucide="shield-check" class="w-4 h-4"></i> Dados 100% seguros
+                    <i data-lucide="activity" class="w-4 h-4 text-[#ff7b00]"></i> Diagnóstico Financeiro
                 </div>
-                <div class="w-px h-4 bg-white/20"></div>
+                <div class="w-px h-4 bg-white/20 hidden sm:block"></div>
                 <div class="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-widest">
-                    <i data-lucide="zap" class="w-4 h-4"></i> Diagnóstico em minutos
+                    <i data-lucide="credit-card" class="w-4 h-4 text-emerald-400"></i> Crédito Inteligente
                 </div>
-                <div class="w-px h-4 bg-white/20"></div>
+                <div class="w-px h-4 bg-white/20 hidden sm:block"></div>
                 <div class="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-widest">
-                    <i data-lucide="brain" class="w-4 h-4"></i> Análise com IA
+                    <i data-lucide="briefcase" class="w-4 h-4 text-blue-400"></i> Consultoria Empresarial
+                </div>
+                <div class="w-px h-4 bg-white/20 hidden sm:block"></div>
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase tracking-widest">
+                    <i data-lucide="database" class="w-4 h-4 text-slate-500"></i> ERP Financeiro
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- COMO FUNCIONA -->
+    <!-- ========== COMO FUNCIONA ========== -->
     <section id="como-funciona" class="relative z-10 py-28 border-t border-white/5 bg-[#030a0f]">
         <div class="max-w-5xl mx-auto px-6">
             <div class="text-center mb-16">
-                <p class="text-[10px] font-black text-[#ff7b00] uppercase tracking-widest mb-3">Diagnóstico Financeiro</p>
-                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">Como funciona na prática</h2>
-                <p class="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">Do primeiro acesso ao relatório completo, você acompanha a saúde da sua empresa em tempo real.</p>
+                <p class="text-[10px] font-black text-[#ff7b00] uppercase tracking-widest mb-3">Ecossistema OLUAP</p>
+                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">Como o ecossistema <span class="text-gradient-orange italic">funciona para você</span></h2>
+                <p class="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">Do cadastro ao crescimento acelerado — um único ecossistema, um único login, todas as ferramentas.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-0 relative">
-
-                <!-- Step 1 -->
-                <div class="flex flex-col items-center text-center px-4 pb-12 md:pb-0 relative">
-                    <div class="w-14 h-14 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-2xl flex items-center justify-center mb-5 z-10">
-                        <i data-lucide="clipboard-list" class="w-6 h-6 text-[#ff7b00]"></i>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="flex flex-col items-center text-center p-6 bg-[#05121b]/60 border border-white/5 rounded-2xl">
+                    <div class="w-14 h-14 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-2xl flex items-center justify-center mb-4">
+                        <i data-lucide="user-plus" class="w-6 h-6 text-[#ff7b00]"></i>
                     </div>
                     <span class="text-[9px] font-black text-[#ff7b00] uppercase tracking-widest mb-2">Passo 1</span>
-                    <h4 class="font-black text-sm text-white mb-2 uppercase">Preencha o formulário</h4>
-                    <p class="text-[11px] text-slate-400 leading-relaxed">Responda perguntas sobre faturamento, custos, dívidas e caixa — em menos de 10 minutos.</p>
+                    <h4 class="font-black text-sm text-white mb-2">Crie sua conta única</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Um único cadastro dá acesso a todo o ecossistema OLUAP. Sem repetir dados.</p>
                 </div>
 
-                <div class="hidden md:flex items-center justify-center pb-8">
-                    <div class="h-px w-full bg-gradient-to-r from-[#ff7b00]/40 to-[#137789]/40"></div>
-                </div>
-
-                <!-- Step 2 -->
-                <div class="flex flex-col items-center text-center px-4 pb-12 md:pb-0 relative">
-                    <div class="w-14 h-14 bg-[#137789]/10 border border-[#137789]/20 rounded-2xl flex items-center justify-center mb-5">
-                        <i data-lucide="brain" class="w-6 h-6 text-[#137789]"></i>
+                <div class="flex flex-col items-center text-center p-6 bg-[#05121b]/60 border border-white/5 rounded-2xl">
+                    <div class="w-14 h-14 bg-[#137789]/10 border border-[#137789]/20 rounded-2xl flex items-center justify-center mb-4">
+                        <i data-lucide="layout-grid" class="w-6 h-6 text-[#22d3ee]"></i>
                     </div>
-                    <span class="text-[9px] font-black text-[#137789] uppercase tracking-widest mb-2">Passo 2</span>
-                    <h4 class="font-black text-sm text-white mb-2 uppercase">IA calcula os indicadores</h4>
-                    <p class="text-[11px] text-slate-400 leading-relaxed">Margem, Runway, Ponto de Equilíbrio, Burn Rate e mais — tudo calculado automaticamente.</p>
+                    <span class="text-[9px] font-black text-[#22d3ee] uppercase tracking-widest mb-2">Passo 2</span>
+                    <h4 class="font-black text-sm text-white mb-2">Acesse o seu hub</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Seu painel central com todas as soluções disponíveis. Escolha o que sua empresa precisa agora.</p>
                 </div>
 
-                <div class="hidden md:flex items-center justify-center pb-8">
-                    <div class="h-px w-full bg-gradient-to-r from-[#137789]/40 to-blue-500/40"></div>
-                </div>
-
-                <!-- Step 3 -->
-                <div class="flex flex-col items-center text-center px-4 pb-12 md:pb-0">
-                    <div class="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center mb-5">
-                        <i data-lucide="layout-dashboard" class="w-6 h-6 text-blue-400"></i>
+                <div class="flex flex-col items-center text-center p-6 bg-[#05121b]/60 border border-white/5 rounded-2xl">
+                    <div class="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center mb-4">
+                        <i data-lucide="zap" class="w-6 h-6 text-blue-400"></i>
                     </div>
                     <span class="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-2">Passo 3</span>
-                    <h4 class="font-black text-sm text-white mb-2 uppercase">Dashboard vivo</h4>
-                    <p class="text-[11px] text-slate-400 leading-relaxed">Score de saúde, alertas proativos e gráficos atualizados conforme os dados da sua empresa.</p>
+                    <h4 class="font-black text-sm text-white mb-2">Ative as soluções</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Diagnóstico, Crédito, Consultoria — ative conforme sua necessidade, sem refazer cadastro.</p>
                 </div>
 
-            </div>
-
-            <!-- Row 2 steps -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12 max-w-2xl mx-auto">
-                <div class="bg-white/3 border border-white/8 rounded-2xl p-6 flex items-start gap-4">
-                    <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-center shrink-0">
-                        <i data-lucide="zap" class="w-5 h-5 text-emerald-400"></i>
+                <div class="flex flex-col items-center text-center p-6 bg-[#05121b]/60 border border-white/5 rounded-2xl">
+                    <div class="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mb-4">
+                        <i data-lucide="trending-up" class="w-6 h-6 text-emerald-400"></i>
                     </div>
-                    <div>
-                        <span class="text-[9px] font-black text-emerald-400 uppercase tracking-widest">Passo 4</span>
-                        <h4 class="font-black text-sm text-white mb-1 mt-1 uppercase">Simule cenários</h4>
-                        <p class="text-[11px] text-slate-400 leading-relaxed">Teste decisões antes de tomar: "e se eu contratar alguém?" "e se a receita cair 20%?" A IA projeta o impacto real.</p>
-                    </div>
-                </div>
-                <div class="bg-white/3 border border-white/8 rounded-2xl p-6 flex items-start gap-4">
-                    <div class="w-12 h-12 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-xl flex items-center justify-center shrink-0">
-                        <i data-lucide="file-text" class="w-5 h-5 text-[#ff7b00]"></i>
-                    </div>
-                    <div>
-                        <span class="text-[9px] font-black text-[#ff7b00] uppercase tracking-widest">Passo 5</span>
-                        <h4 class="font-black text-sm text-white mb-1 mt-1 uppercase">Relatório em PDF</h4>
-                        <p class="text-[11px] text-slate-400 leading-relaxed">Documento profissional com o diagnóstico completo pronto para imprimir, arquivar ou apresentar ao banco.</p>
-                    </div>
+                    <span class="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-2">Passo 4</span>
+                    <h4 class="font-black text-sm text-white mb-2">Cresça com dados</h4>
+                    <p class="text-[11px] text-slate-400 leading-relaxed">Tome decisões baseadas em indicadores reais. Escale com clareza financeira e suporte estratégico.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- PRODUTOS -->
+    <!-- ========== PRODUTOS ========== -->
     <section id="produtos" class="relative z-10 py-28 border-t border-white/5">
         <div class="max-w-7xl mx-auto px-6">
             <div class="text-center mb-16">
                 <p class="text-[10px] font-black text-[#137789] uppercase tracking-widest mb-3">Ecossistema OLUAP</p>
-                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">Nossos <span class="text-gradient-teal italic">Produtos</span></h2>
-                <p class="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">Uma plataforma completa para cada fase do crescimento financeiro da sua empresa.</p>
+                <h2 class="text-3xl md:text-4xl font-black tracking-tighter mb-4">Nossas <span class="text-gradient-teal italic">Soluções</span></h2>
+                <p class="text-slate-400 max-w-xl mx-auto text-sm leading-relaxed">Cada produto foi desenhado para um desafio específico do crescimento empresarial. Use um ou todos.</p>
             </div>
 
-            <!-- Diagnóstico — destaque -->
-            <div class="bg-gradient-to-br from-[#0a1e2a] to-[#05121b] border border-[#ff7b00]/20 rounded-3xl p-8 md:p-12 mb-6 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-64 h-64 bg-[#ff7b00]/5 rounded-full blur-[80px]"></div>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 relative z-10">
-                    <div>
-                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ff7b00]/10 border border-[#ff7b00]/20 mb-6">
+            <!-- Grid 4 colunas — responsivo -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+
+                <!-- DIAGNÓSTICO FINANCEIRO -->
+                <a href="produto-diagnostico.html" class="produto-card group bg-gradient-to-b from-[#0d1e2a] to-[#05121b] border border-[#ff7b00]/25 hover:border-[#ff7b00]/60 hover:shadow-xl hover:shadow-[#ff7b00]/10 rounded-3xl p-7 flex flex-col">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="w-14 h-14 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <i data-lucide="activity" class="w-7 h-7 text-[#ff7b00]"></i>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#ff7b00]/10 border border-[#ff7b00]/20">
                             <span class="w-1.5 h-1.5 rounded-full bg-[#ff7b00] animate-pulse"></span>
-                            <span class="text-[9px] font-black text-[#ff7b00] uppercase tracking-widest">Disponível agora</span>
-                        </div>
-                        <div class="flex items-center gap-4 mb-6">
-                            <div class="w-16 h-16 bg-[#ff7b00]/10 border border-[#ff7b00]/20 rounded-2xl flex items-center justify-center">
-                                <i data-lucide="activity" class="w-8 h-8 text-[#ff7b00]"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-2xl font-black tracking-tight">Diagnóstico Financeiro</h3>
-                                <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">Seu CFO virtual · Análise com IA</p>
-                            </div>
-                        </div>
-                        <p class="text-slate-300 text-sm leading-relaxed mb-6">
-                            A OLUAP atua como um CFO virtual: ela coleta os dados da sua empresa, calcula mais de 8 indicadores financeiros em tempo real e entrega um painel vivo que você acessa todo dia — mostrando onde sua empresa está e para onde está indo.
-                        </p>
-                        <ul class="space-y-3 mb-8">
-                            <li class="flex items-start gap-3 text-sm text-slate-300">
-                                <div class="w-5 h-5 bg-[#ff7b00]/10 rounded-full flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="check" class="w-3 h-3 text-[#ff7b00]"></i></div>
-                                <span><strong class="text-white">Margem Bruta, de Contribuição e Líquida</strong> — saiba exatamente o que sobra de cada real vendido.</span>
-                            </li>
-                            <li class="flex items-start gap-3 text-sm text-slate-300">
-                                <div class="w-5 h-5 bg-[#ff7b00]/10 rounded-full flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="check" class="w-3 h-3 text-[#ff7b00]"></i></div>
-                                <span><strong class="text-white">Runway e Cash Burn Rate</strong> — descubra por quantos meses sua empresa sobrevive sem novas vendas.</span>
-                            </li>
-                            <li class="flex items-start gap-3 text-sm text-slate-300">
-                                <div class="w-5 h-5 bg-[#ff7b00]/10 rounded-full flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="check" class="w-3 h-3 text-[#ff7b00]"></i></div>
-                                <span><strong class="text-white">Ponto de Equilíbrio</strong> — saiba o faturamento mínimo para cobrir todos os custos.</span>
-                            </li>
-                            <li class="flex items-start gap-3 text-sm text-slate-300">
-                                <div class="w-5 h-5 bg-[#ff7b00]/10 rounded-full flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="check" class="w-3 h-3 text-[#ff7b00]"></i></div>
-                                <span><strong class="text-white">Simulador de cenários</strong> — projete o impacto de contratar, cortar custo ou captar crédito antes de decidir.</span>
-                            </li>
-                            <li class="flex items-start gap-3 text-sm text-slate-300">
-                                <div class="w-5 h-5 bg-[#ff7b00]/10 rounded-full flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="check" class="w-3 h-3 text-[#ff7b00]"></i></div>
-                                <span><strong class="text-white">Alertas proativos e relatório em PDF</strong> — a plataforma avisa quando algo merece atenção antes que vire problema.</span>
-                            </li>
-                        </ul>
-                        <a href="produto-diagnostico.html" class="inline-flex items-center gap-2 bg-[#ff7b00] hover:bg-[#e66e00] text-white px-7 py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-[#ff7b00]/20 transition-all hover:scale-[1.02]">
-                            Conhecer plataforma <i data-lucide="arrow-right" class="w-4 h-4"></i>
-                        </a>
-                    </div>
-
-                    <!-- Painel visual -->
-                    <div class="flex flex-col gap-3">
-                        <div class="bg-[#05121b] border border-white/10 rounded-2xl p-5">
-                            <div class="flex items-center justify-between mb-4">
-                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Score de Saúde Financeira</p>
-                                <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-                            </div>
-                            <div class="flex items-center gap-4">
-                                <div class="w-16 h-16 rounded-full border-4 border-emerald-500/40 flex items-center justify-center bg-emerald-500/5">
-                                    <span class="text-xl font-black text-emerald-400">72</span>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-black text-emerald-400">Financeiramente Saudável</p>
-                                    <p class="text-[10px] text-slate-400 mt-0.5">Baseado no último diagnóstico</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-emerald-900/20 border border-emerald-500/20 rounded-xl p-4">
-                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Margem Líquida</p>
-                                <p class="text-xl font-black text-emerald-400">18,3%</p>
-                                <p class="text-[9px] text-slate-400">Por R$ 100 vendidos</p>
-                            </div>
-                            <div class="bg-amber-900/20 border border-amber-500/20 rounded-xl p-4">
-                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Runway</p>
-                                <p class="text-xl font-black text-amber-400">2,4 meses</p>
-                                <p class="text-[9px] text-slate-400">Fôlego de caixa atual</p>
-                            </div>
-                            <div class="bg-[#137789]/10 border border-[#137789]/20 rounded-xl p-4">
-                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Ponto de Equilíbrio</p>
-                                <p class="text-xl font-black text-[#22d3ee]">R$ 42k</p>
-                                <p class="text-[9px] text-slate-400">Faturamento mínimo/mês</p>
-                            </div>
-                            <div class="bg-blue-900/20 border border-blue-500/20 rounded-xl p-4">
-                                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Margem de Contribuição</p>
-                                <p class="text-xl font-black text-blue-400">41,2%</p>
-                                <p class="text-[9px] text-slate-400">Após custos variáveis</p>
-                            </div>
-                        </div>
-                        <div class="bg-[#05121b] border border-white/8 rounded-xl p-4">
-                            <div class="flex items-center gap-2 mb-2">
-                                <i data-lucide="bell" class="w-3.5 h-3.5 text-[#ff7b00]"></i>
-                                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Alerta da IA</span>
-                            </div>
-                            <p class="text-[11px] text-slate-300 leading-relaxed">Seu runway está abaixo de 3 meses. Considere reduzir custos fixos ou antecipar recebíveis para ampliar o fôlego de caixa.</p>
+                            <span class="text-[8px] font-black text-[#ff7b00] uppercase tracking-widest">Disponível</span>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- 3 outros produtos -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                <!-- Crédito -->
-                <a href="credito.html" class="bg-[#030a0f] border border-white/10 rounded-3xl p-8 hover:border-emerald-500/30 transition-all duration-300 hover:-translate-y-1 group block">
-                    <div class="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                        <i data-lucide="credit-card" class="w-7 h-7 text-emerald-400"></i>
-                    </div>
-                    <h3 class="text-xl font-black mb-3">Crédito Inteligente</h3>
-                    <p class="text-sm text-slate-400 leading-relaxed mb-5">Acesso desburocratizado às melhores linhas de crédito do mercado, analisadas com base no diagnóstico real da sua empresa — não em feeling.</p>
-                    <ul class="space-y-2 mb-6">
-                        <li class="flex items-center gap-2 text-xs text-slate-300 font-medium"><i data-lucide="check" class="w-3 h-3 text-emerald-400"></i> Capital de giro e expansão</li>
-                        <li class="flex items-center gap-2 text-xs text-slate-300 font-medium"><i data-lucide="check" class="w-3 h-3 text-emerald-400"></i> Análise de capacidade de pagamento</li>
-                        <li class="flex items-center gap-2 text-xs text-slate-300 font-medium"><i data-lucide="check" class="w-3 h-3 text-emerald-400"></i> Taxas competitivas e transparentes</li>
+                    <h3 class="text-xl font-black text-white mb-1 tracking-tight">Diagnóstico Financeiro</h3>
+                    <p class="text-[10px] font-bold text-[#ff7b00] uppercase tracking-widest mb-4">CFO Virtual</p>
+                    <p class="text-sm text-slate-400 leading-relaxed flex-1 mb-6">
+                        Plataforma que age como seu CFO virtual: calcula indicadores financeiros em tempo real, gera alertas proativos e ajuda na tomada de decisão com base em dados da sua empresa.
+                    </p>
+                    <ul class="space-y-2 mb-7">
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-[#ff7b00] shrink-0"></i> Margem, Runway e Ponto de Equilíbrio</li>
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-[#ff7b00] shrink-0"></i> Score de saúde financeira em tempo real</li>
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-[#ff7b00] shrink-0"></i> Simulador de cenários + relatório PDF</li>
                     </ul>
-                    <span class="inline-flex items-center gap-1.5 text-[10px] font-black text-emerald-400 uppercase tracking-widest"><i data-lucide="arrow-right" class="w-3 h-3"></i> Saiba mais</span>
+                    <div class="flex items-center justify-between pt-4 border-t border-white/5">
+                        <span class="text-xs text-slate-500 font-bold">7 dias grátis</span>
+                        <span class="inline-flex items-center gap-1 text-[10px] font-black text-[#ff7b00] uppercase tracking-widest group-hover:gap-2 transition-all">Conhecer <i data-lucide="arrow-right" class="w-3 h-3"></i></span>
+                    </div>
                 </a>
 
-                <!-- Consultoria -->
-                <a href="consultoria.html" class="bg-[#030a0f] border border-white/10 rounded-3xl p-8 hover:border-blue-500/30 transition-all duration-300 hover:-translate-y-1 group block">
-                    <div class="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                        <i data-lucide="briefcase" class="w-7 h-7 text-blue-400"></i>
+                <!-- CRÉDITO INTELIGENTE -->
+                <a href="produto-credito.html" class="produto-card group bg-gradient-to-b from-[#0a1e18] to-[#05121b] border border-emerald-700/25 hover:border-emerald-500/60 hover:shadow-xl hover:shadow-emerald-500/10 rounded-3xl p-7 flex flex-col">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="w-14 h-14 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <i data-lucide="credit-card" class="w-7 h-7 text-emerald-400"></i>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span class="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Gratuito</span>
+                        </div>
                     </div>
-                    <h3 class="text-xl font-black mb-3">Consultoria</h3>
-                    <p class="text-sm text-slate-400 leading-relaxed mb-5">Especialistas financeiros atuando lado a lado com você para reestruturar, planejar e escalar o negócio com base nos dados reais da plataforma.</p>
-                    <ul class="space-y-2 mb-6">
-                        <li class="flex items-center gap-2 text-xs text-slate-300 font-medium"><i data-lucide="check" class="w-3 h-3 text-blue-400"></i> Reuniões mensais estratégicas</li>
-                        <li class="flex items-center gap-2 text-xs text-slate-300 font-medium"><i data-lucide="check" class="w-3 h-3 text-blue-400"></i> Planejamento financeiro personalizado</li>
-                        <li class="flex items-center gap-2 text-xs text-slate-300 font-medium"><i data-lucide="check" class="w-3 h-3 text-blue-400"></i> Mentoria e acompanhamento contínuo</li>
+                    <h3 class="text-xl font-black text-white mb-1 tracking-tight">Crédito Inteligente</h3>
+                    <p class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-4">Antecipação de Recebíveis</p>
+                    <p class="text-sm text-slate-400 leading-relaxed flex-1 mb-6">
+                        Antecipe recebíveis de cartão e duplicatas sem burocracia. Primeira operação até R$ 50.000 sem cadastro prévio. Taxas a partir de 2% — somos a ponte entre você e o parceiro financeiro.
+                    </p>
+                    <ul class="space-y-2 mb-7">
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i> Primeira operação até R$ 50k sem cadastro</li>
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i> Taxas a partir de 2% ao mês</li>
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i> Aprovação rápida com nota fiscal</li>
                     </ul>
-                    <span class="inline-flex items-center gap-1.5 text-[10px] font-black text-blue-400 uppercase tracking-widest"><i data-lucide="arrow-right" class="w-3 h-3"></i> Saiba mais</span>
+                    <div class="flex items-center justify-between pt-4 border-t border-white/5">
+                        <span class="text-xs text-slate-500 font-bold">Sem custo para você</span>
+                        <span class="inline-flex items-center gap-1 text-[10px] font-black text-emerald-400 uppercase tracking-widest group-hover:gap-2 transition-all">Simular <i data-lucide="arrow-right" class="w-3 h-3"></i></span>
+                    </div>
                 </a>
 
-                <!-- ERP (dimmed) -->
-                <div class="bg-[#030a0f]/60 border border-dashed border-white/10 rounded-3xl p-8 opacity-50 relative">
-                    <div class="absolute top-4 right-4 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
-                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Breve lançamento</span>
+                <!-- CONSULTORIA EMPRESARIAL -->
+                <a href="produto-consultoria.html" class="produto-card group bg-gradient-to-b from-[#0d1525] to-[#05121b] border border-blue-700/25 hover:border-blue-500/60 hover:shadow-xl hover:shadow-blue-500/10 rounded-3xl p-7 flex flex-col">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="w-14 h-14 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <i data-lucide="briefcase" class="w-7 h-7 text-blue-400"></i>
+                        </div>
+                        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                            <span class="text-[8px] font-black text-blue-400 uppercase tracking-widest">Gratuito</span>
+                        </div>
                     </div>
-                    <div class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center mb-6">
-                        <i data-lucide="database" class="w-7 h-7 text-slate-500"></i>
-                    </div>
-                    <h3 class="text-xl font-black mb-3 text-slate-400">ERP Financeiro</h3>
-                    <p class="text-sm text-slate-500 leading-relaxed mb-5">Sistema integrado para gestão diária do caixa, emissão de notas, contas a pagar e receber — direto na plataforma OLUAP.</p>
-                    <ul class="space-y-2 mb-6">
-                        <li class="flex items-center gap-2 text-xs text-slate-500 font-medium"><i data-lucide="check" class="w-3 h-3 text-slate-600"></i> Fluxo de caixa em tempo real</li>
-                        <li class="flex items-center gap-2 text-xs text-slate-500 font-medium"><i data-lucide="check" class="w-3 h-3 text-slate-600"></i> Contas a pagar e receber</li>
-                        <li class="flex items-center gap-2 text-xs text-slate-500 font-medium"><i data-lucide="check" class="w-3 h-3 text-slate-600"></i> Integração com ERPs externos</li>
+                    <h3 class="text-xl font-black text-white mb-1 tracking-tight">Consultoria Empresarial</h3>
+                    <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-4">Modelo Sócio</p>
+                    <p class="text-sm text-slate-400 leading-relaxed flex-1 mb-6">
+                        Atuamos como sócios estratégicos nos seus processos, comercial, financeiro e estratégias. Só ganhamos quando você ganha — sem mensalidade fixa, contrato após alinhamento.
+                    </p>
+                    <ul class="space-y-2 mb-7">
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-blue-400 shrink-0"></i> Processos, Comercial, Financeiro e Estratégia</li>
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-blue-400 shrink-0"></i> Só pagamos quando você cresce</li>
+                        <li class="flex items-center gap-2 text-xs text-slate-300"><i data-lucide="check" class="w-3.5 h-3.5 text-blue-400 shrink-0"></i> Contrato personalizado após alinhamento</li>
                     </ul>
-                </div>
+                    <div class="flex items-center justify-between pt-4 border-t border-white/5">
+                        <span class="text-xs text-slate-500 font-bold">Sem custo inicial</span>
+                        <span class="inline-flex items-center gap-1 text-[10px] font-black text-blue-400 uppercase tracking-widest group-hover:gap-2 transition-all">Solicitar <i data-lucide="arrow-right" class="w-3 h-3"></i></span>
+                    </div>
+                </a>
+
+                <!-- ERP FINANCEIRO -->
+                <a href="produto-erp.html" class="produto-card group bg-[#05121b]/40 border border-dashed border-slate-700/50 hover:border-slate-600/70 rounded-3xl p-7 flex flex-col opacity-60 hover:opacity-80">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="w-14 h-14 bg-slate-800/60 rounded-2xl flex items-center justify-center">
+                            <i data-lucide="database" class="w-7 h-7 text-slate-500"></i>
+                        </div>
+                        <div class="px-2.5 py-1 rounded-full bg-slate-800/60 border border-slate-700/50">
+                            <span class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Em breve</span>
+                        </div>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-400 mb-1 tracking-tight">ERP Financeiro</h3>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Em Desenvolvimento</p>
+                    <p class="text-sm text-slate-500 leading-relaxed flex-1 mb-6">
+                        Sistema integrado para gestão financeira diária: fluxo de caixa, contas a pagar e receber, emissão de notas fiscais e conciliação bancária.
+                    </p>
+                    <ul class="space-y-2 mb-7">
+                        <li class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="check" class="w-3.5 h-3.5 text-slate-600 shrink-0"></i> Fluxo de caixa em tempo real</li>
+                        <li class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="check" class="w-3.5 h-3.5 text-slate-600 shrink-0"></i> Contas a pagar e receber</li>
+                        <li class="flex items-center gap-2 text-xs text-slate-500"><i data-lucide="check" class="w-3.5 h-3.5 text-slate-600 shrink-0"></i> Notas fiscais e relatórios</li>
+                    </ul>
+                    <div class="flex items-center justify-between pt-4 border-t border-white/5">
+                        <span class="text-xs text-slate-600 font-bold">Breve lançamento</span>
+                        <span class="text-[10px] font-black text-slate-600 uppercase tracking-widest">Ver mais</span>
+                    </div>
+                </a>
 
             </div>
         </div>
     </section>
 
-    <!-- QUEM SOMOS -->
+    <!-- ========== QUEM SOMOS ========== -->
     <section id="quem-somos" class="relative z-10 py-28 border-t border-white/5 bg-[#030a0f]">
         <div class="max-w-6xl mx-auto px-6">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
+            <!-- Propósito em destaque -->
+            <div class="text-center mb-20">
+                <p class="text-[10px] font-black text-[#137789] uppercase tracking-widest mb-4">Quem Somos</p>
+                <h2 class="text-3xl md:text-5xl font-black tracking-tighter leading-tight mb-6">
+                    Propósito da OLUAP
+                </h2>
+                <p class="text-2xl md:text-3xl font-black text-gradient-teal italic max-w-3xl mx-auto leading-tight">
+                    "Impulsionar empresas a crescer com inteligência financeira e estratégia."
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
                 <div>
-                    <p class="text-[10px] font-black text-[#137789] uppercase tracking-widest mb-4">Quem Somos</p>
-                    <h2 class="text-3xl md:text-4xl font-black tracking-tighter leading-tight mb-6">
-                        Nascemos para democratizar o acesso a um <span class="text-gradient-teal italic">CFO de alto nível.</span>
-                    </h2>
+                    <h3 class="text-2xl font-black tracking-tighter leading-tight mb-6">
+                        Nascemos para democratizar o acesso a um <span class="text-gradient-teal italic">ecossistema financeiro completo.</span>
+                    </h3>
                     <p class="text-slate-400 text-sm leading-relaxed mb-5">
-                        A OLUAP foi criada com uma missão clara: a maioria das pequenas e médias empresas nunca terá recursos para contratar um CFO experiente. Mas todas elas merecem tomar decisões financeiras com a mesma qualidade de informação que as grandes empresas têm.
+                        A OLUAP foi criada com uma missão clara: a maioria das pequenas e médias empresas nunca terá recursos para contratar um CFO experiente, acessar crédito com boas condições ou pagar por uma consultoria de qualidade. Mas todas elas merecem crescer com a mesma qualidade de informação e suporte que as grandes empresas têm.
                     </p>
                     <p class="text-slate-400 text-sm leading-relaxed mb-5">
-                        Combinamos tecnologia, inteligência artificial e especialistas financeiros para entregar clareza sobre a saúde financeira do seu negócio — de forma acessível, contínua e acionável.
+                        Combinamos tecnologia, inteligência financeira e consultores estratégicos para entregar um ecossistema completo: do diagnóstico ao crédito, da estratégia ao ERP — tudo em um único lugar, com um único login.
                     </p>
                     <p class="text-slate-400 text-sm leading-relaxed mb-8">
-                        Não somos só um software de planilhas. Somos o parceiro estratégico que sua empresa precisava para parar de operar no escuro e começar a crescer com segurança.
+                        Não somos um software de planilha. Não somos uma fintech comum. Somos o parceiro estratégico que sua empresa precisava para parar de operar no escuro e começar a crescer com segurança.
                     </p>
 
                     <div class="flex flex-wrap gap-3">
@@ -410,11 +363,15 @@
                         </div>
                         <div class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5">
                             <i data-lucide="zap" class="w-4 h-4 text-[#ff7b00]"></i>
-                            <span class="text-xs font-bold text-slate-300">Resultados em minutos</span>
+                            <span class="text-xs font-bold text-slate-300">Resultados imediatos</span>
                         </div>
                         <div class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5">
                             <i data-lucide="users" class="w-4 h-4 text-blue-400"></i>
                             <span class="text-xs font-bold text-slate-300">Time de especialistas</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5">
+                            <i data-lucide="handshake" class="w-4 h-4 text-emerald-400"></i>
+                            <span class="text-xs font-bold text-slate-300">Modelo sócio</span>
                         </div>
                     </div>
                 </div>
@@ -426,7 +383,7 @@
                             <i data-lucide="target" class="w-5 h-5 text-[#ff7b00]"></i>
                         </div>
                         <h4 class="font-black text-sm text-white mb-2 uppercase">Nossa Missão</h4>
-                        <p class="text-[11px] text-slate-400 leading-relaxed">Tornar inteligência financeira de alto nível acessível para qualquer empresa, independente do seu tamanho.</p>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">Tornar inteligência financeira de alto nível e estratégia acessíveis para qualquer empresa, independente do tamanho.</p>
                     </div>
 
                     <div class="bg-[#05121b] border border-white/10 rounded-2xl p-6">
@@ -434,7 +391,7 @@
                             <i data-lucide="eye" class="w-5 h-5 text-[#137789]"></i>
                         </div>
                         <h4 class="font-black text-sm text-white mb-2 uppercase">Nossa Visão</h4>
-                        <p class="text-[11px] text-slate-400 leading-relaxed">Ser o ecossistema financeiro de referência para PMEs no Brasil — da análise ao crédito, tudo em um lugar.</p>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">Ser o ecossistema de crescimento de referência para PMEs no Brasil — do diagnóstico ao ERP, tudo em um lugar.</p>
                     </div>
 
                     <div class="bg-[#05121b] border border-white/10 rounded-2xl p-6">
@@ -442,7 +399,7 @@
                             <i data-lucide="heart" class="w-5 h-5 text-blue-400"></i>
                         </div>
                         <h4 class="font-black text-sm text-white mb-2 uppercase">Nossos Valores</h4>
-                        <p class="text-[11px] text-slate-400 leading-relaxed">Transparência nos dados, clareza nas recomendações e responsabilidade com o crescimento de cada cliente.</p>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">Transparência nos dados, clareza nas recomendações e alinhamento de interesses — só ganhamos quando você cresce.</p>
                     </div>
 
                     <div class="bg-[#05121b] border border-white/10 rounded-2xl p-6">
@@ -450,45 +407,56 @@
                             <i data-lucide="trending-up" class="w-5 h-5 text-emerald-400"></i>
                         </div>
                         <h4 class="font-black text-sm text-white mb-2 uppercase">Nosso Diferencial</h4>
-                        <p class="text-[11px] text-slate-400 leading-relaxed">Não entregamos só números — entregamos interpretação, alertas e ação. Você sabe o que fazer com os dados.</p>
+                        <p class="text-[11px] text-slate-400 leading-relaxed">Não entregamos só números — entregamos um ecossistema: diagnóstico, crédito, consultoria e ERP, tudo integrado.</p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- CTA FINAL -->
+    <!-- ========== CTA FINAL ========== -->
     <section class="py-28 relative z-10 overflow-hidden border-t border-white/5">
         <div class="absolute inset-0 bg-gradient-to-br from-[#137789]/8 to-[#ff7b00]/5"></div>
         <div class="max-w-3xl mx-auto px-6 text-center relative z-10">
             <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">Diagnóstico gratuito disponível</span>
+                <span class="w-2 h-2 rounded-full bg-[#ff7b00] animate-pulse"></span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">Comece agora — é grátis</span>
             </div>
-            <h2 class="text-3xl md:text-5xl font-black tracking-tighter mb-6">Pronto para enxergar<br/><span class="text-gradient-orange italic">sua empresa com clareza?</span></h2>
-            <p class="text-slate-400 text-base mb-10 max-w-xl mx-auto leading-relaxed">Preencha o formulário em menos de 10 minutos e receba o diagnóstico completo da saúde financeira da sua empresa.</p>
-            <a href="cadastro.html" class="inline-flex items-center justify-center gap-2 bg-white text-[#05121b] hover:bg-slate-200 px-10 py-5 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl transition-all hover:scale-[1.02]">
-                Solicitar diagnóstico grátis <i data-lucide="arrow-right" class="w-4 h-4"></i>
-            </a>
+            <h2 class="text-3xl md:text-5xl font-black tracking-tighter mb-6">
+                Pronto para impulsionar<br/><span class="text-gradient-orange italic">sua empresa com clareza?</span>
+            </h2>
+            <p class="text-slate-400 text-base mb-10 max-w-xl mx-auto leading-relaxed">
+                Crie sua conta em menos de 2 minutos. Acesse o diagnóstico, o crédito e a consultoria — tudo em um único ecossistema.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="cadastro.html" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#ff7b00] hover:bg-[#e66e00] text-white px-10 py-5 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl shadow-[#ff7b00]/20 transition-all hover:scale-[1.02]">
+                    Criar minha conta grátis <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </a>
+                <a href="#produtos" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 px-10 py-5 rounded-2xl text-sm font-black uppercase tracking-widest transition-all">
+                    Ver todas as soluções
+                </a>
+            </div>
             <p class="text-xs text-slate-500 mt-6">Você já tem uma conta? <a href="login.html" class="text-[#ff7b00] hover:underline font-bold">Faça login aqui</a>.</p>
         </div>
     </section>
 
-    <!-- FOOTER -->
+    <!-- ========== FOOTER ========== -->
     <footer class="bg-[#030a0f] border-t border-white/5 py-12">
         <div class="max-w-7xl mx-auto px-6">
             <div class="flex flex-col md:flex-row items-center justify-between gap-8">
-                <div class="flex items-center gap-3">
+                <a href="index.html" class="flex items-center gap-3">
                     <img src="logo2.png" alt="OLUAP" class="h-7 object-contain opacity-70" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
                     <div class="hidden items-center gap-2 opacity-50">
                         <i data-lucide="shield-check" class="text-white w-5 h-5"></i>
                         <span class="font-black italic text-xl tracking-tighter">OLUAP</span>
                     </div>
-                </div>
-                <div class="flex items-center gap-8 text-xs font-bold text-slate-500">
-                    <a href="#produtos" class="hover:text-slate-300 transition-colors uppercase tracking-widest">Produtos</a>
-                    <a href="#como-funciona" class="hover:text-slate-300 transition-colors uppercase tracking-widest">Como Funciona</a>
-                    <a href="#quem-somos" class="hover:text-slate-300 transition-colors uppercase tracking-widest">Quem Somos</a>
+                </a>
+                <div class="flex flex-wrap items-center gap-6 text-xs font-bold text-slate-500 justify-center">
+                    <a href="produto-diagnostico.html" class="hover:text-slate-300 transition-colors uppercase tracking-widest">Diagnóstico</a>
+                    <a href="produto-credito.html" class="hover:text-slate-300 transition-colors uppercase tracking-widest">Crédito</a>
+                    <a href="produto-consultoria.html" class="hover:text-slate-300 transition-colors uppercase tracking-widest">Consultoria</a>
+                    <a href="produto-erp.html" class="hover:text-slate-300 transition-colors uppercase tracking-widest">ERP</a>
+                    <a href="login.html" class="hover:text-slate-300 transition-colors uppercase tracking-widest">Login</a>
                 </div>
                 <p class="text-xs text-slate-600 font-medium">© 2026 OLUAP. Todos os direitos reservados.</p>
             </div>
