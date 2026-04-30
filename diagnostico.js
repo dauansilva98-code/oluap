@@ -395,6 +395,38 @@ const IndicadorCard = ({titulo, valor, formula, status, destaque=false}) => {
   );
 };
 
+// ── SCENARIOS ─────────────────────────────────────────────────────────────────
+const SCENARIOS = [
+  {id:'aumentar_ticket',group:'Receita',     emoji:'📈',label:'Aumentar Preço',        desc:'Cobrar % a mais por venda ou serviço',            tipo:'pct',   inputLabel:'Aumento no preço (%)'},
+  {id:'queda_receita',  group:'Receita',     emoji:'📉',label:'Queda na Receita',       desc:'Simule sazonalidade ou perda de clientes',        tipo:'pct',   inputLabel:'Queda percentual (%)'},
+  {id:'perda_cliente',  group:'Receita',     emoji:'⚠️', label:'Perder Cliente Fixo',   desc:'Receita mensal que deixaria de entrar',           tipo:'valor', inputLabel:'Receita perdida/mês'},
+  {id:'novo_contrato',  group:'Receita',     emoji:'🤝', label:'Novo Contrato',         desc:'Receita extra entrando todo mês',                 tipo:'valor', inputLabel:'Valor do contrato/mês'},
+  {id:'contratar_func', group:'Custo',       emoji:'👤',label:'Contratar Funcionário',  desc:'Salário base (+30% encargos calculado)',          tipo:'valor', inputLabel:'Salário base mensal'},
+  {id:'nova_despesa',   group:'Custo',       emoji:'🏢',label:'Nova Despesa Fixa',      desc:'Aluguel, assinatura, licença ou serviço',         tipo:'valor', inputLabel:'Valor mensal'},
+  {id:'reduzir_custo',  group:'Custo',       emoji:'✂️', label:'Cortar Custo Fixo',     desc:'Renegociação ou eliminação de despesa',           tipo:'valor', inputLabel:'Economia mensal'},
+  {id:'investimento',   group:'Investimento',emoji:'⚙️', label:'Investimento à Vista',  desc:'Sai do caixa imediatamente (equip. ou reforma)', tipo:'valor', inputLabel:'Valor do investimento'},
+  {id:'emprestimo',     group:'Dívida',      emoji:'🏦',label:'Captar Empréstimo',      desc:'Entra no caixa; parcela fixada em 12x',           tipo:'valor', inputLabel:'Valor captado'},
+  {id:'pagar_divida',   group:'Dívida',      emoji:'🎯',label:'Quitar Parcela Mensal',  desc:'Elimina custo fixo mensal, consome caixa hoje',   tipo:'valor', inputLabel:'Parcela quitada/mês'},
+];
+
+// ── SIM COMPARATIVO ───────────────────────────────────────────────────────────
+const SimComparativo = ({label, before, after, formato}) => {
+  const melhorou = after >= before;
+  const diff = Math.abs(after - before);
+  const fmt = v => formato==='brl' ? formatBRL(v) : formato==='meses' ? `${Math.max(0,v).toFixed(1)}m` : `${v.toFixed(1)}%`;
+  return (
+    <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-2">
+      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-slate-400 text-sm font-bold line-through">{fmt(before)}</span>
+        <span className="text-slate-300 text-xs">→</span>
+        <span className={`text-xl font-black ${melhorou?'text-emerald-600':'text-red-500'}`}>{fmt(after)}</span>
+        <span className={`ml-auto text-[9px] font-black px-2 py-0.5 rounded-full border ${melhorou?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-red-50 text-red-600 border-red-100'}`}>{melhorou?'▲':'▼'} {fmt(diff)}</span>
+      </div>
+    </div>
+  );
+};
+
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 const App = () => {
   const [view, setView] = useState('dashboard');
@@ -415,8 +447,10 @@ const App = () => {
   const [newlyCompleted, setNewlyCompleted] = useState(null);
   const [profileFilledForm, setProfileFilledForm] = useState(false);
   const [formData, setFormData] = useState({...EMPTY_FORM});
-  const [simType, setSimType] = useState('Aumentar despesa');
+  const [simType, setSimType] = useState('aumentar_ticket');
   const [simValue, setSimValue] = useState('');
+  const [simPct, setSimPct] = useState('');
+  const [simGroup, setSimGroup] = useState('Todos');
   const [simResult, setSimResult] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState(null);
@@ -544,14 +578,39 @@ const App = () => {
 
   const handleSimulate=async()=>{
     setSimLoading(true);setSimResult(null);
-    await new Promise(r=>setTimeout(r,1800));
-    const v=parseFloat((simValue.replace(/\D/g,'')||0))/100;
-    let msg="";
-    if(simType==='Aumentar despesa')msg=`Se você aumentar despesas em ${formatBRL(v)}/mês, o impacto anual no caixa será de ${formatBRL(v*12)}. Avalie se há receita adicional prevista para absorver esse custo antes de comprometer a margem.`;
-    else if(simType==='Diminuir receita')msg=`Uma queda de ${formatBRL(v)} na receita mensal representa ${formatBRL(v*12)} a menos por ano. Dependendo da sua reserva, o caixa pode ficar negativo em 2-3 meses. Considere acionar captação preventiva.`;
-    else if(simType==='Contratar funcionário')msg=`Contratar por ${formatBRL(v)}/mês adiciona ~${formatBRL(v*1.3)}/mês com encargos. Avalie se o ganho de produtividade gera receita equivalente nos primeiros 90 dias para justificar o custo.`;
-    else if(simType==='Comprar equipamento')msg=`Um equipamento de ${formatBRL(v)} parcelado em 12x seria ${formatBRL(v/12)}/mês. Verifique se seu fôlego de caixa suporta o impacto sem comprometer o capital de giro.`;
-    setSimResult(msg);setSimLoading(false);
+    await new Promise(r=>setTimeout(r,1000));
+    const sc=SCENARIOS.find(s=>s.id===simType)||SCENARIOS[0];
+    const raw=sc.tipo==='pct'
+      ?parseFloat(simPct||'0')
+      :parseFloat((simValue.replace(/\D/g,'')||'0'))/100;
+    if(!metrics){setSimResult({noMetrics:true});setSimLoading(false);return;}
+    let dR=0,dCF=0,dCV=0,dS=0,insight='';
+    if(sc.id==='aumentar_ticket'){dR=metrics.receita*(raw/100);insight=`Com preços ${raw.toFixed(1)}% maiores, o resultado mensal melhora ${formatBRL(dR)}.`;}
+    else if(sc.id==='queda_receita'){dR=-(metrics.receita*(raw/100));insight=`Queda de ${raw.toFixed(1)}%: você perde ${formatBRL(Math.abs(dR))}/mês de receita.`;}
+    else if(sc.id==='perda_cliente'){dR=-raw;insight=`Sem esse contrato, o resultado mensal cai ${formatBRL(raw)}.`;}
+    else if(sc.id==='novo_contrato'){dR=raw;insight=`Novo contrato de ${formatBRL(raw)}/mês melhora margem e runway imediatamente.`;}
+    else if(sc.id==='contratar_func'){dCF=raw*1.3;insight=`Salário de ${formatBRL(raw)} + encargos = ${formatBRL(raw*1.3)}/mês de custo fixo novo.`;}
+    else if(sc.id==='nova_despesa'){dCF=raw;insight=`Nova despesa de ${formatBRL(raw)}/mês reduz seu runway.`;}
+    else if(sc.id==='reduzir_custo'){dCF=-raw;insight=`Cortar ${formatBRL(raw)}/mês libera ${formatBRL(raw*12)}/ano no caixa.`;}
+    else if(sc.id==='investimento'){dS=-raw;insight=`Investimento de ${formatBRL(raw)} sai imediatamente do caixa.`;}
+    else if(sc.id==='emprestimo'){dS=raw;dCF=raw/12;insight=`Captação de ${formatBRL(raw)}: entra no caixa agora, mas parcela de ${formatBRL(raw/12)}/mês pesa nos custos.`;}
+    else if(sc.id==='pagar_divida'){dCF=-raw;dS=-raw;insight=`Quitar ${formatBRL(raw)}/mês: melhora a margem futura, mas consome ${formatBRL(raw)} de caixa hoje.`;}
+    const nR=metrics.receita+dR;
+    const nCF=Math.max(0,metrics.custFix+dCF);
+    const nCV=Math.max(0,metrics.custVar+dCV);
+    const nTotal=nCF+nCV;
+    const nLucro=nR-nTotal;
+    const nMargLiq=nR>0?(nLucro/nR)*100:0;
+    const nMargC=nR>0?((nR-nCV)/nR)*100:0;
+    const nPontoEq=nMargC>0?nCF/(nMargC/100):0;
+    const nSaldo=Math.max(0,metrics.saldo+dS);
+    const nRunway=nTotal>0&&nSaldo>0?nSaldo/nTotal:0;
+    setSimResult({
+      before:{lucro:metrics.lucro,margLiq:metrics.margLiq,runway:metrics.runwayMeses,pontoEq:metrics.pontoEq},
+      after:{lucro:nLucro,margLiq:nMargLiq,runway:nRunway,pontoEq:nPontoEq},
+      insight,positivo:nLucro>=metrics.lucro
+    });
+    setSimLoading(false);
   };
 
   if(authChecking)return(<div className="min-h-screen bg-[#05121b] flex items-center justify-center"><Loader2 className="animate-spin text-[#ff7b00]" size={32}/></div>);
@@ -836,48 +895,103 @@ const App = () => {
         )}
 
         {/* ── SIMULADOR ─────────────────────────────────────────────────── */}
-        {view==='simulador'&&(
-          <div className="max-w-3xl mx-auto fade-in">
-            <header className="mb-8"><p className="text-[10px] font-bold text-[#137789] uppercase tracking-widest mb-1">IA · Simulador</p><h1 className="text-2xl font-black text-[#05121b] italic">Simulador de Cenários</h1><p className="text-slate-400 text-sm font-medium mt-1">Teste decisões antes de executá-las. A IA projeta o impacto no seu caixa.</p></header>
-            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
-              <div className="flex items-center gap-3 mb-8 pb-6 border-b border-slate-50">
-                <div className="w-10 h-10 bg-[#05121b] rounded-xl flex items-center justify-center"><Zap size={18} className="text-[#ff7b00]"/></div>
-                <div><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">E se...</h3><p className="text-[10px] text-slate-400">Simule qualquer decisão financeira</p></div>
+        {view==='simulador'&&(()=>{
+          const sc=SCENARIOS.find(s=>s.id===simType)||SCENARIOS[0];
+          const grupos=['Todos','Receita','Custo','Investimento','Dívida'];
+          const scFiltrados=simGroup==='Todos'?SCENARIOS:SCENARIOS.filter(s=>s.group===simGroup);
+          const canCalc=sc.tipo==='pct'?!!simPct:!!simValue;
+          return(
+          <div className="max-w-4xl mx-auto fade-in">
+            <header className="mb-8">
+              <p className="text-[10px] font-bold text-[#137789] uppercase tracking-widest mb-1">IA · Simulador</p>
+              <h1 className="text-2xl font-black text-[#05121b] italic">Simulador de Cenários</h1>
+              <p className="text-slate-400 text-sm font-medium mt-1">Teste decisões antes de executar. Veja o impacto real nos seus indicadores financeiros.</p>
+            </header>
+
+            {!metrics&&(
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3 mb-6">
+                <Info size={15} className="text-amber-500 shrink-0 mt-0.5"/>
+                <p className="text-[12px] text-amber-700 font-medium leading-relaxed">Envie um diagnóstico financeiro para ver projeções com os dados reais da sua empresa. Sem dados, não há como calcular antes × depois.</p>
               </div>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">O que você quer simular?</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {['Aumentar despesa','Diminuir receita','Contratar funcionário','Comprar equipamento'].map(opt=>(
-                      <button key={opt} onClick={()=>{setSimType(opt);setSimResult(null);}} className={`px-4 py-3 rounded-xl font-bold text-[11px] border text-left transition-all ${simType===opt?'bg-[#05121b] text-white border-[#05121b] shadow-md':'bg-white text-[#05121b]/60 border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}>{opt}</button>
-                    ))}
-                  </div>
+            )}
+
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-7 mb-5">
+              {/* Grupo filter */}
+              <div className="flex items-center gap-2 mb-5 flex-wrap">
+                {grupos.map(g=>(
+                  <button key={g} onClick={()=>{setSimGroup(g);setSimResult(null);}} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${simGroup===g?'bg-[#05121b] text-white border-[#05121b]':'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>{g}</button>
+                ))}
+              </div>
+
+              {/* Scenario grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-7">
+                {scFiltrados.map(s=>(
+                  <button key={s.id} onClick={()=>{setSimType(s.id);setSimValue('');setSimPct('');setSimResult(null);}} className={`flex flex-col gap-1.5 p-3 rounded-2xl border text-left transition-all ${simType===s.id?'bg-[#05121b] border-[#05121b] shadow-md':'bg-slate-50 border-slate-100 hover:border-slate-200 hover:bg-white'}`}>
+                    <span className="text-xl leading-none">{s.emoji}</span>
+                    <p className={`text-[10px] font-black leading-tight ${simType===s.id?'text-white':'text-[#05121b]'}`}>{s.label}</p>
+                    <p className={`text-[9px] leading-tight ${simType===s.id?'text-slate-400':'text-slate-400'}`}>{s.desc}</p>
+                  </button>
+                ))}
+              </div>
+
+              {/* Input */}
+              <div className="border-t border-slate-50 pt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-8 h-8 bg-[#05121b] rounded-xl flex items-center justify-center"><span className="text-base">{sc.emoji}</span></div>
+                  <div><p className="font-black text-[#05121b] text-sm">{sc.label}</p><p className="text-[10px] text-slate-400">{sc.desc}</p></div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Qual o valor?</label>
-                  <input type="text" value={simValue} onChange={e=>{setSimValue(formatCurrency(e.target.value));setSimResult(null);}} placeholder="R$ 0,00" className="w-full bg-white border border-slate-200 focus:border-[#ff7b00] focus:ring-1 focus:ring-[#ff7b00] px-4 py-3 rounded-xl font-bold text-[#05121b] outline-none text-sm transition-all"/>
-                </div>
-                <button onClick={handleSimulate} disabled={!simValue||simLoading} className="w-full bg-[#05121b] hover:bg-slate-800 disabled:opacity-40 text-white py-4 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-md transition-all">
-                  {simLoading?<><Loader2 size={15} className="animate-spin"/>Calculando...</>:<><Zap size={15}/>Calcular Impacto</>}
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">{sc.inputLabel}</label>
+                {sc.tipo==='pct'
+                  ?<div className="relative"><input type="number" min="0" max="100" step="0.5" value={simPct} onChange={e=>{setSimPct(e.target.value);setSimResult(null);}} placeholder="0" className="w-full bg-white border border-slate-200 focus:border-[#ff7b00] focus:ring-1 focus:ring-[#ff7b00] px-4 py-3 pr-10 rounded-xl font-bold text-[#05121b] outline-none text-sm transition-all"/><span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">%</span></div>
+                  :<input type="text" value={simValue} onChange={e=>{setSimValue(formatCurrency(e.target.value));setSimResult(null);}} placeholder="R$ 0,00" className="w-full bg-white border border-slate-200 focus:border-[#ff7b00] focus:ring-1 focus:ring-[#ff7b00] px-4 py-3 rounded-xl font-bold text-[#05121b] outline-none text-sm transition-all"/>
+                }
+                <button onClick={handleSimulate} disabled={!canCalc||simLoading||!metrics} className="w-full mt-4 bg-[#05121b] hover:bg-slate-800 disabled:opacity-40 text-white py-4 rounded-xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-md transition-all">
+                  {simLoading?<><Loader2 size={15} className="animate-spin"/>Calculando...</>:<><Zap size={15}/>Projetar Impacto</>}
                 </button>
-                {simResult&&(
-                  <div className="slide-down bg-[#05121b] rounded-2xl p-6">
-                    <div className="flex items-center gap-2 mb-3"><Brain size={15} className="text-[#ff7b00]"/><span className="text-[10px] font-black text-[#ff7b00] uppercase tracking-widest">Análise da IA</span></div>
-                    <p className="text-white text-sm font-medium leading-relaxed">{simResult}</p>
-                  </div>
-                )}
               </div>
             </div>
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {[{ex:'E se contratar um vendedor por R$ 3.000/mês?',e:'👤',t:'Contratar funcionário',v:'R$ 3.000,00'},{ex:'E se as vendas caírem 15% no próximo mês?',e:'📉',t:'Diminuir receita',v:''},{ex:'E se comprar um equipamento de R$ 50.000?',e:'⚙️',t:'Comprar equipamento',v:'R$ 50.000,00'}].map((ex,i)=>(
-                <button key={i} onClick={()=>{setSimType(ex.t);if(ex.v)setSimValue(ex.v);setSimResult(null);}} className="bg-white border border-slate-100 rounded-xl p-4 text-left hover:border-slate-200 hover:shadow-sm transition-all">
-                  <span className="text-xl mb-2 block">{ex.e}</span>
-                  <p className="text-[11px] font-semibold text-slate-600 leading-relaxed">{ex.ex}</p>
-                </button>
-              ))}
+
+            {/* Resultado */}
+            {simResult&&!simResult.noMetrics&&(
+              <div className="slide-down bg-white rounded-3xl border border-slate-100 shadow-sm p-7">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-3 h-3 rounded-full ${simResult.positivo?'bg-emerald-500':'bg-red-500'}`}></div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Projeção · Antes vs Depois</span>
+                </div>
+                <p className="text-sm font-semibold text-[#05121b] mb-6 leading-relaxed">{simResult.insight}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  <SimComparativo label="Resultado Mensal" before={simResult.before.lucro} after={simResult.after.lucro} formato="brl"/>
+                  <SimComparativo label="Margem Líquida" before={simResult.before.margLiq} after={simResult.after.margLiq} formato="pct"/>
+                  <SimComparativo label="Runway (meses de caixa)" before={simResult.before.runway} after={simResult.after.runway} formato="meses"/>
+                  <SimComparativo label="Ponto de Equilíbrio" before={simResult.before.pontoEq} after={simResult.after.pontoEq} formato="brl"/>
+                </div>
+                <div className={`rounded-xl p-4 flex items-start gap-3 ${simResult.positivo?'bg-emerald-50 border border-emerald-100':'bg-red-50 border border-red-100'}`}>
+                  <span className="text-xl">{simResult.positivo?'✅':'⚠️'}</span>
+                  <p className={`text-[11px] font-semibold leading-relaxed ${simResult.positivo?'text-emerald-800':'text-red-700'}`}>{simResult.positivo?'Essa decisão melhora o resultado mensal. Avalie se o ganho é consistente ou sazonal antes de comprometer gastos recorrentes.':'Essa decisão piora o resultado mensal. Certifique-se de ter runway suficiente antes de executar ou busque uma contrapartida de receita.'}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Quick examples */}
+            <div className="mt-5">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Exemplos rápidos</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  {id:'contratar_func',emoji:'👤',ex:'E se contratar um vendedor por R$ 3.000?',v:'R$ 3.000,00',pct:''},
+                  {id:'queda_receita', emoji:'📉',ex:'E se as vendas caírem 20%?',              v:'',           pct:'20'},
+                  {id:'investimento',  emoji:'⚙️', ex:'E se comprar um equipamento de R$ 50.000?',v:'R$ 50.000,00',pct:''},
+                  {id:'novo_contrato', emoji:'🤝', ex:'E se fechar um contrato de R$ 8.000/mês?',v:'R$ 8.000,00',pct:''},
+                ].map((ex,i)=>(
+                  <button key={i} onClick={()=>{setSimType(ex.id);setSimGroup('Todos');if(ex.v)setSimValue(ex.v);if(ex.pct)setSimPct(ex.pct);setSimResult(null);}} className="bg-white border border-slate-100 rounded-2xl p-4 text-left hover:border-slate-200 hover:shadow-sm transition-all">
+                    <span className="text-xl mb-2 block">{ex.emoji}</span>
+                    <p className="text-[11px] font-semibold text-slate-600 leading-relaxed">{ex.ex}</p>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── FONTES DE DADOS ───────────────────────────────────────────── */}
         {view==='fontes'&&(
