@@ -285,30 +285,60 @@ const calcMetrics = (diag) => {
   if (!diag?.data) return null;
   const d = diag.data;
   const v1 = diag.form_type === 'Estruturado';
-  const receita      = pc(v1 ? d.v1_fatMedio     : d.g_faturamento);
-  const custDir      = pc(v1 ? d.v1_custosDiretos : d.g_custosDiretos);
-  const taxaRec      = pc(v1 ? d.v1_taxaRecebimento : d.g_taxaMaquininha);
-  const folha        = pc(v1 ? d.v1_folha         : d.g_gastoFunc);
-  const prolabore    = pc(v1 ? d.v1_prolabore      : d.g_prolabore);
-  const mkt          = pc(v1 ? d.v1_mkt            : '0');
-  const aluguel      = pc(v1 ? d.v1_estrutura      : d.g_aluguel);
-  const outrasFixas  = pc(v1 ? d.v1_outrasFixas    : d.g_outrosFixos);
-  const pesoDivida   = pc(v1 ? d.v1_pesoDivida     : '0');
-  const saldo        = pc(v1 ? d.v1_saldo          : '0');
-  const custVar = custDir + taxaRec;
-  const custFix = folha + prolabore + mkt + aluguel + outrasFixas + pesoDivida;
-  const totalCust = custVar + custFix;
-  const lucro = receita - totalCust;
-  const margContrib = receita > 0 ? (receita - custVar) / receita : 0;
-  const pontoEq = margContrib > 0 ? custFix / margContrib : 0;
-  const folegoDias = totalCust > 0 && saldo > 0 ? Math.round(saldo / (totalCust / 30)) : 0;
-  const margLiq = receita > 0 ? (lucro / receita) * 100 : 0;
+
+  // ── Receitas ──
+  const receita    = pc(v1 ? d.v1_fatMedio      : d.g_faturamento);
+
+  // ── Custos variáveis ──
+  const custDir    = pc(v1 ? d.v1_custosDiretos  : d.g_custosDiretos);
+  const taxaRec    = pc(v1 ? d.v1_taxaRecebimento: d.g_taxaMaquininha);
+  const comissoes  = pc(v1 ? d.v1_comissoes      : '0');
+  const custVar    = custDir + taxaRec + comissoes;
+
+  // ── Custos fixos ──
+  const folha      = pc(v1 ? d.v1_folha          : d.g_gastoFunc);
+  const prolabore  = pc(v1 ? d.v1_prolabore       : d.g_prolabore);
+  const mkt        = pc(v1 ? d.v1_mkt             : '0');
+  const aluguel    = pc(v1 ? d.v1_estrutura       : d.g_aluguel);
+  const outrasFixas= pc(v1 ? d.v1_outrasFixas     : d.g_outrosFixos);
+  const pesoDivida = pc(v1 ? d.v1_pesoDivida      : '0');
+  const custFix    = folha + prolabore + mkt + aluguel + outrasFixas + pesoDivida;
+
+  // ── Caixa ──
+  const saldo      = pc(v1 ? d.v1_saldo           : '0');
+
+  // ── Operacionais (só formulário Estruturado tem esses campos) ──
+  const numVendas  = v1 ? (parseFloat((d.v1_numVendas||'').replace(/\D/g,'')) || 0) : 0;
+  const pmr        = v1 ? (parseFloat(d.v1_prazoRec) || 0) : 0;
+  const pmp        = v1 ? (parseFloat(d.v1_prazoPag) || 0) : 0;
+
+  // ── Cálculos derivados ──
+  const totalCust     = custVar + custFix;
+  const lucro         = receita - totalCust;
+  const margemBruta   = receita > 0 ? ((receita - custDir) / receita) * 100 : 0;
+  const margContrib   = receita > 0 ? ((receita - custVar) / receita) * 100 : 0;
+  const margLiq       = receita > 0 ? (lucro / receita) * 100 : 0;
+  const pontoEq       = margContrib > 0 ? custFix / (margContrib / 100) : 0;
+  const burnRate      = totalCust;
+  const runwayMeses   = burnRate > 0 && saldo > 0 ? saldo / burnRate : 0;
+  const folegoDias    = Math.round(runwayMeses * 30);
+  const ticketMedio   = numVendas > 0 ? receita / numVendas : 0;
+
+  // ── Score de saúde (0–100) ──
   let score = 50;
   if (margLiq >= 15) score += 20; else if (margLiq >= 5) score += 10; else if (margLiq < 0) score -= 25;
-  if (folegoDias >= 60) score += 15; else if (folegoDias >= 30) score += 5; else if (folegoDias > 0 && folegoDias < 15) score -= 15;
+  if (folegoDias >= 90) score += 15; else if (folegoDias >= 45) score += 5; else if (folegoDias > 0 && folegoDias < 20) score -= 15;
   if (receita > 0 && pontoEq <= receita) score += 10; else if (receita > 0) score -= 10;
+  if (margemBruta >= 40) score += 5; else if (margemBruta < 15) score -= 5;
   score = Math.max(10, Math.min(100, Math.round(score)));
-  return { receita, custVar, custFix, totalCust, lucro, margContrib, pontoEq, folegoDias, margLiq, saldo, score };
+
+  return {
+    receita, custDir, custVar, custFix, totalCust, lucro, saldo,
+    margemBruta, margContrib, margLiq,
+    pontoEq, burnRate, runwayMeses, folegoDias,
+    ticketMedio, pmr, pmp,
+    score,
+  };
 };
 
 const genCashFlowData = (m) => {
@@ -342,6 +372,27 @@ const genAlerts = (m) => {
   if (alerts.length === 0)
     alerts.push({type:'green',icon:CheckCircle,msg:'Indicadores dentro do esperado com base no seu diagnóstico. Continue monitorando regularmente.',time:'agora'});
   return alerts;
+};
+
+// ── INDICADOR CARD ────────────────────────────────────────────────────────────
+const IndicadorCard = ({titulo, valor, formula, status, destaque=false}) => {
+  const C = {
+    green:   {bg:'bg-emerald-50', border:'border-emerald-200', val:'text-emerald-800', badge:'bg-emerald-100 text-emerald-700 border-emerald-200'},
+    yellow:  {bg:'bg-amber-50',   border:'border-amber-200',   val:'text-amber-800',   badge:'bg-amber-100 text-amber-700 border-amber-200'},
+    red:     {bg:'bg-red-50',     border:'border-red-200',     val:'text-red-800',     badge:'bg-red-100 text-red-700 border-red-200'},
+    neutral: {bg:'bg-white',      border:'border-slate-100',   val:'text-[#05121b]',   badge:'bg-slate-100 text-slate-500 border-slate-200'},
+  }[status] || {bg:'bg-white',border:'border-slate-100',val:'text-[#05121b]',badge:'bg-slate-100 text-slate-500 border-slate-200'};
+  const dot = {green:'bg-emerald-500', yellow:'bg-amber-500', red:'bg-red-500', neutral:'bg-slate-300'}[status]||'bg-slate-300';
+  return (
+    <div className={`${C.bg} border ${C.border} rounded-2xl p-5 flex flex-col gap-2 ${destaque?'ring-2 ring-offset-1 ring-[#137789]/20':''}`}>
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{titulo}</p>
+        <div className={`w-2 h-2 rounded-full ${dot} pulse-dot`}></div>
+      </div>
+      <p className={`text-2xl font-black ${C.val} leading-none`}>{valor}</p>
+      {formula && <p className="text-[9px] text-slate-400 font-medium leading-relaxed">{formula}</p>}
+    </div>
+  );
 };
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
@@ -587,6 +638,7 @@ const App = () => {
                 <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-transform inline-flex items-center gap-2"><Plus size={13}/> Solicitar Diagnóstico</button>
               </div>
             ) : (
+              <>
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                 <div className="xl:col-span-2 space-y-6">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -634,6 +686,76 @@ const App = () => {
                   </div>
                 </div>
               </div>
+
+              {/* ── INDICADORES FASE 1 ──────────────────────────────────── */}
+              <div className="mt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Indicadores Financeiros</h3>
+                  <span className="text-[8px] bg-[#05121b] text-white px-2.5 py-1 rounded-full font-black uppercase tracking-widest">Fase 1</span>
+                  <span className="text-[9px] text-slate-400 font-medium ml-auto">Calculado com base no seu diagnóstico</span>
+                </div>
+
+                {/* Rentabilidade */}
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><TrendingUp size={10}/> Rentabilidade</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                  <IndicadorCard
+                    titulo="Margem Bruta"
+                    valor={`${metrics.margemBruta.toFixed(1)}%`}
+                    formula="(Receita − Custos Diretos) ÷ Receita"
+                    status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}
+                  />
+                  <IndicadorCard
+                    titulo="Margem de Contribuição"
+                    valor={`${metrics.margContrib.toFixed(1)}%`}
+                    formula="(Receita − Custos Variáveis) ÷ Receita"
+                    status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'}
+                    destaque
+                  />
+                  <IndicadorCard
+                    titulo="Margem Líquida"
+                    valor={`${metrics.margLiq.toFixed(1)}%`}
+                    formula="Lucro Líquido ÷ Receita"
+                    status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}
+                  />
+                  <IndicadorCard
+                    titulo="Ponto de Equilíbrio"
+                    valor={formatBRL(metrics.pontoEq)}
+                    formula="Custo Fixo ÷ Margem de Contribuição"
+                    status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.85?'yellow':'red'}
+                  />
+                </div>
+
+                {/* Caixa */}
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <IndicadorCard
+                    titulo="Cash Burn Rate"
+                    valor={formatBRL(metrics.burnRate)}
+                    formula="Total de custos por mês"
+                    status="neutral"
+                  />
+                  <IndicadorCard
+                    titulo="Runway"
+                    valor={metrics.runwayMeses > 0 ? `${metrics.runwayMeses.toFixed(1)} meses` : '—'}
+                    formula="Saldo ÷ Burn Rate mensal"
+                    status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}
+                    destaque
+                  />
+                  <IndicadorCard
+                    titulo="Ticket Médio"
+                    valor={metrics.ticketMedio > 0 ? formatBRL(metrics.ticketMedio) : '—'}
+                    formula="Faturamento ÷ Nº de vendas/mês"
+                    status="neutral"
+                  />
+                  <IndicadorCard
+                    titulo="Prazo Médio Recebimento"
+                    valor={metrics.pmr > 0 ? `${metrics.pmr} dias` : '—'}
+                    formula="Média de dias até o cliente pagar"
+                    status={metrics.pmr>0?(metrics.pmr<=30?'green':metrics.pmr<=60?'yellow':'red'):'neutral'}
+                  />
+                </div>
+              </div>
+              </>
             )}
           </div>
         )}
@@ -663,7 +785,7 @@ const App = () => {
                   <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Operação garantida sem vendas" status={metrics.folegoDias>=60?'green':metrics.folegoDias>=30?'yellow':'red'}/>
                     <SemaforoCard icon={Target} title="Ponto de Equilíbrio" value={formatBRL(metrics.pontoEq)} subtitle="Quanto precisa vender por mês" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.8?'yellow':'red'}/>
-                    <SemaforoCard icon={DollarSign} title="Margem de Contribuição" value={`${(metrics.margContrib*100).toFixed(1)}%`} subtitle="Sobra após custos variáveis" status={metrics.margContrib>=0.3?'green':metrics.margContrib>=0.15?'yellow':'red'}/>
+                    <SemaforoCard icon={DollarSign} title="Margem de Contribuição" value={`${metrics.margContrib.toFixed(1)}%`} subtitle="Sobra após custos variáveis" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'}/>
                     <SemaforoCard icon={TrendingUp} title="Margem Líquida" value={`${metrics.margLiq.toFixed(1)}%`} subtitle="Por R$100 vendidos" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                   </div>
                 </div>
