@@ -7,7 +7,7 @@ import {
   FileSearch, User, ChevronLeft, Loader2, BarChart2, Bell, Lightbulb,
   AlertCircle, Save, TrendingUp, Zap, Activity, Database,
   FileSpreadsheet, PenLine, FolderOpen, ArrowRight, DollarSign,
-  Shield, Brain, Cpu, AlertOctagon
+  Shield, Brain, Cpu, AlertOctagon, X
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
@@ -113,31 +113,48 @@ const TextAreaField = ({label,value,onChange,placeholder,error,subLabel,readOnly
   </div>
 );
 
+const FILE_EMOJI = name => { const e=name.split('.').pop().toLowerCase(); return e==='pdf'?'📄':['xlsx','xls','csv'].includes(e)?'📊':e==='ofx'?'🏦':'📎'; };
+
 const FileUploadField = ({onFilesSelected,readOnly}) => {
   const [files,setFiles] = useState([]);
-  const handle = e => {
-    const names = Array.from(e.target.files).map(f=>f.name);
-    const all = [...files,...names];
-    setFiles(all);
-    if(onFilesSelected) onFilesSelected(all.join(', '));
+  const add = e => {
+    const newNames = Array.from(e.target.files).map(f=>f.name);
+    setFiles(prev=>{
+      const exist=new Set(prev);
+      const merged=[...prev,...newNames.filter(n=>!exist.has(n))];
+      if(onFilesSelected) onFilesSelected(merged.join(', '));
+      return merged;
+    });
   };
+  const remove = name => setFiles(prev=>{
+    const next=prev.filter(f=>f!==name);
+    if(onFilesSelected) onFilesSelected(next.join(', '));
+    return next;
+  });
   if(readOnly) return null;
   return (
     <div className="space-y-2">
       <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50 px-1">Anexar Arquivos (Opcional)</label>
-      <label className="border-2 border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center cursor-pointer hover:bg-slate-50 transition-colors group relative">
-        <input type="file" multiple onChange={handle} className="absolute inset-0 opacity-0 cursor-pointer"/>
-        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+      <label className="border-2 border-dashed border-slate-200 rounded-2xl p-5 flex flex-col items-center cursor-pointer hover:bg-slate-50 hover:border-[#137789]/40 transition-all group relative">
+        <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.ofx,.doc,.docx,.jpg,.png" onChange={add} className="absolute inset-0 opacity-0 cursor-pointer"/>
+        <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
           <Upload size={17} className="text-slate-400 group-hover:text-[#137789]"/>
         </div>
-        <p className="text-xs font-bold text-[#05121b] mb-1 uppercase tracking-wide">Clique para selecionar</p>
-        <p className="text-[10px] text-slate-400">PDF, Excel, Word, Imagens</p>
+        <p className="text-xs font-bold text-[#05121b] mb-0.5 uppercase tracking-wide">Clique para selecionar</p>
+        <p className="text-[10px] text-slate-400 text-center">PDF, Excel, CSV, OFX, Imagens · vários arquivos</p>
+        {files.length>0&&<span className="mt-2 bg-[#137789] text-white text-[9px] font-black px-3 py-0.5 rounded-full uppercase tracking-widest">{files.length} arquivo{files.length>1?'s':''}</span>}
       </label>
-      {files.map((f,i)=>(
-        <div key={i} className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 p-3 rounded-xl text-emerald-700">
-          <CheckCircle size={13} className="shrink-0"/><span className="text-[10px] font-bold truncate">{f}</span>
+      {files.length>0&&(
+        <div className="space-y-1.5">
+          {files.map((f,i)=>(
+            <div key={i} className="flex items-center gap-2.5 bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl">
+              <span className="text-base leading-none">{FILE_EMOJI(f)}</span>
+              <span className="text-[10px] font-bold text-[#05121b] truncate flex-1">{f}</span>
+              <button type="button" onClick={()=>remove(f)} className="text-slate-300 hover:text-red-400 transition-colors shrink-0"><X size={13}/></button>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 };
@@ -423,6 +440,51 @@ const SimComparativo = ({label, before, after, formato}) => {
         <span className={`text-xl font-black ${melhorou?'text-emerald-600':'text-red-500'}`}>{fmt(after)}</span>
         <span className={`ml-auto text-[9px] font-black px-2 py-0.5 rounded-full border ${melhorou?'bg-emerald-50 text-emerald-700 border-emerald-200':'bg-red-50 text-red-600 border-red-100'}`}>{melhorou?'▲':'▼'} {fmt(diff)}</span>
       </div>
+    </div>
+  );
+};
+
+// ── MULTI FILE DROPZONE ───────────────────────────────────────────────────────
+const MultiFileDropzone = () => {
+  const [files,setFiles] = useState([]);
+  const add = e => {
+    const newFiles = Array.from(e.target.files);
+    setFiles(prev=>{
+      const exist=new Set(prev.map(f=>f.name));
+      return [...prev,...newFiles.filter(f=>!exist.has(f.name))];
+    });
+  };
+  const remove = name => setFiles(prev=>prev.filter(f=>f.name!==name));
+  const fmtSize = b => b<1048576?`${(b/1024).toFixed(0)} KB`:`${(b/1048576).toFixed(1)} MB`;
+  return (
+    <div className="space-y-3">
+      <label className="border-2 border-dashed border-slate-200 rounded-2xl p-10 flex flex-col items-center cursor-pointer hover:bg-slate-50 hover:border-[#137789]/40 transition-all group relative">
+        <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.ofx" onChange={add} className="absolute inset-0 opacity-0 cursor-pointer"/>
+        <div className="w-14 h-14 bg-[#137789]/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Upload size={24} className="text-[#137789]"/></div>
+        <p className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-1">Arraste ou clique para selecionar</p>
+        <p className="text-[10px] text-slate-400 text-center">DRE · Fluxo de Caixa · Extrato Bancário · Balanço</p>
+        <p className="text-[9px] text-slate-400 mt-1">PDF, Excel (.xlsx), CSV, OFX · Múltiplos arquivos aceitos</p>
+        {files.length>0&&<span className="mt-3 bg-[#137789] text-white text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{files.length} arquivo{files.length>1?'s':''} selecionado{files.length>1?'s':''}</span>}
+      </label>
+      {files.length>0&&(
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{files.length} arquivo{files.length>1?'s':''} na fila</p>
+            <button onClick={()=>setFiles([])} className="text-[9px] text-red-400 font-bold hover:text-red-600 transition-colors">Remover todos</button>
+          </div>
+          {files.map((f,i)=>(
+            <div key={i} className="flex items-center gap-3 bg-slate-50 border border-slate-100 px-4 py-3 rounded-xl">
+              <span className="text-xl leading-none">{FILE_EMOJI(f.name)}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-[#05121b] truncate">{f.name}</p>
+                <p className="text-[9px] text-slate-400">{fmtSize(f.size)}</p>
+              </div>
+              <button onClick={()=>remove(f.name)} className="text-slate-300 hover:text-red-400 transition-colors shrink-0"><X size={15}/></button>
+            </div>
+          ))}
+          <button className="w-full mt-1 bg-[#137789] hover:bg-[#0e6070] text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-md"><Upload size={13}/> Enviar {files.length} arquivo{files.length>1?'s':''}</button>
+        </div>
+      )}
     </div>
   );
 };
@@ -1016,14 +1078,9 @@ const App = () => {
             </div>
             {selectedSource==='planilha'&&(
               <div className="slide-down bg-white rounded-2xl border border-slate-100 shadow-sm p-8">
-                <h3 className="font-black text-[#05121b] uppercase text-xs tracking-widest mb-2 flex items-center gap-2"><Upload size={13} className="text-[#137789]"/> Upload de Documentos</h3>
-                <p className="text-[11px] text-slate-400 mb-6 leading-relaxed">Envie seus arquivos financeiros. A IA irá processar e extrair os dados automaticamente. Formatos: PDF, Excel (.xlsx), CSV, OFX.</p>
-                <label className="border-2 border-dashed border-slate-200 rounded-2xl p-10 flex flex-col items-center cursor-pointer hover:bg-slate-50 transition-colors group relative">
-                  <input type="file" multiple accept=".pdf,.xlsx,.xls,.csv,.ofx" className="absolute inset-0 opacity-0 cursor-pointer"/>
-                  <div className="w-14 h-14 bg-[#137789]/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Upload size={24} className="text-[#137789]"/></div>
-                  <p className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-1">Arraste ou clique para enviar</p>
-                  <p className="text-[11px] text-slate-400">DRE, Fluxo de Caixa, Extrato Bancário, Balanço</p>
-                </label>
+                <h3 className="font-black text-[#05121b] uppercase text-xs tracking-widest mb-1 flex items-center gap-2"><Upload size={13} className="text-[#137789]"/> Upload de Documentos</h3>
+                <p className="text-[11px] text-slate-400 mb-5 leading-relaxed">Envie um ou mais arquivos financeiros. A IA extrai os dados automaticamente. Formatos aceitos: PDF, Excel (.xlsx), CSV, OFX.</p>
+                <MultiFileDropzone/>
               </div>
             )}
             {selectedSource==='erp'&&(
@@ -1051,13 +1108,6 @@ const App = () => {
               <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Central de</p><h1 className="text-2xl font-black text-[#05121b] italic">Meus Relatórios</h1></div>
               <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md hover:scale-[1.02] transition-transform self-start sm:self-auto flex items-center gap-2"><Plus size={13}/> Solicitar Nova Análise</button>
             </header>
-            <div className="bg-[#05121b] rounded-3xl p-7 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-[#ff7b00] rounded-2xl flex items-center justify-center shrink-0"><Printer size={22} className="text-white"/></div>
-                <div><h3 className="font-black text-white text-base uppercase tracking-tight">Gerar Diagnóstico em PDF</h3><p className="text-slate-400 text-xs mt-1 leading-relaxed max-w-sm">Gere o relatório completo com base nos dados já enviados. Pronto em segundos para imprimir ou apresentar.</p></div>
-              </div>
-              <button onClick={handleDownloadAdminPDF} className="shrink-0 bg-[#ff7b00] hover:bg-[#e66e00] text-white px-7 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg transition-all hover:scale-[1.02]"><Printer size={13}/> Gerar PDF</button>
-            </div>
             {newlyCompleted&&(<div className="slide-down mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0"><Bell size={16} className="text-white"/></div><div><h4 className="font-black text-emerald-800 text-sm">Diagnóstico concluído! 🎉</h4><p className="text-[10px] text-emerald-600 mt-0.5"><strong>{newlyCompleted.client_name}</strong> — resultado disponível</p></div></div><button onClick={()=>handleViewResult(newlyCompleted)} className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2">Ver Resultado <ChevronRight size={12}/></button></div>)}
             <div className="space-y-3">
               {diagnostics.length>0?diagnostics.map(d=>(
@@ -1129,6 +1179,18 @@ const App = () => {
                     </div>
                   </div>
                 </div>
+                {diagnostics.some(d=>d.internal_status==='completed')&&(
+                  <div className="bg-[#05121b] rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-[#ff7b00] rounded-xl flex items-center justify-center shrink-0"><Printer size={18} className="text-white"/></div>
+                      <div>
+                        <p className="font-black text-white text-sm">Baixar diagnóstico em PDF</p>
+                        <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed">Relatório completo do seu último diagnóstico concluído, pronto para imprimir ou apresentar.</p>
+                      </div>
+                    </div>
+                    <button onClick={()=>{const last=diagnostics.find(d=>d.internal_status==='completed');if(last?.admin_result_pdf)window.open(last.admin_result_pdf,'_blank');else alert("PDF ainda não disponível para este diagnóstico.");}} className="shrink-0 bg-[#ff7b00] hover:bg-[#e66e00] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg transition-all hover:scale-[1.02]"><Printer size={13}/> Baixar PDF</button>
+                  </div>
+                )}
               </div>
             ):(
               <div className="bg-white p-7 md:p-10 rounded-3xl border border-slate-100 shadow-xl mb-12">
