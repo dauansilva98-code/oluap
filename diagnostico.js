@@ -592,18 +592,25 @@ const App = () => {
             const I=item.icon;
             const active=view===item.id||(item.id==='relatorios'&&(view==='success'||view==='result'||view==='view_data'));
             return(<button key={item.id} onClick={()=>setView(item.id)} title={!isSidebarOpen?item.label:''}
-              className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-wide transition-all ${active?'bg-[#05121b] text-white shadow-md':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+              className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 rounded-xl font-bold text-[11px] transition-all ${active?'bg-[#05121b] text-white shadow-md':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
               <I size={isSidebarOpen?16:20} className="shrink-0"/>
               {isSidebarOpen&&<span className="truncate">{item.label}</span>}
               {isSidebarOpen&&item.id==='dashboard'&&newlyCompleted&&<span className="ml-auto w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>}
             </button>);
           })}
         </nav>
-        <div className="flex flex-col gap-1 mt-4 pt-4 border-t border-slate-100">
-          <button onClick={handleBackToHub} title={!isSidebarOpen?'Hub':''} className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 text-slate-400 font-bold text-[11px] uppercase tracking-wide hover:text-[#137789] hover:bg-slate-50 rounded-xl transition-colors`}>
+        <button
+          onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}}
+          title={!isSidebarOpen?'Nova Análise':''}
+          className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-2 px-3':'justify-center px-0'} mt-4 py-2.5 bg-[#ff7b00] hover:bg-[#e66e00] text-white rounded-xl font-black text-[11px] shadow-md transition-all hover:scale-[1.02]`}>
+          <Plus size={isSidebarOpen?13:18} className="shrink-0"/>
+          {isSidebarOpen&&<span>Nova Análise</span>}
+        </button>
+        <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-slate-100">
+          <button onClick={handleBackToHub} title={!isSidebarOpen?'Hub':''} className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 text-slate-400 font-bold text-[11px] hover:text-[#137789] hover:bg-slate-50 rounded-xl transition-colors`}>
             <ArrowLeft size={isSidebarOpen?16:20} className="shrink-0"/>{isSidebarOpen&&<span>Voltar ao Hub</span>}
           </button>
-          <button onClick={handleLogout} title={!isSidebarOpen?'Sair':''} className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 text-slate-400 font-bold text-[11px] uppercase tracking-wide hover:text-red-500 hover:bg-slate-50 rounded-xl transition-colors`}>
+          <button onClick={handleLogout} title={!isSidebarOpen?'Sair':''} className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 text-slate-400 font-bold text-[11px] hover:text-red-500 hover:bg-slate-50 rounded-xl transition-colors`}>
             <LogOut size={isSidebarOpen?16:20} className="shrink-0"/>{isSidebarOpen&&<span>Sair</span>}
           </button>
         </div>
@@ -801,6 +808,28 @@ const App = () => {
                         <div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${c.bg} ${c.border} ${c.ic}`}>{lbl}</span></div><p className="text-xs font-semibold text-[#05121b] leading-relaxed">{a.msg}</p></div>
                       </div>
                     );})}
+                  </div>
+                </div>
+
+                {/* ── INDICADORES FASE 1 ── */}
+                <div className="mt-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Indicadores Financeiros</h3>
+                    <span className="text-[8px] bg-[#05121b] text-white px-2.5 py-1 rounded-full font-black uppercase tracking-widest">Fase 1</span>
+                  </div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><TrendingUp size={10}/> Rentabilidade</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                    <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="(Receita − Custos Diretos) ÷ Receita" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
+                    <IndicadorCard titulo="Margem de Contribuição" valor={`${metrics.margContrib.toFixed(1)}%`} formula="(Receita − Custos Variáveis) ÷ Receita" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'} destaque/>
+                    <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
+                    <IndicadorCard titulo="Ponto de Equilíbrio" valor={formatBRL(metrics.pontoEq)} formula="Custo Fixo ÷ Margem de Contribuição" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.85?'yellow':'red'}/>
+                  </div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Total de custos por mês" status="neutral"/>
+                    <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
+                    <IndicadorCard titulo="Ticket Médio" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula="Faturamento ÷ Nº de vendas/mês" status="neutral"/>
+                    <IndicadorCard titulo="Prazo Médio Recebimento" valor={metrics.pmr>0?`${metrics.pmr} dias`:'—'} formula="Média de dias até o cliente pagar" status={metrics.pmr>0?(metrics.pmr<=30?'green':metrics.pmr<=60?'yellow':'red'):'neutral'}/>
                   </div>
                 </div>
               </>
