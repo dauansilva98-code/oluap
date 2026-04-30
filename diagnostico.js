@@ -568,6 +568,7 @@ const App = () => {
     {id:'simulador',label:'Simulador de Cenários',icon:Zap},
     {id:'fontes',label:'Fontes de Dados',icon:Database},
     {id:'relatorios',label:'Meus Relatórios',icon:FolderOpen},
+    {id:'nova_analise',label:'Nova Análise',icon:Plus},
     {id:'profile',label:'Meu Perfil',icon:User},
   ];
 
@@ -591,7 +592,11 @@ const App = () => {
           {navItems.map(item=>{
             const I=item.icon;
             const active=view===item.id||(item.id==='relatorios'&&(view==='success'||view==='result'||view==='view_data'));
-            return(<button key={item.id} onClick={()=>setView(item.id)} title={!isSidebarOpen?item.label:''}
+            const handleNavClick = () => {
+              if (item.id === 'nova_analise') { setFormMode(null); setFormStep(0); setView('form'); }
+              else setView(item.id);
+            };
+            return(<button key={item.id} onClick={handleNavClick} title={!isSidebarOpen?item.label:''}
               className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 rounded-xl font-bold text-[11px] transition-all ${active?'bg-[#05121b] text-white shadow-md':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
               <I size={isSidebarOpen?16:20} className="shrink-0"/>
               {isSidebarOpen&&<span className="truncate">{item.label}</span>}
@@ -599,13 +604,6 @@ const App = () => {
             </button>);
           })}
         </nav>
-        <button
-          onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}}
-          title={!isSidebarOpen?'Nova Análise':''}
-          className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-2 px-3':'justify-center px-0'} mt-4 py-2.5 bg-[#ff7b00] hover:bg-[#e66e00] text-white rounded-xl font-black text-[11px] shadow-md transition-all hover:scale-[1.02]`}>
-          <Plus size={isSidebarOpen?13:18} className="shrink-0"/>
-          {isSidebarOpen&&<span>Nova Análise</span>}
-        </button>
         <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-slate-100">
           <button onClick={handleBackToHub} title={!isSidebarOpen?'Hub':''} className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 text-slate-400 font-bold text-[11px] hover:text-[#137789] hover:bg-slate-50 rounded-xl transition-colors`}>
             <ArrowLeft size={isSidebarOpen?16:20} className="shrink-0"/>{isSidebarOpen&&<span>Voltar ao Hub</span>}
