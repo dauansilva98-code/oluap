@@ -1051,16 +1051,15 @@ const App = () => {
               },0);
               const totalInvestido=investimentos.filter(i=>i.status==='ativo').reduce((a,i)=>a+Number(i.valor_atual||i.valor_aplicado||0),0);
               return(
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total em Conta</p>
-                    <p className={`text-xl font-black ${totalBancos>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(totalBancos)}</p>
-                    <p className="text-[9px] text-slate-400 font-medium">Saldo bancário consolidado</p>
-                  </div>
-                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Dinheiro Vivo</p>
-                    <p className={`text-xl font-black ${dinheiroCaixa>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(dinheiroCaixa)}</p>
-                    <p className="text-[9px] text-slate-400 font-medium">Caixa em espécie</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Disponível</p>
+                    <p className={`text-xl font-black ${(totalBancos+dinheiroCaixa)>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(totalBancos+dinheiroCaixa)}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[9px] text-slate-400">Banco: <span className="font-bold text-[#05121b]">{formatBRL(totalBancos)}</span></span>
+                      <span className="text-slate-200">·</span>
+                      <span className="text-[9px] text-slate-400">Dinheiro: <span className="font-bold text-[#05121b]">{formatBRL(dinheiroCaixa)}</span></span>
+                    </div>
                   </div>
                   <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex flex-col gap-1">
                     <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Entradas · {new Date().toLocaleDateString('pt-BR',{month:'short'})}</p>
