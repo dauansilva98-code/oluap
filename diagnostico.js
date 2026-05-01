@@ -731,6 +731,7 @@ const App = () => {
   const [modalReceita, setModalReceita] = useState(null);
   const [modalDespesa, setModalDespesa] = useState(null);
   const [modalCP, setModalCP] = useState(null);
+  const [modalSolicitarAnalise, setModalSolicitarAnalise] = useState(false);
   const [modalCR, setModalCR] = useState(null);
   const [modalDivida, setModalDivida] = useState(null);
   const [investimentos, setInvestimentos] = useState([]);
@@ -973,13 +974,11 @@ const App = () => {
     {id:'profile',         label:'Meu Perfil',            icon:User},
   ];
 
-  const diagnosticMetrics = calcMetrics(diagnostics[0]);
   const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas);
-  const metrics = liveMetrics || diagnosticMetrics;
-  const liveCFD = genLiveCashFlowData(lancamentos);
-  const usingLiveData = liveCFD.some(d=>d.Entradas>0||d.Saidas>0);
-  const cashFlowData = usingLiveData ? liveCFD : genCashFlowData(diagnosticMetrics);
-  const alertsFeed = liveMetrics ? genLiveAlerts(liveMetrics, contasPagar, contasReceber, dividas, today) : genAlerts(diagnosticMetrics);
+  const metrics = liveMetrics;
+  const cashFlowData = genLiveCashFlowData(lancamentos);
+  const usingLiveData = cashFlowData.some(d=>d.Entradas>0||d.Saidas>0);
+  const alertsFeed = liveMetrics ? genLiveAlerts(liveMetrics, contasPagar, contasReceber, dividas, today) : [];
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
 
   // ── SIDEBAR ────────────────────────────────────────────────────────────────
@@ -1046,13 +1045,22 @@ const App = () => {
               const entradasMes=lancMes.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
               const saidasMes=lancMes.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
               const totalBancos=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
+              const dinheiroCaixa=lancamentos.reduce((a,l)=>{
+                if(l.meio_pagamento!=='Dinheiro')return a;
+                return l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor);
+              },0);
               const totalInvestido=investimentos.filter(i=>i.status==='ativo').reduce((a,i)=>a+Number(i.valor_atual||i.valor_aplicado||0),0);
               return(
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total em Bancos</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total em Conta</p>
                     <p className={`text-xl font-black ${totalBancos>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(totalBancos)}</p>
-                    <p className="text-[9px] text-slate-400 font-medium">Saldo atual consolidado</p>
+                    <p className="text-[9px] text-slate-400 font-medium">Saldo bancário consolidado</p>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-1">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Dinheiro Vivo</p>
+                    <p className={`text-xl font-black ${dinheiroCaixa>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(dinheiroCaixa)}</p>
+                    <p className="text-[9px] text-slate-400 font-medium">Caixa em espécie</p>
                   </div>
                   <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex flex-col gap-1">
                     <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Entradas · {new Date().toLocaleDateString('pt-BR',{month:'short'})}</p>
@@ -1065,7 +1073,7 @@ const App = () => {
                     <p className="text-[9px] text-red-500 font-medium">Despesas do mês</p>
                   </div>
                   <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Total Investido</p>
+                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Investimentos</p>
                     <p className="text-xl font-black text-blue-800">{formatBRL(totalInvestido)}</p>
                     <p className="text-[9px] text-blue-500 font-medium">Carteira ativa</p>
                   </div>
@@ -1076,8 +1084,8 @@ const App = () => {
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex items-center gap-4 mb-6">
                 <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0"><Brain size={18} className="text-slate-300"/></div>
                 <div>
-                  <p className="font-black text-[#05121b] text-sm">Score Financeiro indisponível</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Para ver indicadores detalhados, envie um diagnóstico em <button onClick={()=>setView('analises')} className="text-[#137789] hover:text-[#ff7b00] font-black underline underline-offset-2 transition-colors">Minhas Análises</button>.</p>
+                  <p className="font-black text-[#05121b] text-sm">Indicadores aguardando lançamentos</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Registre receitas e despesas no <button onClick={()=>setView('fluxo')} className="text-[#137789] hover:text-[#ff7b00] font-black underline underline-offset-2 transition-colors">Fluxo de Caixa</button> para ativar o score e os indicadores financeiros.</p>
                 </div>
               </div>
             ) : (
@@ -1100,7 +1108,7 @@ const App = () => {
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
                     <div className="flex items-center justify-between mb-5">
                       <div><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">{usingLiveData?'Fluxo de Caixa Real':'Projeção de Caixa'}</h3><p className="text-[10px] text-slate-400 mt-0.5">{usingLiveData?'Entradas vs Saídas · Últimos 6 meses':'Entradas vs Saídas — Próximas 6 semanas'}</p></div>
-                      <span className="text-[9px] bg-slate-50 border border-slate-200 text-slate-500 font-bold px-3 py-1.5 rounded-full uppercase tracking-widest">{usingLiveData?'Dados reais':'Baseado no diagnóstico'}</span>
+                      <span className="text-[9px] bg-slate-50 border border-slate-200 text-slate-500 font-bold px-3 py-1.5 rounded-full uppercase tracking-widest">{usingLiveData?'Dados reais':'Aguardando lançamentos'}</span>
                     </div>
                     <div className="h-[210px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1122,7 +1130,7 @@ const App = () => {
                 </div>
                 <div className="xl:col-span-1">
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm h-full">
-                    <div className="p-5 border-b border-slate-50"><div className="flex items-center gap-2"><Cpu size={15} className="text-[#ff7b00]"/><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Alertas do CFO Digital</h3></div><p className="text-[10px] text-slate-400 mt-1">{usingLiveData?'Baseado nos seus lançamentos reais':'Baseado no diagnóstico enviado'}</p></div>
+                    <div className="p-5 border-b border-slate-50"><div className="flex items-center gap-2"><Cpu size={15} className="text-[#ff7b00]"/><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Alertas do CFO Digital</h3></div><p className="text-[10px] text-slate-400 mt-1">{usingLiveData?'Baseado nos seus lançamentos reais':'Registre lançamentos para ativar os alertas'}</p></div>
                     <div className="p-3 space-y-2 max-h-[460px] overflow-y-auto">
                       {alertsFeed.slice(0,6).map((a,i)=>{const I=a.icon;const c=AC[a.type];return(<div key={i} className={`${c.bg} border ${c.border} rounded-xl p-3.5 flex gap-3`}><I size={14} className={`${c.ic} shrink-0 mt-0.5`}/><div>{a.titulo&&<p className="text-[10px] font-black text-[#05121b] mb-0.5">{a.titulo}</p>}<p className="text-[10px] text-slate-500 leading-relaxed">{a.msg}</p></div></div>);})}
                     </div>
@@ -1614,7 +1622,7 @@ const App = () => {
           <div className="max-w-5xl mx-auto fade-in">
             <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
               <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Central de</p><h1 className="text-2xl font-black text-[#05121b] italic">Minhas Análises</h1></div>
-              <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md hover:scale-[1.02] transition-transform self-start sm:self-auto flex items-center gap-2"><Plus size={13}/> Solicitar Nova Análise</button>
+              <button onClick={()=>setModalSolicitarAnalise(true)} className="bg-[#ff7b00] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md hover:scale-[1.02] transition-transform self-start sm:self-auto flex items-center gap-2"><Plus size={13}/> Solicitar Nova Análise</button>
             </header>
             {newlyCompleted&&(<div className="slide-down mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0"><Bell size={16} className="text-white"/></div><div><h4 className="font-black text-emerald-800 text-sm">Diagnóstico concluído! 🎉</h4><p className="text-[10px] text-emerald-600 mt-0.5"><strong>{newlyCompleted.client_name}</strong> — resultado disponível</p></div></div><button onClick={()=>handleViewResult(newlyCompleted)} className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2">Ver Resultado <ChevronRight size={12}/></button></div>)}
             <div className="space-y-3">
@@ -1626,8 +1634,8 @@ const App = () => {
               )):(
                 <div className="py-16 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
                   <div className="w-12 h-12 bg-slate-50 rounded-2xl mx-auto mb-4 flex items-center justify-center text-slate-300"><Info size={22}/></div>
-                  <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-4">Nenhum diagnóstico ainda.</p>
-                  <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-transform">Solicitar Agora</button>
+                  <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-4">Nenhuma análise ainda.</p>
+                  <button onClick={()=>setModalSolicitarAnalise(true)} className="bg-[#ff7b00] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-transform">Solicitar Agora</button>
                 </div>
               )}
             </div>
@@ -1699,8 +1707,8 @@ const App = () => {
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filteredLanc.length} lançamentos</p>
                   <div className="flex gap-2">
-                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:''})} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"><Plus size={11}/>Receita</button>
-                    <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',banco_id:''})} className="bg-red-500 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 hover:bg-red-600 transition-colors"><Plus size={11}/>Despesa</button>
+                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"><Plus size={11}/>Receita</button>
+                    <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="bg-red-500 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 hover:bg-red-600 transition-colors"><Plus size={11}/>Despesa</button>
                   </div>
                 </div>
                 {filteredLanc.length===0?<div className="py-12 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum lançamento no período</div>:(
@@ -1713,7 +1721,7 @@ const App = () => {
                           </div>
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-[#05121b] truncate">{l.descricao}</p>
-                            <p className="text-[10px] text-slate-400">{l.categoria||'—'} · {fmtDate(l.data)}</p>
+                            <p className="text-[10px] text-slate-400">{l.categoria||'—'}{l.meio_pagamento?` · ${l.meio_pagamento}`:''} · {fmtDate(l.data)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-3 shrink-0">
@@ -1738,7 +1746,7 @@ const App = () => {
             <div className="max-w-4xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas</p><h1 className="text-2xl font-black text-[#05121b] italic">Receitas</h1></div>
-                <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:''})} className="bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-md"><Plus size={13}/>Nova Receita</button>
+                <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-md"><Plus size={13}/>Nova Receita</button>
               </header>
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Total de Receitas Registradas</p>
@@ -1776,7 +1784,7 @@ const App = () => {
             <div className="max-w-4xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Saídas</p><h1 className="text-2xl font-black text-[#05121b] italic">Despesas</h1></div>
-                <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',banco_id:''})} className="bg-red-500 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-red-600 transition-colors shadow-md"><Plus size={13}/>Nova Despesa</button>
+                <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="bg-red-500 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-red-600 transition-colors shadow-md"><Plus size={13}/>Nova Despesa</button>
               </header>
               <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
                 <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Despesas Registradas</p>
@@ -1817,7 +1825,7 @@ const App = () => {
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gestão</p><h1 className="text-2xl font-black text-[#05121b] italic">Contas a Pagar</h1></div>
-                <button onClick={()=>setModalCP({descricao:'',categoria:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30'})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
+                <button onClick={()=>setModalCP({descricao:'',categoria:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30',meio_pagamento:''})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
               </header>
               {/* KPIs */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -1876,7 +1884,7 @@ const App = () => {
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas futuras</p><h1 className="text-2xl font-black text-[#05121b] italic">Contas a Receber</h1></div>
-                <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30'})} className="bg-[#137789] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
+                <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30',meio_pagamento:''})} className="bg-[#137789] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
               </header>
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A receber (pendente)</p>
@@ -2109,8 +2117,11 @@ const App = () => {
                   <InputField label="Valor" value={modalReceita.valor} onChange={v=>setModalReceita({...modalReceita,valor:v})} maskType="currency"/>
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalReceita.data} onChange={e=>setModalReceita({...modalReceita,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"/></div>
                 </div>
-                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalReceita.categoria} onChange={e=>setModalReceita({...modalReceita,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['Venda de Produto','Venda de Serviço','Mensalidade','Comissão','Juros','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
-                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalReceita.banco_id} onChange={e=>setModalReceita({...modalReceita,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalReceita.categoria} onChange={e=>setModalReceita({...modalReceita,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['Venda de Produto','Venda de Serviço','Mensalidade','Comissão','Juros','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Recebimento</label><select value={modalReceita.meio_pagamento||''} onChange={e=>setModalReceita({...modalReceita,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalReceita.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                </div>
+                {modalReceita.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalReceita.banco_id} onChange={e=>setModalReceita({...modalReceita,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalReceita(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
@@ -2125,18 +2136,41 @@ const App = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalDespesa(null)}>
             <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">Nova Despesa</h3><button onClick={()=>setModalDespesa(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
-              <div className="space-y-4">
-                <InputField label="Descrição" value={modalDespesa.descricao} onChange={v=>setModalDespesa({...modalDespesa,descricao:v})}/>
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Valor" value={modalDespesa.valor} onChange={v=>setModalDespesa({...modalDespesa,valor:v})} maskType="currency"/>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalDespesa.data} onChange={e=>setModalDespesa({...modalDespesa,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>
+              {(()=>{
+                const isCard=modalDespesa.meio_pagamento==='Cartão de Crédito'||modalDespesa.meio_pagamento==='Cartão de Débito';
+                const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
+                const taxa=parseFloat(modalDespesa.taxa_cartao)||0;
+                const valorLiq=isCard&&taxa>0?valorBruto*(1+taxa/100):valorBruto;
+                return(
+                <div className="space-y-4">
+                  <InputField label="Descrição" value={modalDespesa.descricao} onChange={v=>setModalDespesa({...modalDespesa,descricao:v})}/>
+                  <div className="grid grid-cols-2 gap-4">
+                    <InputField label="Valor" value={modalDespesa.valor} onChange={v=>setModalDespesa({...modalDespesa,valor:v})} maskType="currency"/>
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalDespesa.data} onChange={e=>setModalDespesa({...modalDespesa,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Fornecedor','Folha de Pagamento','Aluguel','Marketing','Serviços/Software','Estorno','Impostos','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalDespesa.meio_pagamento||''} onChange={e=>setModalDespesa({...modalDespesa,meio_pagamento:e.target.value,taxa_cartao:'',banco_id:e.target.value==='Dinheiro'?'':modalDespesa.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Boleto Bancário','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                  </div>
+                  {isCard&&(
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black text-orange-700 uppercase tracking-widest">Taxa do Cartão</p>
+                        {taxa>0&&<p className="text-[9px] text-orange-600 font-bold">Custo total: {formatBRL(valorLiq)}</p>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="number" step="0.01" min="0" max="10" placeholder="Ex: 2.5" value={modalDespesa.taxa_cartao||''} onChange={e=>setModalDespesa({...modalDespesa,taxa_cartao:e.target.value})} className="w-28 bg-white border border-orange-200 px-3 py-2 rounded-lg font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-orange-400"/>
+                        <span className="text-[10px] text-orange-600 font-bold">% sobre o valor</span>
+                      </div>
+                    </div>
+                  )}
+                  {modalDespesa.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalDespesa.banco_id} onChange={e=>setModalDespesa({...modalDespesa,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
                 </div>
-                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Cartão de Crédito','Boleto Bancário','Fornecedor','Folha de Pagamento','Aluguel','Marketing','Serviços/Software','Estorno','Impostos','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
-                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalDespesa.banco_id} onChange={e=>setModalDespesa({...modalDespesa,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
-              </div>
+                );
+              })()}
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalDespesa(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor} onClick={()=>saveItem('lancamentos',{...modalDespesa,valor:parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0,tipo:'despesa',user_id:user.id},setModalDespesa,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor} onClick={()=>{const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;const isCard=modalDespesa.meio_pagamento==='Cartão de Crédito'||modalDespesa.meio_pagamento==='Cartão de Débito';const taxa=parseFloat(modalDespesa.taxa_cartao)||0;const valorFinal=isCard&&taxa>0?valorBruto*(1+taxa/100):valorBruto;saveItem('lancamentos',{...modalDespesa,valor:valorFinal,tipo:'despesa',user_id:user.id},setModalDespesa,()=>fetchFinanceiro(user.id));}} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
           </div>
@@ -2206,10 +2240,11 @@ const App = () => {
                   </div>
                 )}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalCP.categoria} onChange={e=>setModalCP({...modalCP,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['Cartão de Crédito','Boleto Bancário','Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalCP.categoria} onChange={e=>setModalCP({...modalCP,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCP.status} onChange={e=>setModalCP({...modalCP,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="atrasado">Atrasado</option></select></div>
                 </div>
-                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalCP.banco_id} onChange={e=>setModalCP({...modalCP,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalCP.meio_pagamento||''} onChange={e=>setModalCP({...modalCP,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalCP.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['PIX','Boleto Bancário','Transferência Bancária','Cartão de Crédito','Cartão de Débito','Dinheiro','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                {modalCP.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalCP.banco_id} onChange={e=>setModalCP({...modalCP,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
                 <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCP.observacao||''} onChange={e=>setModalCP({...modalCP,observacao:e.target.value})} placeholder="Ex: fornecedor X, referência do boleto..." className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00] resize-none h-16"/></div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -2287,8 +2322,9 @@ const App = () => {
                 )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCR.status} onChange={e=>setModalCR({...modalCR,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="pendente">Pendente</option><option value="recebido">Recebido</option></select></div>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalCR.banco_id} onChange={e=>setModalCR({...modalCR,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Recebimento</label><select value={modalCR.meio_pagamento||''} onChange={e=>setModalCR({...modalCR,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalCR.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="">Selecione...</option>{['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                 </div>
+                {modalCR.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalCR.banco_id} onChange={e=>setModalCR({...modalCR,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
                 <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCR.observacao||''} onChange={e=>setModalCR({...modalCR,observacao:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789] resize-none h-16"/></div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -2379,6 +2415,45 @@ const App = () => {
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalInvestimento(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
                 <button disabled={savingItem||!modalInvestimento.nome||!modalInvestimento.valor_aplicado} onClick={()=>saveItem('investimentos',{...modalInvestimento,valor_aplicado:parseFloat((modalInvestimento.valor_aplicado||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,valor_atual:modalInvestimento.valor_atual?parseFloat((modalInvestimento.valor_atual||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||null:null,rentabilidade_pct:modalInvestimento.rentabilidade_pct?parseFloat(modalInvestimento.rentabilidade_pct)||null:null,user_id:user.id},setModalInvestimento,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Solicitar Análise */}
+        {modalSolicitarAnalise&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalSolicitarAnalise(false)}>
+            <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xl font-black text-[#05121b]">Solicitar Nova Análise</h3>
+                <button onClick={()=>setModalSolicitarAnalise(false)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
+              </div>
+              <p className="text-[11px] text-slate-400 mb-7">Escolha como deseja trazer os dados para esta análise.</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode(null);setFormStep(0);setView('form');}} className="flex flex-col items-start gap-3 bg-[#05121b] text-white p-6 rounded-2xl text-left hover:bg-slate-800 transition-colors group">
+                  <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><LayoutDashboard size={18} className="text-white"/></div>
+                  <div>
+                    <p className="font-black text-sm uppercase tracking-tight mb-1">Dados da Plataforma</p>
+                    <p className="text-white/60 text-[10px] leading-relaxed">Use os lançamentos, bancos e dados que você já cadastrou aqui.</p>
+                  </div>
+                  {(lancamentos.length>0||bancos.length>0)&&<span className="text-[8px] bg-emerald-500 text-white font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{lancamentos.length} lançamentos disponíveis</span>}
+                </button>
+                <button onClick={()=>{setModalSolicitarAnalise(false);setView('fontes');}} className="flex flex-col items-start gap-3 bg-white border border-slate-200 p-6 rounded-2xl text-left hover:border-[#137789]/50 hover:shadow transition-all group">
+                  <div className="w-10 h-10 bg-[#137789]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><Upload size={18} className="text-[#137789]"/></div>
+                  <div>
+                    <p className="font-black text-sm uppercase tracking-tight text-[#05121b] mb-1">Enviar Documentos</p>
+                    <p className="text-slate-400 text-[10px] leading-relaxed">Anexe extrato bancário, DRE, fluxo de caixa em PDF ou planilha.</p>
+                  </div>
+                  <span className="text-[8px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-full uppercase tracking-widest">PDF · XLSX · CSV</span>
+                </button>
+                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode(null);setFormStep(0);setView('form');}} className="flex flex-col items-start gap-3 bg-white border border-slate-200 p-6 rounded-2xl text-left hover:border-[#ff7b00]/50 hover:shadow transition-all group">
+                  <div className="w-10 h-10 bg-[#ff7b00]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><PenLine size={18} className="text-[#ff7b00]"/></div>
+                  <div>
+                    <p className="font-black text-sm uppercase tracking-tight text-[#05121b] mb-1">Preencher Manualmente</p>
+                    <p className="text-slate-400 text-[10px] leading-relaxed">Responda o formulário guiado com as informações da empresa.</p>
+                  </div>
+                  <span className="text-[8px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-full uppercase tracking-widest">Formulário guiado</span>
+                </button>
               </div>
             </div>
           </div>
