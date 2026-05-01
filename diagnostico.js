@@ -561,6 +561,8 @@ const App = () => {
   const [modalCP, setModalCP] = useState(null);
   const [modalCR, setModalCR] = useState(null);
   const [modalDivida, setModalDivida] = useState(null);
+  const [investimentos, setInvestimentos] = useState([]);
+  const [modalInvestimento, setModalInvestimento] = useState(null);
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -612,18 +614,20 @@ const App = () => {
 
   const fetchFinanceiro=async(userId)=>{
     try{
-      const[{data:bD},{data:lD},{data:cpD},{data:crD},{data:dD}]=await Promise.all([
+      const[{data:bD},{data:lD},{data:cpD},{data:crD},{data:dD},{data:invD}]=await Promise.all([
         supabase.from('bancos').select('*').eq('user_id',userId).order('created_at'),
         supabase.from('lancamentos').select('*').eq('user_id',userId).order('data',{ascending:false}),
         supabase.from('contas_pagar').select('*').eq('user_id',userId).order('vencimento'),
         supabase.from('contas_receber').select('*').eq('user_id',userId).order('vencimento'),
         supabase.from('dividas').select('*').eq('user_id',userId).order('created_at'),
+        supabase.from('investimentos').select('*').eq('user_id',userId).order('created_at'),
       ]);
       if(bD)setBancos(bD);
       if(lD)setLancamentos(lD);
       if(cpD)setContasPagar(cpD);
       if(crD)setContasReceber(crD);
       if(dD)setDividas(dD);
+      if(invD)setInvestimentos(invD);
     }catch(e){console.error('fetchFinanceiro',e);}
   };
 
@@ -790,6 +794,7 @@ const App = () => {
     {id:'simulador',       label:'Simulador de Cenários', icon:Zap},
     {id:'dividas',         label:'Dívidas',               icon:AlertOctagon},
     {id:'bancos',          label:'Bancos',                icon:Landmark},
+    {id:'investimentos',   label:'Investimentos',         icon:DollarSign},
     {id:'fontes',          label:'Fonte de Dados',        icon:Database},
     {id:'analises',        label:'Minhas Análises',       icon:FolderOpen},
     {id:'relatorios',      label:'Relatórios',            icon:FileSpreadsheet},
@@ -859,12 +864,45 @@ const App = () => {
                 <div className="flex gap-2 shrink-0"><button onClick={handleDiscardDraft} className="text-[10px] font-bold text-amber-600 hover:text-amber-800 px-3 py-2 rounded-lg hover:bg-amber-100 transition-colors">Descartar</button><button onClick={handleResumeDraft} className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2">Continuar <ChevronRight size={12}/></button></div>
               </div>
             )}
+            {(()=>{
+              const mesAtual=new Date().toISOString().slice(0,7);
+              const lancMes=lancamentos.filter(l=>l.data&&l.data.startsWith(mesAtual));
+              const entradasMes=lancMes.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+              const saidasMes=lancMes.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+              const totalBancos=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
+              const totalInvestido=investimentos.filter(i=>i.status==='ativo').reduce((a,i)=>a+Number(i.valor_atual||i.valor_aplicado||0),0);
+              return(
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-1">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total em Bancos</p>
+                    <p className={`text-xl font-black ${totalBancos>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(totalBancos)}</p>
+                    <p className="text-[9px] text-slate-400 font-medium">Saldo atual consolidado</p>
+                  </div>
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex flex-col gap-1">
+                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Entradas · {new Date().toLocaleDateString('pt-BR',{month:'short'})}</p>
+                    <p className="text-xl font-black text-emerald-800">{formatBRL(entradasMes)}</p>
+                    <p className="text-[9px] text-emerald-600 font-medium">Receitas do mês</p>
+                  </div>
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-5 flex flex-col gap-1">
+                    <p className="text-[9px] font-black text-red-500 uppercase tracking-widest">Saídas · {new Date().toLocaleDateString('pt-BR',{month:'short'})}</p>
+                    <p className="text-xl font-black text-red-700">{formatBRL(saidasMes)}</p>
+                    <p className="text-[9px] text-red-500 font-medium">Despesas do mês</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex flex-col gap-1">
+                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Total Investido</p>
+                    <p className="text-xl font-black text-blue-800">{formatBRL(totalInvestido)}</p>
+                    <p className="text-[9px] text-blue-500 font-medium">Carteira ativa</p>
+                  </div>
+                </div>
+              );
+            })()}
             {!metrics ? (
-              <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-12 text-center">
-                <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto mb-5 flex items-center justify-center"><Activity size={26} className="text-slate-300"/></div>
-                <h2 className="text-lg font-black text-[#05121b] mb-2">Painel ainda sem dados</h2>
-                <p className="text-slate-400 text-sm font-medium mb-6 max-w-sm mx-auto leading-relaxed">Envie seu primeiro diagnóstico financeiro para que o painel seja preenchido com os dados reais da sua empresa.</p>
-                <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-transform inline-flex items-center gap-2"><Plus size={13}/> Solicitar Diagnóstico</button>
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex items-center gap-4 mb-6">
+                <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center shrink-0"><Brain size={18} className="text-slate-300"/></div>
+                <div>
+                  <p className="font-black text-[#05121b] text-sm">Score Financeiro indisponível</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Para ver indicadores detalhados, envie um diagnóstico em <button onClick={()=>setView('analises')} className="text-[#137789] hover:text-[#ff7b00] font-black underline underline-offset-2 transition-colors">Minhas Análises</button>.</p>
+                </div>
               </div>
             ) : (
               <>
@@ -1585,7 +1623,7 @@ const App = () => {
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gestão</p><h1 className="text-2xl font-black text-[#05121b] italic">Contas a Pagar</h1></div>
-                <button onClick={()=>setModalCP({descricao:'',categoria:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:''})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
+                <button onClick={()=>setModalCP({descricao:'',categoria:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30'})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
               </header>
               {/* KPIs */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -1644,7 +1682,7 @@ const App = () => {
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas futuras</p><h1 className="text-2xl font-black text-[#05121b] italic">Contas a Receber</h1></div>
-                <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:''})} className="bg-[#137789] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
+                <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30'})} className="bg-[#137789] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
               </header>
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A receber (pendente)</p>
@@ -1672,6 +1710,59 @@ const App = () => {
                                 <button onClick={()=>deleteItem('contas_receber',cr.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                               </div>
                             </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── INVESTIMENTOS ─────────────────────────────────────────── */}
+        {view==='investimentos'&&(()=>{
+          const tiposInv=['CDB','LCI','LCA','Poupança','Fundo de Investimento','Ações','Tesouro Direto','Outros'];
+          const liquidezOpts=['Diária','30 dias','60 dias','90 dias','180 dias','No vencimento','Outros'];
+          const statusMapInv={ativo:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',dot:'bg-emerald-500',lbl:'Ativo'},encerrado:{bg:'bg-slate-50',border:'border-slate-200',txt:'text-slate-500',dot:'bg-slate-400',lbl:'Encerrado'},vencido:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',dot:'bg-amber-500',lbl:'Vencido'}};
+          const ativos=investimentos.filter(i=>i.status==='ativo');
+          const totalAplicado=ativos.reduce((a,i)=>a+Number(i.valor_aplicado||0),0);
+          const totalAtual=ativos.reduce((a,i)=>a+Number(i.valor_atual||i.valor_aplicado||0),0);
+          const rentTotal=totalAplicado>0?((totalAtual-totalAplicado)/totalAplicado*100):0;
+          return(
+            <div className="max-w-5xl mx-auto fade-in">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Patrimônio</p><h1 className="text-2xl font-black text-[#05121b] italic">Investimentos</h1></div>
+                <button onClick={()=>setModalInvestimento({nome:'',tipo:'CDB',instituicao:'',valor_aplicado:'',valor_atual:'',rentabilidade_pct:'',data_aplicacao:'',data_vencimento:'',liquidez:'30 dias',status:'ativo'})} className="bg-blue-600 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-md"><Plus size={13}/>Novo Investimento</button>
+              </header>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5"><p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Total Aplicado</p><p className="text-2xl font-black text-blue-800">{formatBRL(totalAplicado)}</p></div>
+                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Valor Atual</p><p className="text-2xl font-black text-[#05121b]">{formatBRL(totalAtual)}</p></div>
+                <div className={`${rentTotal>=0?'bg-emerald-50 border-emerald-200':'bg-red-50 border-red-200'} border rounded-2xl p-5`}><p className="text-[9px] font-black uppercase tracking-widest mb-1 ${rentTotal>=0?'text-emerald-600':'text-red-500'}">Rentabilidade</p><p className={`text-2xl font-black ${rentTotal>=0?'text-emerald-800':'text-red-700'}`}>{rentTotal>=0?'+':''}{rentTotal.toFixed(2)}%</p></div>
+              </div>
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                {investimentos.length===0?<div className="py-16 text-center"><DollarSign size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum investimento registrado</p></div>:(
+                  <table className="w-full">
+                    <thead><tr className="border-b border-slate-100">{['Nome','Tipo','Instituição','Aplicado','Valor Atual','Vencimento','Status',''].map(h=><th key={h} className="px-4 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {investimentos.map(inv=>{
+                        const S=statusMapInv[inv.status]||statusMapInv.ativo;
+                        const rentPct=inv.valor_aplicado>0?((Number(inv.valor_atual||inv.valor_aplicado)-Number(inv.valor_aplicado))/Number(inv.valor_aplicado)*100):0;
+                        return(
+                          <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3"><p className="text-xs font-bold text-[#05121b]">{inv.nome}</p>{inv.liquidez&&<p className="text-[9px] text-slate-400">{inv.liquidez}</p>}</td>
+                            <td className="px-4 py-3"><span className="bg-blue-50 text-blue-700 border border-blue-100 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{inv.tipo}</span></td>
+                            <td className="px-4 py-3 text-[10px] text-slate-400">{inv.instituicao||'—'}</td>
+                            <td className="px-4 py-3 text-xs font-bold text-[#05121b]">{formatBRL(inv.valor_aplicado)}</td>
+                            <td className="px-4 py-3">
+                              <p className="text-xs font-bold text-[#05121b]">{formatBRL(inv.valor_atual||inv.valor_aplicado)}</p>
+                              {rentPct!==0&&<p className={`text-[9px] font-black ${rentPct>=0?'text-emerald-600':'text-red-500'}`}>{rentPct>=0?'+':''}{rentPct.toFixed(2)}%</p>}
+                            </td>
+                            <td className="px-4 py-3 text-[10px] text-slate-400">{inv.data_vencimento?fmtDate(inv.data_vencimento):'—'}</td>
+                            <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}><span className={`w-1.5 h-1.5 rounded-full ${S.dot}`}></span>{S.lbl}</span></td>
+                            <td className="px-4 py-3"><div className="flex items-center gap-2"><button onClick={()=>setModalInvestimento({...inv,valor_aplicado:formatCurrency(String(Math.round(Number(inv.valor_aplicado)*100))),valor_atual:inv.valor_atual?formatCurrency(String(Math.round(Number(inv.valor_atual)*100))):'' })} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button><button onClick={()=>deleteItem('investimentos',inv.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></div></td>
                           </tr>
                         );
                       })}
@@ -1858,43 +1949,148 @@ const App = () => {
         )}
 
         {/* Modal Conta a Pagar */}
-        {modalCP&&(
+        {modalCP&&(()=>{
+          const qtdParc=parseInt(modalCP.parcelas)||1;
+          const isParcelado=!modalCP.id&&qtdParc>1;
+          const handleSaveCP=async()=>{
+            setSavingItem(true);
+            const valorNum=parseFloat((modalCP.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
+            const {parcelas:_p,intervalo_dias:_i,...baseCP}={...modalCP,valor:valorNum,user_id:user.id};
+            try{
+              if(isParcelado&&modalCP.vencimento){
+                const interval=parseInt(modalCP.intervalo_dias)||30;
+                const inserts=[];
+                for(let i=0;i<qtdParc;i++){
+                  const d=new Date(modalCP.vencimento+'T00:00:00');
+                  d.setDate(d.getDate()+i*interval);
+                  inserts.push({...baseCP,descricao:`${modalCP.descricao} (${i+1}/${qtdParc})`,valor:valorNum/qtdParc,vencimento:d.toISOString().split('T')[0],status:'pendente'});
+                }
+                await supabase.from('contas_pagar').insert(inserts);
+              }else{
+                if(baseCP.id){const{id,...rest}=baseCP;await supabase.from('contas_pagar').update(rest).eq('id',id);}
+                else{await supabase.from('contas_pagar').insert(baseCP);}
+              }
+              await fetchFinanceiro(user.id);
+              setModalCP(null);
+            }catch(e){console.error(e);}
+            setSavingItem(false);
+          };
+          return(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalCP(null)}>
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalCP.id?'Editar':'Nova'} Conta a Pagar</h3><button onClick={()=>setModalCP(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
               <div className="space-y-4">
                 <InputField label="Descrição" value={modalCP.descricao} onChange={v=>setModalCP({...modalCP,descricao:v})}/>
                 <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Valor" value={modalCP.valor} onChange={v=>setModalCP({...modalCP,valor:v})} maskType="currency"/>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Vencimento</label><input type="date" value={modalCP.vencimento} onChange={e=>setModalCP({...modalCP,vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]"/></div>
+                  <InputField label="Valor Total" value={modalCP.valor} onChange={v=>setModalCP({...modalCP,valor:v})} maskType="currency"/>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">1º Vencimento</label><input type="date" value={modalCP.vencimento} onChange={e=>setModalCP({...modalCP,vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]"/></div>
                 </div>
+                {!modalCP.id&&(
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                    <p className="text-[10px] font-black text-[#05121b]/60 uppercase tracking-widest">Parcelamento</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Nº de Parcelas</label>
+                        <input type="number" min="1" max="120" value={modalCP.parcelas||'1'} onChange={e=>setModalCP({...modalCP,parcelas:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Intervalo (dias)</label>
+                        <select value={modalCP.intervalo_dias||'30'} onChange={e=>setModalCP({...modalCP,intervalo_dias:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">
+                          <option value="15">15 dias (quinzenal)</option>
+                          <option value="30">30 dias (mensal)</option>
+                          <option value="60">60 dias (bimestral)</option>
+                          <option value="90">90 dias (trimestral)</option>
+                        </select>
+                      </div>
+                    </div>
+                    {isParcelado&&modalCP.valor&&modalCP.vencimento&&(
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1">Prévia do parcelamento</p>
+                        <p className="text-[10px] text-amber-800 font-medium">{qtdParc}× de {formatBRL((parseFloat((modalCP.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0)/qtdParc)} — iniciando em {fmtDate(modalCP.vencimento)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalCP.categoria} onChange={e=>setModalCP({...modalCP,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['Cartão de Crédito','Boleto Bancário','Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCP.status} onChange={e=>setModalCP({...modalCP,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="atrasado">Atrasado</option></select></div>
                 </div>
                 <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalCP.banco_id} onChange={e=>setModalCP({...modalCP,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
-                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCP.observacao||''} onChange={e=>setModalCP({...modalCP,observacao:e.target.value})} placeholder="Ex: Parcela 3/12, fornecedor X..." className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00] resize-none h-20"/></div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCP.observacao||''} onChange={e=>setModalCP({...modalCP,observacao:e.target.value})} placeholder="Ex: fornecedor X, referência do boleto..." className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00] resize-none h-16"/></div>
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalCP(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalCP.descricao||!modalCP.valor||!modalCP.vencimento} onClick={()=>saveItem('contas_pagar',{...modalCP,valor:parseFloat((modalCP.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,user_id:user.id},setModalCP,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+                <button disabled={savingItem||!modalCP.descricao||!modalCP.valor||!modalCP.vencimento} onClick={handleSaveCP} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:isParcelado?`Criar ${qtdParc} Parcelas`:'Salvar'}</button>
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Modal Conta a Receber */}
-        {modalCR&&(
+        {modalCR&&(()=>{
+          const qtdParc=parseInt(modalCR.parcelas)||1;
+          const isParcelado=!modalCR.id&&qtdParc>1;
+          const handleSaveCR=async()=>{
+            setSavingItem(true);
+            const valorNum=parseFloat((modalCR.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
+            const {parcelas:_p,intervalo_dias:_i,...baseCR}={...modalCR,valor:valorNum,user_id:user.id};
+            try{
+              if(isParcelado&&modalCR.vencimento){
+                const interval=parseInt(modalCR.intervalo_dias)||30;
+                const inserts=[];
+                for(let i=0;i<qtdParc;i++){
+                  const d=new Date(modalCR.vencimento+'T00:00:00');
+                  d.setDate(d.getDate()+i*interval);
+                  inserts.push({...baseCR,descricao:`${modalCR.descricao} (${i+1}/${qtdParc})`,valor:valorNum/qtdParc,vencimento:d.toISOString().split('T')[0],status:'pendente'});
+                }
+                await supabase.from('contas_receber').insert(inserts);
+              }else{
+                if(baseCR.id){const{id,...rest}=baseCR;await supabase.from('contas_receber').update(rest).eq('id',id);}
+                else{await supabase.from('contas_receber').insert(baseCR);}
+              }
+              await fetchFinanceiro(user.id);
+              setModalCR(null);
+            }catch(e){console.error(e);}
+            setSavingItem(false);
+          };
+          return(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalCR(null)}>
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalCR.id?'Editar':'Nova'} Conta a Receber</h3><button onClick={()=>setModalCR(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
               <div className="space-y-4">
                 <InputField label="Cliente" value={modalCR.cliente} onChange={v=>setModalCR({...modalCR,cliente:v})}/>
                 <InputField label="Descrição" value={modalCR.descricao} onChange={v=>setModalCR({...modalCR,descricao:v})}/>
                 <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Valor" value={modalCR.valor} onChange={v=>setModalCR({...modalCR,valor:v})} maskType="currency"/>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Vencimento</label><input type="date" value={modalCR.vencimento} onChange={e=>setModalCR({...modalCR,vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789]"/></div>
+                  <InputField label="Valor Total" value={modalCR.valor} onChange={v=>setModalCR({...modalCR,valor:v})} maskType="currency"/>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">1º Vencimento</label><input type="date" value={modalCR.vencimento} onChange={e=>setModalCR({...modalCR,vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789]"/></div>
                 </div>
+                {!modalCR.id&&(
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                    <p className="text-[10px] font-black text-[#05121b]/60 uppercase tracking-widest">Parcelamento</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Nº de Parcelas</label>
+                        <input type="number" min="1" max="120" value={modalCR.parcelas||'1'} onChange={e=>setModalCR({...modalCR,parcelas:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"/>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Intervalo (dias)</label>
+                        <select value={modalCR.intervalo_dias||'30'} onChange={e=>setModalCR({...modalCR,intervalo_dias:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]">
+                          <option value="15">15 dias (quinzenal)</option>
+                          <option value="30">30 dias (mensal)</option>
+                          <option value="60">60 dias (bimestral)</option>
+                          <option value="90">90 dias (trimestral)</option>
+                        </select>
+                      </div>
+                    </div>
+                    {isParcelado&&modalCR.valor&&modalCR.vencimento&&(
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                        <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">Prévia do parcelamento</p>
+                        <p className="text-[10px] text-emerald-800 font-medium">{qtdParc}× de {formatBRL((parseFloat((modalCR.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0)/qtdParc)} — iniciando em {fmtDate(modalCR.vencimento)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCR.status} onChange={e=>setModalCR({...modalCR,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="pendente">Pendente</option><option value="recebido">Recebido</option></select></div>
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalCR.banco_id} onChange={e=>setModalCR({...modalCR,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
@@ -1903,11 +2099,12 @@ const App = () => {
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalCR(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalCR.cliente||!modalCR.descricao||!modalCR.valor||!modalCR.vencimento} onClick={()=>saveItem('contas_receber',{...modalCR,valor:parseFloat((modalCR.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,user_id:user.id},setModalCR,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#137789] text-white hover:bg-[#0e5f6b] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+                <button disabled={savingItem||!modalCR.cliente||!modalCR.descricao||!modalCR.valor||!modalCR.vencimento} onClick={handleSaveCR} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#137789] text-white hover:bg-[#0e5f6b] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:isParcelado?`Criar ${qtdParc} Parcelas`:'Salvar'}</button>
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Modal Dívida */}
         {modalDivida&&(
@@ -1956,6 +2153,38 @@ const App = () => {
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalBanco(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
                 <button disabled={savingItem||!modalBanco.nome} onClick={()=>saveItem('bancos',{...modalBanco,saldo_inicial:parseFloat((modalBanco.saldo_inicial||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,user_id:user.id},setModalBanco,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Investimento */}
+        {modalInvestimento&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalInvestimento(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalInvestimento.id?'Editar':'Novo'} Investimento</h3><button onClick={()=>setModalInvestimento(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Nome / Identificação" value={modalInvestimento.nome} onChange={v=>setModalInvestimento({...modalInvestimento,nome:v})} placeholder="Ex: CDB Itaú 12%"/>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo</label><select value={modalInvestimento.tipo} onChange={e=>setModalInvestimento({...modalInvestimento,tipo:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500">{['CDB','LCI','LCA','Poupança','Fundo de Investimento','Ações','Tesouro Direto','Outros'].map(t=><option key={t}>{t}</option>)}</select></div>
+                </div>
+                <InputField label="Instituição (opcional)" value={modalInvestimento.instituicao||''} onChange={v=>setModalInvestimento({...modalInvestimento,instituicao:v})} placeholder="Ex: Itaú, XP, Nubank..."/>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Valor Aplicado" value={modalInvestimento.valor_aplicado} onChange={v=>setModalInvestimento({...modalInvestimento,valor_aplicado:v})} maskType="currency"/>
+                  <InputField label="Valor Atual (opcional)" value={modalInvestimento.valor_atual||''} onChange={v=>setModalInvestimento({...modalInvestimento,valor_atual:v})} maskType="currency"/>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data de Aplicação</label><input type="date" value={modalInvestimento.data_aplicacao||''} onChange={e=>setModalInvestimento({...modalInvestimento,data_aplicacao:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500"/></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Vencimento (opcional)</label><input type="date" value={modalInvestimento.data_vencimento||''} onChange={e=>setModalInvestimento({...modalInvestimento,data_vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Liquidez</label><select value={modalInvestimento.liquidez||'30 dias'} onChange={e=>setModalInvestimento({...modalInvestimento,liquidez:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500">{['Diária','30 dias','60 dias','90 dias','180 dias','No vencimento','Outros'].map(l=><option key={l}>{l}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalInvestimento.status} onChange={e=>setModalInvestimento({...modalInvestimento,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500"><option value="ativo">Ativo</option><option value="encerrado">Encerrado</option><option value="vencido">Vencido</option></select></div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={()=>setModalInvestimento(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalInvestimento.nome||!modalInvestimento.valor_aplicado} onClick={()=>saveItem('investimentos',{...modalInvestimento,valor_aplicado:parseFloat((modalInvestimento.valor_aplicado||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,valor_atual:modalInvestimento.valor_atual?parseFloat((modalInvestimento.valor_atual||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||null:null,rentabilidade_pct:modalInvestimento.rentabilidade_pct?parseFloat(modalInvestimento.rentabilidade_pct)||null:null,user_id:user.id},setModalInvestimento,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
           </div>
