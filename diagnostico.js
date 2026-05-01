@@ -7,7 +7,8 @@ import {
   FileSearch, User, ChevronLeft, Loader2, BarChart2, Bell, Lightbulb,
   AlertCircle, Save, TrendingUp, Zap, Activity, Database,
   FileSpreadsheet, PenLine, FolderOpen, ArrowRight, DollarSign,
-  Shield, Brain, Cpu, AlertOctagon, X
+  Shield, Brain, Cpu, AlertOctagon, X,
+  TrendingDown, Trash2, Pencil, CalendarDays, Wallet, Receipt
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
@@ -517,6 +518,22 @@ const App = () => {
   const [simLoading, setSimLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState(null);
 
+  // ── FINANCIAL MODULE STATE ─────────────────────────────────────────────────
+  const [bancos, setBancos] = useState([]);
+  const [lancamentos, setLancamentos] = useState([]);
+  const [contasPagar, setContasPagar] = useState([]);
+  const [contasReceber, setContasReceber] = useState([]);
+  const [dividas, setDividas] = useState([]);
+  const [fluxoFiltro, setFluxoFiltro] = useState('mensal');
+  const [savingItem, setSavingItem] = useState(false);
+  // Modal forms (null = closed, {} = new, {id:...} = editing)
+  const [modalBanco, setModalBanco] = useState(null);
+  const [modalReceita, setModalReceita] = useState(null);
+  const [modalDespesa, setModalDespesa] = useState(null);
+  const [modalCP, setModalCP] = useState(null);
+  const [modalCR, setModalCR] = useState(null);
+  const [modalDivida, setModalDivida] = useState(null);
+
   useEffect(()=>{
     if(formMode&&view==='form'){
       try{localStorage.setItem(DRAFT_KEY,JSON.stringify({formData,formMode,formStep}));}catch(e){}
@@ -536,6 +553,7 @@ const App = () => {
         const cu=session.user;
         setUser(cu);
         fetchDiagnostics(cu.id);
+        fetchFinanceiro(cu.id);
         try{if(localStorage.getItem(DRAFT_KEY))setHasDraft(true);}catch(e){}
         if(cu.user_metadata){
           const m=cu.user_metadata;
@@ -562,6 +580,56 @@ const App = () => {
       const fresh=mapped.find(d=>d.internal_status==='completed'&&!seen.includes(d.id));
       if(fresh)setNewlyCompleted(fresh);
     }
+  };
+
+  const fetchFinanceiro=async(userId)=>{
+    try{
+      const[{data:bD},{data:lD},{data:cpD},{data:crD},{data:dD}]=await Promise.all([
+        supabase.from('bancos').select('*').eq('user_id',userId).order('created_at'),
+        supabase.from('lancamentos').select('*').eq('user_id',userId).order('data',{ascending:false}),
+        supabase.from('contas_pagar').select('*').eq('user_id',userId).order('vencimento'),
+        supabase.from('contas_receber').select('*').eq('user_id',userId).order('vencimento'),
+        supabase.from('dividas').select('*').eq('user_id',userId).order('created_at'),
+      ]);
+      if(bD)setBancos(bD);
+      if(lD)setLancamentos(lD);
+      if(cpD)setContasPagar(cpD);
+      if(crD)setContasReceber(crD);
+      if(dD)setDividas(dD);
+    }catch(e){console.error('fetchFinanceiro',e);}
+  };
+
+  const saveItem=async(table,payload,setModal,resetList)=>{
+    setSavingItem(true);
+    try{
+      if(payload.id){
+        const{id,...rest}=payload;
+        await supabase.from(table).update(rest).eq('id',id);
+      }else{
+        await supabase.from(table).insert(payload);
+      }
+      await resetList();
+      setModal(null);
+    }catch(e){console.error(e);}
+    setSavingItem(false);
+  };
+
+  const deleteItem=async(table,id,resetList)=>{
+    if(!confirm('Confirmar exclusão?'))return;
+    await supabase.from(table).delete().eq('id',id);
+    await resetList();
+  };
+
+  const fmtDate=d=>d?new Date(d+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+  const today=new Date().toISOString().split('T')[0];
+
+  // Saldo calculado por banco
+  const saldoBanco=(bancoId)=>{
+    const b=bancos.find(x=>x.id===bancoId);
+    if(!b)return 0;
+    const ent=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+    const sai=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+    return Number(b.saldo_inicial)+ent-sai;
   };
 
   const markAsSeen=id=>{
@@ -684,13 +752,20 @@ const App = () => {
   const isLastStep=formStep===currentSteps.length-1;
 
   const navItems=[
-    {id:'dashboard',label:'Dashboard',icon:LayoutDashboard},
-    {id:'alertas',label:'Diagnóstico & Alertas',icon:Brain},
-    {id:'simulador',label:'Simulador de Cenários',icon:Zap},
-    {id:'fontes',label:'Fontes de Dados',icon:Database},
-    {id:'relatorios',label:'Meus Relatórios',icon:FolderOpen},
-    {id:'nova_analise',label:'Nova Análise',icon:Plus},
-    {id:'profile',label:'Meu Perfil',icon:User},
+    {id:'dashboard',       label:'Dashboard',             icon:LayoutDashboard},
+    {id:'alertas',         label:'Diagnóstico & Alertas', icon:Brain},
+    {id:'simulador',       label:'Simulador de Cenários', icon:Zap},
+    {id:'fluxo',           label:'Fluxo de Caixa',        icon:Activity},
+    {id:'receitas',        label:'Receitas',              icon:TrendingUp},
+    {id:'despesas',        label:'Despesas',              icon:TrendingDown},
+    {id:'contas_pagar',    label:'Contas a Pagar',        icon:Receipt},
+    {id:'contas_receber',  label:'Contas a Receber',      icon:Wallet},
+    {id:'dividas',         label:'Dívidas',               icon:AlertOctagon},
+    {id:'bancos',          label:'Bancos',                icon:Landmark},
+    {id:'fontes',          label:'Fonte de Dados',        icon:Database},
+    {id:'analises',        label:'Minhas Análises',       icon:FolderOpen},
+    {id:'relatorios',      label:'Relatórios',            icon:FileSpreadsheet},
+    {id:'profile',         label:'Meu Perfil',            icon:User},
   ];
 
   const metrics = calcMetrics(diagnostics[0]);
@@ -712,7 +787,7 @@ const App = () => {
         <nav className="flex-1 space-y-1 mt-2">
           {navItems.map(item=>{
             const I=item.icon;
-            const active=view===item.id||(item.id==='relatorios'&&(view==='success'||view==='result'||view==='view_data'));
+            const active=view===item.id||(item.id==='analises'&&(view==='success'||view==='result'||view==='view_data'));
             const handleNavClick = () => {
               if (item.id === 'nova_analise') { setFormMode(null); setFormStep(0); setView('form'); }
               else setView(item.id);
@@ -883,6 +958,157 @@ const App = () => {
               </div>
               </>
             )}
+
+            {/* ── POSIÇÃO EM BANCOS ───────────────────────────────────────── */}
+            {bancos.length>0&&(
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide flex items-center gap-2"><Landmark size={14} className="text-[#137789]"/> Posição em Bancos</h3>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-black text-[#05121b]">Total: <span className={bancos.reduce((a,b)=>a+saldoBanco(b.id),0)>=0?'text-[#05121b]':'text-red-600'}>{formatBRL(bancos.reduce((a,b)=>a+saldoBanco(b.id),0))}</span></span>
+                    <button onClick={()=>setView('bancos')} className="text-[9px] font-black uppercase tracking-widest text-[#137789] hover:text-[#ff7b00] transition-colors">Ver todos →</button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {bancos.slice(0,4).map(b=>{
+                    const s=saldoBanco(b.id);
+                    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+                    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+                    return(
+                      <div key={b.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={()=>setView('bancos')}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div style={{background:b.color||'#137789'}} className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
+                            <Landmark size={13} className="text-white"/>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black text-[#05121b] truncate">{b.nome}</p>
+                            <p className="text-[9px] text-slate-400 truncate">{b.tipo}</p>
+                          </div>
+                        </div>
+                        <p className={`text-lg font-black mb-2 ${s>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(s)}</p>
+                        <div className="flex justify-between text-[9px] font-bold">
+                          <span className="text-emerald-600">▲ {formatBRL(ent)}</span>
+                          <span className="text-red-500">▼ {formatBRL(sai)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {bancos.length>4&&(
+                    <button onClick={()=>setView('bancos')} className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-slate-100 transition-colors">
+                      <span className="text-xl font-black text-slate-300">+{bancos.length-4}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Ver todos</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── CONTAS A PAGAR / RECEBER ────────────────────────────────── */}
+            {(contasPagar.length>0||contasReceber.length>0)&&(()=>{
+              const d30=new Date(); d30.setDate(d30.getDate()+30);
+              const d30s=d30.toISOString().split('T')[0];
+              const proxPag=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento<=d30s).sort((a,b)=>a.vencimento.localeCompare(b.vencimento)).slice(0,5);
+              const proxRec=contasReceber.filter(cr=>cr.status!=='recebido').sort((a,b)=>a.vencimento.localeCompare(b.vencimento)).slice(0,5);
+              const totalPag=proxPag.reduce((a,cp)=>a+Number(cp.valor),0);
+              const totalRec=proxRec.reduce((a,cr)=>a+Number(cr.valor),0);
+              return(
+                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="p-5 border-b border-slate-50 flex items-center justify-between">
+                      <div className="flex items-center gap-2"><Receipt size={14} className="text-red-400"/><h3 className="font-black text-[#05121b] text-xs uppercase tracking-widest">A Pagar · próx. 30 dias</h3></div>
+                      <span className="text-xs font-black text-red-500">{formatBRL(totalPag)}</span>
+                    </div>
+                    {proxPag.length===0?(
+                      <p className="text-center text-slate-300 font-bold text-[10px] uppercase tracking-widest py-8">Nenhuma conta no período</p>
+                    ):(
+                      <div className="divide-y divide-slate-50">
+                        {proxPag.map(cp=>{
+                          const isAtrasado=cp.vencimento<today&&cp.status!=='pago';
+                          return(
+                            <div key={cp.id} className="px-5 py-3 flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full shrink-0 ${isAtrasado?'bg-red-500':cp.status==='pago'?'bg-emerald-500':'bg-amber-400'}`}/>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-bold text-[#05121b] truncate">{cp.descricao}</p>
+                                <p className="text-[9px] text-slate-400">{cp.vencimento?new Date(cp.vencimento+'T00:00:00').toLocaleDateString('pt-BR'):''}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs font-black text-red-500">{formatBRL(cp.valor)}</p>
+                                {isAtrasado&&<p className="text-[8px] font-black text-red-400 uppercase">Atrasado</p>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="p-3 border-t border-slate-50">
+                      <button onClick={()=>setView('contas_pagar')} className="w-full text-[9px] font-black uppercase tracking-widest text-[#137789] hover:text-[#ff7b00] transition-colors py-1">Ver todas →</button>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="p-5 border-b border-slate-50 flex items-center justify-between">
+                      <div className="flex items-center gap-2"><Wallet size={14} className="text-emerald-500"/><h3 className="font-black text-[#05121b] text-xs uppercase tracking-widest">A Receber · pendentes</h3></div>
+                      <span className="text-xs font-black text-emerald-600">{formatBRL(totalRec)}</span>
+                    </div>
+                    {proxRec.length===0?(
+                      <p className="text-center text-slate-300 font-bold text-[10px] uppercase tracking-widest py-8">Nenhum lançamento pendente</p>
+                    ):(
+                      <div className="divide-y divide-slate-50">
+                        {proxRec.map(cr=>{
+                          const isAtrasado=cr.vencimento<today&&cr.status!=='recebido';
+                          return(
+                            <div key={cr.id} className="px-5 py-3 flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full shrink-0 ${isAtrasado?'bg-red-500':'bg-emerald-400'}`}/>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-bold text-[#05121b] truncate">{cr.descricao}</p>
+                                <p className="text-[9px] text-slate-400">{cr.cliente?cr.cliente+' · ':''}{cr.vencimento?new Date(cr.vencimento+'T00:00:00').toLocaleDateString('pt-BR'):''}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs font-black text-emerald-600">{formatBRL(cr.valor)}</p>
+                                {isAtrasado&&<p className="text-[8px] font-black text-red-400 uppercase">Atrasado</p>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="p-3 border-t border-slate-50">
+                      <button onClick={()=>setView('contas_receber')} className="w-full text-[9px] font-black uppercase tracking-widest text-[#137789] hover:text-[#ff7b00] transition-colors py-1">Ver todas →</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ── DÍVIDAS ATIVAS ──────────────────────────────────────────── */}
+            {dividas.filter(d=>d.status!=='quitada').length>0&&(()=>{
+              const ativas=dividas.filter(d=>d.status!=='quitada');
+              const totalDividas=ativas.reduce((a,d)=>a+Number(d.valor_total||0),0);
+              const totalParcelas=ativas.reduce((a,d)=>a+Number(d.valor_parcela||0),0);
+              return(
+                <div className="mt-6">
+                  <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2"><AlertOctagon size={14} className="text-red-500"/><h3 className="font-black text-red-700 text-xs uppercase tracking-widest">Dívidas Ativas</h3><span className="text-[9px] bg-red-100 text-red-600 font-black px-2 py-0.5 rounded-full">{ativas.length}</span></div>
+                      <div className="text-right">
+                        <p className="text-[9px] text-red-400 font-bold uppercase tracking-widest">Total em dívida</p>
+                        <p className="text-sm font-black text-red-600">{formatBRL(totalDividas)}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div className="bg-white rounded-xl p-3 border border-red-100">
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Parcelas / mês</p>
+                        <p className="text-sm font-black text-red-600 mt-0.5">{formatBRL(totalParcelas)}</p>
+                      </div>
+                      <div className="bg-white rounded-xl p-3 border border-red-100">
+                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Dívidas ativas</p>
+                        <p className="text-sm font-black text-[#05121b] mt-0.5">{ativas.length}</p>
+                      </div>
+                    </div>
+                    <button onClick={()=>setView('dividas')} className="w-full text-[9px] font-black uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors py-1">Gerenciar dívidas →</button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -1102,10 +1328,10 @@ const App = () => {
         )}
 
         {/* ── MEUS RELATÓRIOS ──────────────────────────────────────────── */}
-        {view==='relatorios'&&(
+        {view==='analises'&&(
           <div className="max-w-5xl mx-auto fade-in">
             <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-              <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Central de</p><h1 className="text-2xl font-black text-[#05121b] italic">Meus Relatórios</h1></div>
+              <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Central de</p><h1 className="text-2xl font-black text-[#05121b] italic">Minhas Análises</h1></div>
               <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md hover:scale-[1.02] transition-transform self-start sm:self-auto flex items-center gap-2"><Plus size={13}/> Solicitar Nova Análise</button>
             </header>
             {newlyCompleted&&(<div className="slide-down mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0"><Bell size={16} className="text-white"/></div><div><h4 className="font-black text-emerald-800 text-sm">Diagnóstico concluído! 🎉</h4><p className="text-[10px] text-emerald-600 mt-0.5"><strong>{newlyCompleted.client_name}</strong> — resultado disponível</p></div></div><button onClick={()=>handleViewResult(newlyCompleted)} className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2">Ver Resultado <ChevronRight size={12}/></button></div>)}
@@ -1122,6 +1348,565 @@ const App = () => {
                   <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-transform">Solicitar Agora</button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── FLUXO DE CAIXA ────────────────────────────────────────── */}
+        {view==='fluxo'&&(()=>{
+          const filtros=[{id:'diario',l:'Diário'},{id:'semanal',l:'Semanal'},{id:'mensal',l:'Mensal'},{id:'anual',l:'Anual'}];
+          const now=new Date();
+          const filteredLanc=lancamentos.filter(l=>{
+            const d=new Date(l.data+'T00:00:00');
+            if(fluxoFiltro==='diario') return d.toDateString()===now.toDateString();
+            if(fluxoFiltro==='semanal'){const s=new Date(now);s.setDate(now.getDate()-7);return d>=s;}
+            if(fluxoFiltro==='mensal') return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+            if(fluxoFiltro==='anual')  return d.getFullYear()===now.getFullYear();
+            return true;
+          });
+          const totalEnt=filteredLanc.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+          const totalSai=filteredLanc.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          // Chart data: group by day/week/month depending on filter
+          const chartMap={};
+          filteredLanc.forEach(l=>{
+            const d=new Date(l.data+'T00:00:00');
+            let key;
+            if(fluxoFiltro==='diario'||fluxoFiltro==='semanal') key=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+            else if(fluxoFiltro==='mensal') key=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+            else key=d.toLocaleDateString('pt-BR',{month:'short'});
+            if(!chartMap[key]) chartMap[key]={name:key,Entradas:0,Saídas:0};
+            if(l.tipo==='receita') chartMap[key].Entradas+=Number(l.valor);
+            else chartMap[key].Saídas+=Number(l.valor);
+          });
+          const chartData=Object.values(chartMap).slice(-12);
+          return(
+            <div className="max-w-5xl mx-auto fade-in">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Visão financeira</p><h1 className="text-2xl font-black text-[#05121b] italic">Fluxo de Caixa</h1></div>
+                <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                  {filtros.map(f=><button key={f.id} onClick={()=>setFluxoFiltro(f.id)} className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${fluxoFiltro===f.id?'bg-white shadow text-[#05121b]':'text-slate-400 hover:text-[#05121b]'}`}>{f.l}</button>)}
+                </div>
+              </header>
+              {/* KPI row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5"><p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total Entradas</p><p className="text-2xl font-black text-emerald-800">{formatBRL(totalEnt)}</p></div>
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-5"><p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Total Saídas</p><p className="text-2xl font-black text-red-800">{formatBRL(totalSai)}</p></div>
+                <div className={`${totalEnt-totalSai>=0?'bg-blue-50 border-blue-200':'bg-amber-50 border-amber-200'} border rounded-2xl p-5`}><p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${totalEnt-totalSai>=0?'text-blue-600':'text-amber-600'}`}>Saldo Período</p><p className={`text-2xl font-black ${totalEnt-totalSai>=0?'text-blue-800':'text-amber-800'}`}>{formatBRL(totalEnt-totalSai)}</p></div>
+              </div>
+              {/* Chart */}
+              {chartData.length>0&&(
+                <div className="bg-white border border-slate-100 rounded-2xl p-6 mb-6 shadow-sm">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Evolução no período</p>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{top:5,right:5,left:-20,bottom:0}}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                        <XAxis dataKey="name" tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                        <YAxis tickFormatter={v=>`R$${v>=1000?Math.round(v/1000)+'k':v}`} tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                        <RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'none',boxShadow:'0 4px 12px rgba(0,0,0,0.08)',fontSize:'11px',fontWeight:'bold'}}/>
+                        <Area type="monotone" dataKey="Entradas" stroke="#22c55e" fill="#22c55e20" strokeWidth={2}/>
+                        <Area type="monotone" dataKey="Saídas"   stroke="#ef4444" fill="#ef444420" strokeWidth={2}/>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+              {/* Table */}
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filteredLanc.length} lançamentos</p>
+                  <div className="flex gap-2">
+                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:''})} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"><Plus size={11}/>Receita</button>
+                    <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',banco_id:''})} className="bg-red-500 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 hover:bg-red-600 transition-colors"><Plus size={11}/>Despesa</button>
+                  </div>
+                </div>
+                {filteredLanc.length===0?<div className="py-12 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum lançamento no período</div>:(
+                  <div className="divide-y divide-slate-50">
+                    {filteredLanc.map(l=>(
+                      <div key={l.id} className="px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${l.tipo==='receita'?'bg-emerald-50':'bg-red-50'}`}>
+                            {l.tipo==='receita'?<TrendingUp size={14} className="text-emerald-600"/>:<TrendingDown size={14} className="text-red-500"/>}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-[#05121b] truncate">{l.descricao}</p>
+                            <p className="text-[10px] text-slate-400">{l.categoria||'—'} · {fmtDate(l.data)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <p className={`text-sm font-black ${l.tipo==='receita'?'text-emerald-700':'text-red-600'}`}>{l.tipo==='receita'?'+':'-'}{formatBRL(l.valor)}</p>
+                          <button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── RECEITAS ──────────────────────────────────────────────── */}
+        {view==='receitas'&&(()=>{
+          const cats=['Venda de Produto','Venda de Serviço','Mensalidade','Comissão','Juros','Outros'];
+          const total=lancamentos.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+          return(
+            <div className="max-w-4xl mx-auto fade-in">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas</p><h1 className="text-2xl font-black text-[#05121b] italic">Receitas</h1></div>
+                <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:''})} className="bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-md"><Plus size={13}/>Nova Receita</button>
+              </header>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Total de Receitas Registradas</p>
+                <p className="text-2xl font-black text-emerald-800">{formatBRL(total)}</p>
+              </div>
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                {lancamentos.filter(l=>l.tipo==='receita').length===0?<div className="py-16 text-center"><TrendingUp size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma receita registrada</p></div>:(
+                  <table className="w-full">
+                    <thead><tr className="border-b border-slate-100">{['Data','Descrição','Categoria','Banco','Valor',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {lancamentos.filter(l=>l.tipo==='receita').map(l=>(
+                        <tr key={l.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-5 py-3 text-[10px] text-slate-400 font-medium whitespace-nowrap">{fmtDate(l.data)}</td>
+                          <td className="px-5 py-3 text-xs font-bold text-[#05121b]">{l.descricao}</td>
+                          <td className="px-5 py-3 text-[10px] text-slate-400">{l.categoria||'—'}</td>
+                          <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===l.banco_id)?.nome||'—'}</td>
+                          <td className="px-5 py-3 text-sm font-black text-emerald-700 whitespace-nowrap">+{formatBRL(l.valor)}</td>
+                          <td className="px-5 py-3"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── DESPESAS ──────────────────────────────────────────────── */}
+        {view==='despesas'&&(()=>{
+          const cats=['Cartão de Crédito','Boleto','Fornecedor','Folha de Pagamento','Aluguel','Marketing','Serviços/Software','Estorno','Impostos','Outros'];
+          const total=lancamentos.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          return(
+            <div className="max-w-4xl mx-auto fade-in">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Saídas</p><h1 className="text-2xl font-black text-[#05121b] italic">Despesas</h1></div>
+                <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',banco_id:''})} className="bg-red-500 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-red-600 transition-colors shadow-md"><Plus size={13}/>Nova Despesa</button>
+              </header>
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
+                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Despesas Registradas</p>
+                <p className="text-2xl font-black text-red-800">{formatBRL(total)}</p>
+              </div>
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                {lancamentos.filter(l=>l.tipo==='despesa').length===0?<div className="py-16 text-center"><TrendingDown size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma despesa registrada</p></div>:(
+                  <table className="w-full">
+                    <thead><tr className="border-b border-slate-100">{['Data','Descrição','Categoria','Banco','Valor',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {lancamentos.filter(l=>l.tipo==='despesa').map(l=>(
+                        <tr key={l.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-5 py-3 text-[10px] text-slate-400 font-medium whitespace-nowrap">{fmtDate(l.data)}</td>
+                          <td className="px-5 py-3 text-xs font-bold text-[#05121b]">{l.descricao}</td>
+                          <td className="px-5 py-3 text-[10px] text-slate-400">{l.categoria||'—'}</td>
+                          <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===l.banco_id)?.nome||'—'}</td>
+                          <td className="px-5 py-3 text-sm font-black text-red-600 whitespace-nowrap">-{formatBRL(l.valor)}</td>
+                          <td className="px-5 py-3"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── CONTAS A PAGAR ────────────────────────────────────────── */}
+        {view==='contas_pagar'&&(()=>{
+          const cats=['Cartão de Crédito','Boleto Bancário','Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros'];
+          const statusMap={pendente:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',dot:'bg-amber-500',lbl:'Pendente'},pago:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',dot:'bg-emerald-500',lbl:'Pago'},atrasado:{bg:'bg-red-50',border:'border-red-200',txt:'text-red-700',dot:'bg-red-500',lbl:'Atrasado'}};
+          const getStatus=(cp)=>{if(cp.status==='pago')return 'pago';if(cp.vencimento<today&&cp.status!=='pago')return 'atrasado';return cp.status||'pendente';};
+          const totPendente=contasPagar.filter(c=>getStatus(c)!=='pago').reduce((a,c)=>a+Number(c.valor),0);
+          const totAtrasado=contasPagar.filter(c=>getStatus(c)==='atrasado').reduce((a,c)=>a+Number(c.valor),0);
+          return(
+            <div className="max-w-5xl mx-auto fade-in">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gestão</p><h1 className="text-2xl font-black text-[#05121b] italic">Contas a Pagar</h1></div>
+                <button onClick={()=>setModalCP({descricao:'',categoria:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:''})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
+              </header>
+              {/* KPIs */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total a Pagar</p><p className="text-2xl font-black text-[#05121b]">{formatBRL(totPendente)}</p></div>
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-5"><p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Em Atraso</p><p className="text-2xl font-black text-red-800">{formatBRL(totAtrasado)}</p></div>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total de Contas</p><p className="text-2xl font-black text-[#05121b]">{contasPagar.length}</p></div>
+              </div>
+              {/* Table */}
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                {contasPagar.length===0?<div className="py-16 text-center"><Receipt size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma conta a pagar</p></div>:(
+                  <table className="w-full">
+                    <thead><tr className="border-b border-slate-100">{['Vencimento','Descrição','Categoria','Banco','Valor','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {contasPagar.map(cp=>{
+                        const st=getStatus(cp);
+                        const S=statusMap[st]||statusMap.pendente;
+                        return(
+                          <tr key={cp.id} className={`hover:bg-slate-50 transition-colors ${st==='atrasado'?'bg-red-50/30':''}`}>
+                            <td className={`px-5 py-3 text-[10px] font-bold whitespace-nowrap ${st==='atrasado'?'text-red-600':'text-slate-500'}`}>{fmtDate(cp.vencimento)}</td>
+                            <td className="px-5 py-3">
+                              <p className="text-xs font-bold text-[#05121b]">{cp.descricao}</p>
+                              {cp.observacao&&<p className="text-[10px] text-slate-400 mt-0.5">{cp.observacao}</p>}
+                            </td>
+                            <td className="px-5 py-3 text-[10px] text-slate-400">{cp.categoria||'—'}</td>
+                            <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===cp.banco_id)?.nome||'—'}</td>
+                            <td className="px-5 py-3 text-sm font-black text-[#05121b] whitespace-nowrap">{formatBRL(cp.valor)}</td>
+                            <td className="px-5 py-3">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${S.dot}`}></span>{S.lbl}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-2">
+                                <button onClick={()=>setModalCP({...cp})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
+                                <button onClick={()=>deleteItem('contas_pagar',cp.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── CONTAS A RECEBER ──────────────────────────────────────── */}
+        {view==='contas_receber'&&(()=>{
+          const statusMap={pendente:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',dot:'bg-amber-500',lbl:'Pendente'},recebido:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',dot:'bg-emerald-500',lbl:'Recebido'},vencido:{bg:'bg-red-50',border:'border-red-200',txt:'text-red-700',dot:'bg-red-500',lbl:'Vencido'}};
+          const getStatus=(cr)=>{if(cr.status==='recebido')return 'recebido';if(cr.vencimento<today&&cr.status!=='recebido')return 'vencido';return cr.status||'pendente';};
+          const totPendente=contasReceber.filter(c=>getStatus(c)==='pendente').reduce((a,c)=>a+Number(c.valor),0);
+          return(
+            <div className="max-w-5xl mx-auto fade-in">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas futuras</p><h1 className="text-2xl font-black text-[#05121b] italic">Contas a Receber</h1></div>
+                <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:''})} className="bg-[#137789] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
+              </header>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A receber (pendente)</p>
+                <p className="text-2xl font-black text-emerald-800">{formatBRL(totPendente)}</p>
+              </div>
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                {contasReceber.length===0?<div className="py-16 text-center"><Wallet size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma conta a receber</p></div>:(
+                  <table className="w-full">
+                    <thead><tr className="border-b border-slate-100">{['Vencimento','Cliente','Descrição','Banco','Valor','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {contasReceber.map(cr=>{
+                        const st=getStatus(cr);
+                        const S=statusMap[st]||statusMap.pendente;
+                        return(
+                          <tr key={cr.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-5 py-3 text-[10px] font-bold text-slate-500 whitespace-nowrap">{fmtDate(cr.vencimento)}</td>
+                            <td className="px-5 py-3 text-xs font-bold text-[#05121b]">{cr.cliente}</td>
+                            <td className="px-5 py-3 text-[10px] text-slate-400">{cr.descricao}</td>
+                            <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===cr.banco_id)?.nome||'—'}</td>
+                            <td className="px-5 py-3 text-sm font-black text-emerald-700 whitespace-nowrap">+{formatBRL(cr.valor)}</td>
+                            <td className="px-5 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}><span className={`w-1.5 h-1.5 rounded-full ${S.dot}`}></span>{S.lbl}</span></td>
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-2">
+                                <button onClick={()=>setModalCR({...cr})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
+                                <button onClick={()=>deleteItem('contas_receber',cr.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── DÍVIDAS ───────────────────────────────────────────────── */}
+        {view==='dividas'&&(()=>{
+          const statusMap={ativa:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',lbl:'Ativa'},quitada:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',lbl:'Quitada'},renegociando:{bg:'bg-blue-50',border:'border-blue-200',txt:'text-blue-700',lbl:'Renegociando'}};
+          const totalAtivas=dividas.filter(d=>d.status==='ativa').reduce((a,d)=>a+Number(d.valor_total),0);
+          return(
+            <div className="max-w-5xl mx-auto fade-in">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Passivos</p><h1 className="text-2xl font-black text-[#05121b] italic">Dívidas</h1></div>
+                <button onClick={()=>setModalDivida({credor:'',descricao:'',valor_total:'',valor_parcela:'',parcelas_total:'',parcelas_pagas:0,proximo_vencimento:'',status:'ativa'})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Dívida</button>
+              </header>
+              {totalAtivas>0&&<div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between"><p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Dívidas Ativas</p><p className="text-2xl font-black text-red-800">{formatBRL(totalAtivas)}</p></div>}
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                {dividas.length===0?<div className="py-16 text-center"><AlertOctagon size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma dívida registrada</p></div>:(
+                  <table className="w-full">
+                    <thead><tr className="border-b border-slate-100">{['Credor','Descrição','Valor Total','Parcela','Progresso','Próx. Venc.','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {dividas.map(d=>{
+                        const S=statusMap[d.status]||statusMap.ativa;
+                        const prog=d.parcelas_total>0?Math.round((d.parcelas_pagas/d.parcelas_total)*100):0;
+                        return(
+                          <tr key={d.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-5 py-3 text-xs font-black text-[#05121b]">{d.credor}</td>
+                            <td className="px-5 py-3 text-[10px] text-slate-400">{d.descricao||'—'}</td>
+                            <td className="px-5 py-3 text-sm font-black text-[#05121b] whitespace-nowrap">{formatBRL(d.valor_total)}</td>
+                            <td className="px-5 py-3 text-[10px] text-slate-500 whitespace-nowrap">{d.valor_parcela?formatBRL(d.valor_parcela):'—'}</td>
+                            <td className="px-5 py-3">
+                              {d.parcelas_total>0?(
+                                <div>
+                                  <div className="flex justify-between text-[9px] text-slate-400 mb-1"><span>{d.parcelas_pagas}/{d.parcelas_total}x</span><span>{prog}%</span></div>
+                                  <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{width:`${prog}%`}}></div></div>
+                                </div>
+                              ):(<span className="text-[10px] text-slate-300">—</span>)}
+                            </td>
+                            <td className="px-5 py-3 text-[10px] text-slate-400 whitespace-nowrap">{fmtDate(d.proximo_vencimento)}</td>
+                            <td className="px-5 py-3"><span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}>{S.lbl}</span></td>
+                            <td className="px-5 py-3">
+                              <div className="flex items-center gap-2">
+                                <button onClick={()=>setModalDivida({...d})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
+                                <button onClick={()=>deleteItem('dividas',d.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── BANCOS ────────────────────────────────────────────────── */}
+        {view==='bancos'&&(()=>{
+          const tipos=['Conta Corrente','Conta Poupança','Conta Digital','Caixa Físico','Outros'];
+          const CORES=['#137789','#ff7b00','#22c55e','#8b5cf6','#f59e0b','#ef4444','#0ea5e9','#ec4899'];
+          const saldoTotal=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
+          return(
+            <div className="max-w-4xl mx-auto fade-in">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gestão</p><h1 className="text-2xl font-black text-[#05121b] italic">Bancos e Contas</h1></div>
+                <button onClick={()=>setModalBanco({nome:'',tipo:'Conta Corrente',saldo_inicial:'',cor:'#137789'})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Adicionar Banco</button>
+              </header>
+              {/* Saldo total */}
+              <div className="bg-[#05121b] rounded-2xl p-6 mb-6 flex items-center justify-between">
+                <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Total</p><p className="text-3xl font-black text-white">{formatBRL(saldoTotal)}</p></div>
+                <Landmark size={32} className="text-white/20"/>
+              </div>
+              {/* Bank cards */}
+              {bancos.length===0?<div className="bg-white border border-slate-100 rounded-2xl py-16 text-center shadow-sm"><Landmark size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum banco cadastrado</p></div>:(
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {bancos.map(b=>{
+                    const saldo=saldoBanco(b.id);
+                    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+                    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+                    return(
+                      <div key={b.id} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between mb-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md" style={{background:b.cor||'#137789'}}>{b.nome.charAt(0).toUpperCase()}</div>
+                            <div><p className="font-black text-sm text-[#05121b]">{b.nome}</p><p className="text-[10px] text-slate-400">{b.tipo}</p></div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button onClick={()=>setModalBanco({...b})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={14}/></button>
+                            <button onClick={()=>deleteItem('bancos',b.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
+                          </div>
+                        </div>
+                        <p className={`text-2xl font-black mb-4 ${saldo>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(saldo)}</p>
+                        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
+                          <div><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Entradas</p><p className="text-sm font-black text-emerald-600">+{formatBRL(ent)}</p></div>
+                          <div><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Saídas</p><p className="text-sm font-black text-red-500">-{formatBRL(sai)}</p></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ══════════════════════════════════════════════════════════════
+            ── RELATÓRIOS (download) ─────────────────────────────────── */}
+        {view==='relatorios'&&(
+          <div className="max-w-4xl mx-auto fade-in">
+            <header className="mb-8"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Documentos</p><h1 className="text-2xl font-black text-[#05121b] italic">Relatórios</h1></header>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                {title:'DRE — Demonstrativo de Resultado',desc:'Receitas, custos, despesas e lucro líquido do período.',icon:FileSpreadsheet,color:'text-[#137789]',bg:'bg-[#137789]/5',border:'border-[#137789]/20',status:'em breve'},
+                {title:'Fluxo de Caixa Consolidado',desc:'Entradas e saídas organizadas por período.',icon:Activity,color:'text-blue-600',bg:'bg-blue-50',border:'border-blue-200',status:'em breve'},
+                {title:'Relatório de Contas a Pagar',desc:'Lista completa de contas com status e vencimentos.',icon:Receipt,color:'text-amber-600',bg:'bg-amber-50',border:'border-amber-200',status:'em breve'},
+                {title:'Relatório de Dívidas',desc:'Posição atualizada de todas as dívidas ativas.',icon:AlertOctagon,color:'text-red-600',bg:'bg-red-50',border:'border-red-200',status:'em breve'},
+              ].map(r=>(
+                <div key={r.title} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-start gap-4">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${r.bg} border ${r.border}`}><r.icon size={20} className={r.color}/></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-[#05121b] mb-1">{r.title}</p>
+                    <p className="text-[10px] text-slate-400 leading-relaxed mb-3">{r.desc}</p>
+                    <span className="text-[9px] bg-slate-100 text-slate-400 px-2.5 py-1 rounded-full font-black uppercase tracking-widest">{r.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── MODAIS DE CRUD ─────────────────────────────────────────────────────── */}
+
+        {/* Modal Lançamento (Receita) */}
+        {modalReceita&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalReceita(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">Nova Receita</h3><button onClick={()=>setModalReceita(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
+              <div className="space-y-4">
+                <InputField label="Descrição" value={modalReceita.descricao} onChange={v=>setModalReceita({...modalReceita,descricao:v})}/>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Valor" value={modalReceita.valor} onChange={v=>setModalReceita({...modalReceita,valor:v})} maskType="currency"/>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalReceita.data} onChange={e=>setModalReceita({...modalReceita,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"/></div>
+                </div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalReceita.categoria} onChange={e=>setModalReceita({...modalReceita,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['Venda de Produto','Venda de Serviço','Mensalidade','Comissão','Juros','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalReceita.banco_id} onChange={e=>setModalReceita({...modalReceita,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={()=>setModalReceita(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalReceita.descricao||!modalReceita.valor} onClick={()=>saveItem('lancamentos',{...modalReceita,valor:parseFloat((modalReceita.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0,tipo:'receita',user_id:user.id},setModalReceita,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Lançamento (Despesa) */}
+        {modalDespesa&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalDespesa(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">Nova Despesa</h3><button onClick={()=>setModalDespesa(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
+              <div className="space-y-4">
+                <InputField label="Descrição" value={modalDespesa.descricao} onChange={v=>setModalDespesa({...modalDespesa,descricao:v})}/>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Valor" value={modalDespesa.valor} onChange={v=>setModalDespesa({...modalDespesa,valor:v})} maskType="currency"/>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalDespesa.data} onChange={e=>setModalDespesa({...modalDespesa,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>
+                </div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Cartão de Crédito','Boleto Bancário','Fornecedor','Folha de Pagamento','Aluguel','Marketing','Serviços/Software','Estorno','Impostos','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalDespesa.banco_id} onChange={e=>setModalDespesa({...modalDespesa,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={()=>setModalDespesa(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor} onClick={()=>saveItem('lancamentos',{...modalDespesa,valor:parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0,tipo:'despesa',user_id:user.id},setModalDespesa,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Conta a Pagar */}
+        {modalCP&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalCP(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalCP.id?'Editar':'Nova'} Conta a Pagar</h3><button onClick={()=>setModalCP(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
+              <div className="space-y-4">
+                <InputField label="Descrição" value={modalCP.descricao} onChange={v=>setModalCP({...modalCP,descricao:v})}/>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Valor" value={modalCP.valor} onChange={v=>setModalCP({...modalCP,valor:v})} maskType="currency"/>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Vencimento</label><input type="date" value={modalCP.vencimento} onChange={e=>setModalCP({...modalCP,vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00] focus:border-[#ff7b00]"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalCP.categoria} onChange={e=>setModalCP({...modalCP,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['Cartão de Crédito','Boleto Bancário','Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCP.status} onChange={e=>setModalCP({...modalCP,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="atrasado">Atrasado</option></select></div>
+                </div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalCP.banco_id} onChange={e=>setModalCP({...modalCP,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCP.observacao||''} onChange={e=>setModalCP({...modalCP,observacao:e.target.value})} placeholder="Ex: Parcela 3/12, fornecedor X..." className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00] resize-none h-20"/></div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={()=>setModalCP(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalCP.descricao||!modalCP.valor||!modalCP.vencimento} onClick={()=>saveItem('contas_pagar',{...modalCP,valor:parseFloat((modalCP.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,user_id:user.id},setModalCP,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Conta a Receber */}
+        {modalCR&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalCR(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalCR.id?'Editar':'Nova'} Conta a Receber</h3><button onClick={()=>setModalCR(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
+              <div className="space-y-4">
+                <InputField label="Cliente" value={modalCR.cliente} onChange={v=>setModalCR({...modalCR,cliente:v})}/>
+                <InputField label="Descrição" value={modalCR.descricao} onChange={v=>setModalCR({...modalCR,descricao:v})}/>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Valor" value={modalCR.valor} onChange={v=>setModalCR({...modalCR,valor:v})} maskType="currency"/>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Vencimento</label><input type="date" value={modalCR.vencimento} onChange={e=>setModalCR({...modalCR,vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789]"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCR.status} onChange={e=>setModalCR({...modalCR,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="pendente">Pendente</option><option value="recebido">Recebido</option><option value="vencido">Vencido</option></select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalCR.banco_id} onChange={e=>setModalCR({...modalCR,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
+                </div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCR.observacao||''} onChange={e=>setModalCR({...modalCR,observacao:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789] resize-none h-16"/></div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={()=>setModalCR(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalCR.cliente||!modalCR.descricao||!modalCR.valor||!modalCR.vencimento} onClick={()=>saveItem('contas_receber',{...modalCR,valor:parseFloat((modalCR.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,user_id:user.id},setModalCR,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#137789] text-white hover:bg-[#0e5f6b] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Dívida */}
+        {modalDivida&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalDivida(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalDivida.id?'Editar':'Nova'} Dívida</h3><button onClick={()=>setModalDivida(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Credor" value={modalDivida.credor} onChange={v=>setModalDivida({...modalDivida,credor:v})}/>
+                  <InputField label="Valor Total" value={modalDivida.valor_total} onChange={v=>setModalDivida({...modalDivida,valor_total:v})} maskType="currency"/>
+                </div>
+                <InputField label="Descrição (opcional)" value={modalDivida.descricao||''} onChange={v=>setModalDivida({...modalDivida,descricao:v})}/>
+                <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Valor da Parcela" value={modalDivida.valor_parcela||''} onChange={v=>setModalDivida({...modalDivida,valor_parcela:v})} maskType="currency"/>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Total parcelas</label><input type="number" value={modalDivida.parcelas_total||''} onChange={e=>setModalDivida({...modalDivida,parcelas_total:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Pagas</label><input type="number" value={modalDivida.parcelas_pagas||0} onChange={e=>setModalDivida({...modalDivida,parcelas_pagas:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Próx. Vencimento</label><input type="date" value={modalDivida.proximo_vencimento||''} onChange={e=>setModalDivida({...modalDivida,proximo_vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalDivida.status} onChange={e=>setModalDivida({...modalDivida,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="ativa">Ativa</option><option value="quitada">Quitada</option><option value="renegociando">Renegociando</option></select></div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={()=>setModalDivida(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalDivida.credor||!modalDivida.valor_total} onClick={()=>saveItem('dividas',{...modalDivida,valor_total:parseFloat((modalDivida.valor_total||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,valor_parcela:modalDivida.valor_parcela?parseFloat((modalDivida.valor_parcela||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0:null,parcelas_total:modalDivida.parcelas_total?parseInt(modalDivida.parcelas_total):null,parcelas_pagas:parseInt(modalDivida.parcelas_pagas)||0,user_id:user.id},setModalDivida,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Banco */}
+        {modalBanco&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalBanco(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalBanco.id?'Editar':'Novo'} Banco</h3><button onClick={()=>setModalBanco(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
+              <div className="space-y-4">
+                <InputField label="Nome do Banco / Conta" value={modalBanco.nome} onChange={v=>setModalBanco({...modalBanco,nome:v})} placeholder="Ex: Itaú Corrente, Caixa..."/>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo</label><select value={modalBanco.tipo} onChange={e=>setModalBanco({...modalBanco,tipo:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">{['Conta Corrente','Conta Poupança','Conta Digital','Caixa Físico','Outros'].map(t=><option key={t}>{t}</option>)}</select></div>
+                  <InputField label="Saldo Inicial" value={modalBanco.saldo_inicial} onChange={v=>setModalBanco({...modalBanco,saldo_inicial:v})} maskType="currency"/>
+                </div>
+                <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Cor</label><div className="flex gap-2 flex-wrap">{['#137789','#ff7b00','#22c55e','#8b5cf6','#f59e0b','#ef4444','#0ea5e9','#ec4899'].map(c=><button key={c} onClick={()=>setModalBanco({...modalBanco,cor:c})} className={`w-8 h-8 rounded-full border-2 transition-all ${modalBanco.cor===c?'border-[#05121b] scale-110':'border-transparent'}`} style={{background:c}}/> )}</div></div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={()=>setModalBanco(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalBanco.nome} onClick={()=>saveItem('bancos',{...modalBanco,saldo_inicial:parseFloat((modalBanco.saldo_inicial||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,user_id:user.id},setModalBanco,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
             </div>
           </div>
         )}
@@ -1259,7 +2044,7 @@ const App = () => {
         {/* ── RESULTADO ─────────────────────────────────────────────────── */}
         {view==='result'&&selectedSubmission&&(
           <div className="max-w-5xl mx-auto fade-in">
-            <button onClick={()=>setView('relatorios')} className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors mb-6"><ArrowLeft size={13}/> Voltar para Relatórios</button>
+            <button onClick={()=>setView('analises')} className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors mb-6"><ArrowLeft size={13}/> Voltar para Análises</button>
             <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden mb-10">
               <div className={`p-6 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${selectedSubmission.health_status==='healthy'?'bg-emerald-50 border-emerald-100':selectedSubmission.health_status==='warning'?'bg-amber-50 border-amber-100':'bg-red-50 border-red-100'}`}>
                 <div className="flex items-center gap-4">
