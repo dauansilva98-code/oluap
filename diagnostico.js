@@ -428,8 +428,8 @@ const SCENARIOS = [
 ];
 
 // ── SIM COMPARATIVO ───────────────────────────────────────────────────────────
-const SimComparativo = ({label, before, after, formato}) => {
-  const melhorou = after >= before;
+const SimComparativo = ({label, before, after, formato, lowerIsBetter=false}) => {
+  const melhorou = lowerIsBetter ? after <= before : after >= before;
   const diff = Math.abs(after - before);
   const fmt = v => formato==='brl' ? formatBRL(v) : formato==='meses' ? `${Math.max(0,v).toFixed(1)}m` : `${v.toFixed(1)}%`;
   return (
@@ -517,6 +517,34 @@ const App = () => {
   const [simResult, setSimResult] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState(null);
+  const [isDark, setIsDark] = useState(()=>{try{return localStorage.getItem('oluap_theme')==='dark';}catch{return false;}});
+
+  useEffect(()=>{
+    try{localStorage.setItem('oluap_theme',isDark?'dark':'light');}catch{}
+    let s=document.getElementById('oluap-dark-css');
+    if(!s){s=document.createElement('style');s.id='oluap-dark-css';document.head.appendChild(s);}
+    s.textContent=isDark?`
+      .dk{background-color:#0d1117!important;color:#c9d1d9!important}
+      .dk aside.bg-white{background-color:#161b22!important;border-color:#30363d!important}
+      .dk .bg-white{background-color:#1c2333!important}
+      .dk .bg-slate-50{background-color:#161b22!important}
+      .dk .bg-slate-100{background-color:#1c2333!important}
+      .dk .bg-\\[#f5f5f0\\]{background-color:#0d1117!important}
+      .dk .border-slate-100{border-color:#30363d!important}
+      .dk .border-slate-200{border-color:#374151!important}
+      .dk .text-\\[#05121b\\]{color:#e6edf3!important}
+      .dk .text-slate-500{color:#8b949e!important}
+      .dk .text-slate-400{color:#6e7681!important}
+      .dk input:not([type=range]):not([type=checkbox]):not([type=radio]),.dk textarea,.dk select{background-color:#161b22!important;border-color:#30363d!important;color:#c9d1d9!important}
+      .dk input::placeholder,.dk textarea::placeholder{color:#6e7681!important}
+      .dk table thead tr{border-color:#30363d!important}
+      .dk .divide-y>*+*{border-color:#30363d!important}
+      .dk .shadow-sm{box-shadow:0 1px 4px rgba(0,0,0,.6)!important}
+      .dk .shadow-xl,.dk .shadow-2xl{box-shadow:0 8px 32px rgba(0,0,0,.8)!important}
+      .dk .hover\\:bg-slate-50:hover{background-color:#1c2333!important}
+      .dk .bg-\\[#05121b\\]{background-color:#101827!important}
+    `:'';
+  },[isDark]);
 
   // ── FINANCIAL MODULE STATE ─────────────────────────────────────────────────
   const [bancos, setBancos] = useState([]);
@@ -754,12 +782,12 @@ const App = () => {
   const navItems=[
     {id:'dashboard',       label:'Dashboard',             icon:LayoutDashboard},
     {id:'alertas',         label:'Diagnóstico & Alertas', icon:Brain},
-    {id:'simulador',       label:'Simulador de Cenários', icon:Zap},
     {id:'fluxo',           label:'Fluxo de Caixa',        icon:Activity},
     {id:'receitas',        label:'Receitas',              icon:TrendingUp},
     {id:'despesas',        label:'Despesas',              icon:TrendingDown},
     {id:'contas_pagar',    label:'Contas a Pagar',        icon:Receipt},
     {id:'contas_receber',  label:'Contas a Receber',      icon:Wallet},
+    {id:'simulador',       label:'Simulador de Cenários', icon:Zap},
     {id:'dividas',         label:'Dívidas',               icon:AlertOctagon},
     {id:'bancos',          label:'Bancos',                icon:Landmark},
     {id:'fontes',          label:'Fonte de Dados',        icon:Database},
@@ -775,7 +803,7 @@ const App = () => {
 
   // ── SIDEBAR ────────────────────────────────────────────────────────────────
   return(
-    <div className="min-h-screen bg-[#f5f5f0] flex text-[#05121b] overflow-x-hidden">
+    <div className={`min-h-screen bg-[#f5f5f0] flex text-[#05121b] overflow-x-hidden${isDark?' dk':''}`}>
 
       <aside className={`bg-white h-screen border-r border-slate-100 py-5 flex flex-col fixed left-0 top-0 z-40 print:hidden transition-all duration-300 ${isSidebarOpen?'w-56 px-4':'w-16 px-2'}`}>
         <button onClick={()=>setIsSidebarOpen(!isSidebarOpen)} className="absolute -right-3 top-8 bg-white border border-slate-200 p-1.5 rounded-full shadow-sm text-slate-400 hover:text-[#ff7b00] z-50 flex items-center justify-center transition-all hover:scale-110">
@@ -1251,7 +1279,7 @@ const App = () => {
                   <SimComparativo label="Resultado Mensal" before={simResult.before.lucro} after={simResult.after.lucro} formato="brl"/>
                   <SimComparativo label="Margem Líquida" before={simResult.before.margLiq} after={simResult.after.margLiq} formato="pct"/>
                   <SimComparativo label="Runway (meses de caixa)" before={simResult.before.runway} after={simResult.after.runway} formato="meses"/>
-                  <SimComparativo label="Ponto de Equilíbrio" before={simResult.before.pontoEq} after={simResult.after.pontoEq} formato="brl"/>
+                  <SimComparativo label="Ponto de Equilíbrio" before={simResult.before.pontoEq} after={simResult.after.pontoEq} formato="brl" lowerIsBetter={true}/>
                 </div>
                 <div className={`rounded-xl p-4 flex items-start gap-3 ${simResult.positivo?'bg-emerald-50 border border-emerald-100':'bg-red-50 border border-red-100'}`}>
                   <span className="text-xl">{simResult.positivo?'✅':'⚠️'}</span>
@@ -1636,7 +1664,7 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── DÍVIDAS ───────────────────────────────────────────────── */}
         {view==='dividas'&&(()=>{
-          const statusMap={ativa:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',lbl:'Ativa'},quitada:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',lbl:'Quitada'},renegociando:{bg:'bg-blue-50',border:'border-blue-200',txt:'text-blue-700',lbl:'Renegociando'}};
+          const statusMap={ativa:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',lbl:'Ativa'},quitada:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',lbl:'Quitada'},em_negociacao:{bg:'bg-blue-50',border:'border-blue-200',txt:'text-blue-700',lbl:'Em Negociação'}};
           const totalAtivas=dividas.filter(d=>d.status==='ativa').reduce((a,d)=>a+Number(d.valor_total),0);
           return(
             <div className="max-w-5xl mx-auto fade-in">
@@ -1696,7 +1724,7 @@ const App = () => {
             <div className="max-w-4xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gestão</p><h1 className="text-2xl font-black text-[#05121b] italic">Bancos e Contas</h1></div>
-                <button onClick={()=>setModalBanco({nome:'',tipo:'Conta Corrente',saldo_inicial:'',cor:'#137789'})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Adicionar Banco</button>
+                <button onClick={()=>setModalBanco({nome:'',tipo:'Conta Corrente',saldo_inicial:'',color:'#137789'})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Adicionar Banco</button>
               </header>
               {/* Saldo total */}
               <div className="bg-[#05121b] rounded-2xl p-6 mb-6 flex items-center justify-between">
@@ -1846,7 +1874,7 @@ const App = () => {
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Vencimento</label><input type="date" value={modalCR.vencimento} onChange={e=>setModalCR({...modalCR,vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789]"/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCR.status} onChange={e=>setModalCR({...modalCR,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="pendente">Pendente</option><option value="recebido">Recebido</option><option value="vencido">Vencido</option></select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCR.status} onChange={e=>setModalCR({...modalCR,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="pendente">Pendente</option><option value="recebido">Recebido</option></select></div>
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Banco (opcional)</label><select value={modalCR.banco_id} onChange={e=>setModalCR({...modalCR,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="">— Nenhum —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>
                 </div>
                 <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCR.observacao||''} onChange={e=>setModalCR({...modalCR,observacao:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789] resize-none h-16"/></div>
@@ -1879,7 +1907,7 @@ const App = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Próx. Vencimento</label><input type="date" value={modalDivida.proximo_vencimento||''} onChange={e=>setModalDivida({...modalDivida,proximo_vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalDivida.status} onChange={e=>setModalDivida({...modalDivida,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="ativa">Ativa</option><option value="quitada">Quitada</option><option value="renegociando">Renegociando</option></select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalDivida.status} onChange={e=>setModalDivida({...modalDivida,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="ativa">Ativa</option><option value="quitada">Quitada</option><option value="em_negociacao">Em Negociação</option></select></div>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -1901,7 +1929,7 @@ const App = () => {
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo</label><select value={modalBanco.tipo} onChange={e=>setModalBanco({...modalBanco,tipo:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">{['Conta Corrente','Conta Poupança','Conta Digital','Caixa Físico','Outros'].map(t=><option key={t}>{t}</option>)}</select></div>
                   <InputField label="Saldo Inicial" value={modalBanco.saldo_inicial} onChange={v=>setModalBanco({...modalBanco,saldo_inicial:v})} maskType="currency"/>
                 </div>
-                <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Cor</label><div className="flex gap-2 flex-wrap">{['#137789','#ff7b00','#22c55e','#8b5cf6','#f59e0b','#ef4444','#0ea5e9','#ec4899'].map(c=><button key={c} onClick={()=>setModalBanco({...modalBanco,cor:c})} className={`w-8 h-8 rounded-full border-2 transition-all ${modalBanco.cor===c?'border-[#05121b] scale-110':'border-transparent'}`} style={{background:c}}/> )}</div></div>
+                <div className="space-y-2"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Cor</label><div className="flex gap-2 flex-wrap">{['#137789','#ff7b00','#22c55e','#8b5cf6','#f59e0b','#ef4444','#0ea5e9','#ec4899'].map(c=><button key={c} onClick={()=>setModalBanco({...modalBanco,color:c})} className={`w-8 h-8 rounded-full border-2 transition-all ${modalBanco.color===c?'border-[#05121b] scale-110':'border-transparent'}`} style={{background:c}}/> )}</div></div>
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalBanco(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
@@ -1916,7 +1944,7 @@ const App = () => {
           <div className="max-w-3xl mx-auto fade-in">
             <header className="mb-8"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Configurações</p><h1 className="text-2xl font-black text-[#05121b] italic">Meu Perfil</h1></header>
             <div className="mb-5 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3"><Lightbulb size={14} className="text-blue-500 shrink-0 mt-0.5"/><p className="text-[11px] text-blue-700 font-medium leading-relaxed"><strong>Dica:</strong> Com CNPJ e Razão Social preenchidos, esses campos são preenchidos automaticamente em novos formulários.</p></div>
-            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm mb-5">
               <form onSubmit={handleUpdateProfile} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <InputField label="Nome Completo" value={profileData.full_name} onChange={v=>setProfileData({...profileData,full_name:v})} icon={User}/>
@@ -1932,6 +1960,25 @@ const App = () => {
                   </button>
                 </div>
               </form>
+            </div>
+
+            {/* Aparência */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+              <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide mb-5 flex items-center gap-2">
+                <span className="text-base">{isDark?'🌙':'☀️'}</span> Aparência
+              </h3>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-bold text-[#05121b] text-sm">{isDark?'Modo Escuro':'Modo Claro'}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Alterna entre tema claro e escuro na plataforma.</p>
+                </div>
+                <button onClick={()=>setIsDark(v=>!v)}
+                  className={`relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none ${isDark?'bg-[#137789]':'bg-slate-200'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 flex items-center justify-center text-[10px] ${isDark?'translate-x-7':'translate-x-0'}`}>
+                    {isDark?'🌙':'☀️'}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -2025,7 +2072,7 @@ const App = () => {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
               <button onClick={handleContactExpert} className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1da851] text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"><MessageCircle size={13}/> WhatsApp</button>
-              <button onClick={()=>setView('relatorios')} className="flex-1 flex items-center justify-center gap-2 bg-[#05121b] hover:bg-slate-800 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"><FolderOpen size={13}/> Meus Relatórios</button>
+              <button onClick={()=>setView('analises')} className="flex-1 flex items-center justify-center gap-2 bg-[#05121b] hover:bg-slate-800 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"><FolderOpen size={13}/> Minhas Análises</button>
             </div>
           </div>
         )}
