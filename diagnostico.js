@@ -916,72 +916,17 @@ const App = () => {
                 </div>
               </div>
 
-              {/* ── INDICADORES FASE 1 ──────────────────────────────────── */}
+              {/* ── INDICADORES RÁPIDOS ─────────────────────────────────── */}
               <div className="mt-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Indicadores Financeiros</h3>
-                  <span className="text-[8px] bg-[#05121b] text-white px-2.5 py-1 rounded-full font-black uppercase tracking-widest">Fase 1</span>
-                  <span className="text-[9px] text-slate-400 font-medium ml-auto">Calculado com base no seu diagnóstico</span>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Indicadores-Chave</h3>
+                  <button onClick={()=>setView('alertas')} className="text-[9px] font-black text-[#137789] hover:text-[#ff7b00] uppercase tracking-widest transition-colors flex items-center gap-1">Análise completa <ChevronRight size={11}/></button>
                 </div>
-
-                {/* Rentabilidade */}
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><TrendingUp size={10}/> Rentabilidade</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                  <IndicadorCard
-                    titulo="Margem Bruta"
-                    valor={`${metrics.margemBruta.toFixed(1)}%`}
-                    formula="(Receita − Custos Diretos) ÷ Receita"
-                    status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}
-                  />
-                  <IndicadorCard
-                    titulo="Margem de Contribuição"
-                    valor={`${metrics.margContrib.toFixed(1)}%`}
-                    formula="(Receita − Custos Variáveis) ÷ Receita"
-                    status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'}
-                    destaque
-                  />
-                  <IndicadorCard
-                    titulo="Margem Líquida"
-                    valor={`${metrics.margLiq.toFixed(1)}%`}
-                    formula="Lucro Líquido ÷ Receita"
-                    status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}
-                  />
-                  <IndicadorCard
-                    titulo="Ponto de Equilíbrio"
-                    valor={formatBRL(metrics.pontoEq)}
-                    formula="Custo Fixo ÷ Margem de Contribuição"
-                    status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.85?'yellow':'red'}
-                  />
-                </div>
-
-                {/* Caixa */}
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <IndicadorCard
-                    titulo="Cash Burn Rate"
-                    valor={formatBRL(metrics.burnRate)}
-                    formula="Total de custos por mês"
-                    status="neutral"
-                  />
-                  <IndicadorCard
-                    titulo="Runway"
-                    valor={metrics.runwayMeses > 0 ? `${metrics.runwayMeses.toFixed(1)} meses` : '—'}
-                    formula="Saldo ÷ Burn Rate mensal"
-                    status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}
-                    destaque
-                  />
-                  <IndicadorCard
-                    titulo="Ticket Médio"
-                    valor={metrics.ticketMedio > 0 ? formatBRL(metrics.ticketMedio) : '—'}
-                    formula="Faturamento ÷ Nº de vendas/mês"
-                    status="neutral"
-                  />
-                  <IndicadorCard
-                    titulo="Prazo Médio Recebimento"
-                    valor={metrics.pmr > 0 ? `${metrics.pmr} dias` : '—'}
-                    formula="Média de dias até o cliente pagar"
-                    status={metrics.pmr>0?(metrics.pmr<=30?'green':metrics.pmr<=60?'yellow':'red'):'neutral'}
-                  />
+                  <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="Receita − Custos Diretos" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
+                  <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'} destaque/>
+                  <IndicadorCard titulo="Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Custos totais / mês" status="neutral"/>
+                  <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
                 </div>
               </div>
               </>
@@ -1140,20 +1085,26 @@ const App = () => {
           </div>
         )}
 
-        {/* ── DIAGNÓSTICO & ALERTAS ─────────────────────────────────────── */}
+        {/* ── CFO DIGITAL · DIAGNÓSTICO & ALERTAS ───────────────────────── */}
         {view==='alertas'&&(
-          <div className="max-w-5xl mx-auto fade-in">
-            <header className="mb-8"><p className="text-[10px] font-bold text-[#ff7b00] uppercase tracking-widest mb-1">IA · Diagnóstico Contínuo</p><h1 className="text-2xl font-black text-[#05121b] italic">Diagnóstico & Alertas</h1><p className="text-slate-400 text-sm font-medium mt-1">A IA monitora sua empresa 24h e envia alertas proativos.</p></header>
+          <div className="max-w-6xl mx-auto fade-in">
+            <header className="mb-8">
+              <p className="text-[10px] font-bold text-[#ff7b00] uppercase tracking-widest mb-1">CFO Digital · Análise Completa</p>
+              <h1 className="text-2xl font-black text-[#05121b] italic">Diagnóstico & Alertas</h1>
+              <p className="text-slate-400 text-sm font-medium mt-1">Todos os indicadores financeiros da sua empresa em um único lugar.</p>
+            </header>
+
             {!metrics ? (
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-12 text-center">
-                <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto mb-5 flex items-center justify-center"><Activity size={26} className="text-slate-300"/></div>
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto mb-5 flex items-center justify-center"><Brain size={26} className="text-slate-300"/></div>
                 <h2 className="text-lg font-black text-[#05121b] mb-2">Nenhum diagnóstico enviado ainda</h2>
-                <p className="text-slate-400 text-sm font-medium mb-6 max-w-sm mx-auto leading-relaxed">Envie seu primeiro diagnóstico financeiro para que os indicadores sejam calculados com base nos dados reais da sua empresa.</p>
+                <p className="text-slate-400 text-sm font-medium mb-6 max-w-sm mx-auto leading-relaxed">Envie seu primeiro diagnóstico para que o CFO Digital calcule todos os indicadores com base nos dados reais da sua empresa.</p>
                 <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-transform inline-flex items-center gap-2"><Plus size={13}/> Solicitar Diagnóstico</button>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                {/* ── SCORE + SEMÁFOROS ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                   <div className="bg-[#05121b] rounded-3xl p-8 text-white flex flex-col items-center gap-4">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Score de Saúde</p>
                     <ScoreRing score={metrics.score}/>
@@ -1161,48 +1112,119 @@ const App = () => {
                       <p className={`font-black text-sm ${metrics.score>=70?'text-emerald-400':metrics.score>=40?'text-amber-400':'text-red-400'}`}>{metrics.score>=70?'Financeiramente Saudável':metrics.score>=40?'Requer Atenção':'Situação Crítica'}</p>
                       <p className="text-[10px] text-slate-400 mt-1">Baseado no seu último diagnóstico</p>
                     </div>
+                    <div className="w-full border-t border-white/10 pt-4 grid grid-cols-2 gap-3">
+                      <div className="text-center"><p className="text-[9px] text-slate-400 uppercase tracking-widest mb-0.5">Resultado</p><p className={`text-sm font-black ${metrics.lucro>=0?'text-emerald-400':'text-red-400'}`}>{formatBRL(metrics.lucro)}</p></div>
+                      <div className="text-center"><p className="text-[9px] text-slate-400 uppercase tracking-widest mb-0.5">Faturamento</p><p className="text-sm font-black text-white">{formatBRL(metrics.receita)}</p></div>
+                    </div>
                   </div>
-                  <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Operação garantida sem vendas" status={metrics.folegoDias>=60?'green':metrics.folegoDias>=30?'yellow':'red'}/>
-                    <SemaforoCard icon={Target} title="Ponto de Equilíbrio" value={formatBRL(metrics.pontoEq)} subtitle="Quanto precisa vender por mês" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.8?'yellow':'red'}/>
+                  <div className="lg:col-span-2 grid grid-cols-2 gap-4">
+                    <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Operação garantida sem novas vendas" status={metrics.folegoDias>=60?'green':metrics.folegoDias>=30?'yellow':'red'}/>
+                    <SemaforoCard icon={Target} title="Ponto de Equilíbrio" value={formatBRL(metrics.pontoEq)} subtitle="Faturamento mínimo necessário/mês" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.8?'yellow':'red'}/>
                     <SemaforoCard icon={DollarSign} title="Margem de Contribuição" value={`${metrics.margContrib.toFixed(1)}%`} subtitle="Sobra após custos variáveis" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'}/>
                     <SemaforoCard icon={TrendingUp} title="Margem Líquida" value={`${metrics.margLiq.toFixed(1)}%`} subtitle="Por R$100 vendidos" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                   </div>
                 </div>
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
+
+                {/* ── PROJEÇÃO DE CAIXA ── */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Projeção de Caixa</h3><p className="text-[10px] text-slate-400 mt-0.5">Entradas vs Saídas — Próximas 6 semanas (baseado no diagnóstico)</p></div>
+                    <div className="flex items-center gap-4 text-[9px] font-bold">
+                      <span className="flex items-center gap-1.5 text-[#137789]"><span className="w-2 h-2 rounded-full bg-[#137789] inline-block"/>Entradas</span>
+                      <span className="flex items-center gap-1.5 text-[#ff7b00]"><span className="w-2 h-2 rounded-full bg-[#ff7b00] inline-block"/>Saídas</span>
+                    </div>
+                  </div>
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={cashFlowData} margin={{top:5,right:5,left:-20,bottom:0}}>
+                        <defs>
+                          <linearGradient id="gEa" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#137789" stopOpacity={0.15}/><stop offset="95%" stopColor="#137789" stopOpacity={0}/></linearGradient>
+                          <linearGradient id="gSa" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ff7b00" stopOpacity={0.15}/><stop offset="95%" stopColor="#ff7b00" stopOpacity={0}/></linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                        <XAxis dataKey="name" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v/1000}k`}/>
+                        <RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'none',boxShadow:'0 4px 20px rgba(0,0,0,0.08)',fontSize:'11px',fontWeight:'bold'}}/>
+                        <Area type="monotone" dataKey="Entradas" stroke="#137789" strokeWidth={2.5} fill="url(#gEa)" dot={{r:3,fill:'#137789'}}/>
+                        <Area type="monotone" dataKey="Saidas" stroke="#ff7b00" strokeWidth={2.5} fill="url(#gSa)" dot={{r:3,fill:'#ff7b00'}}/>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* ── DRE SIMPLIFICADO ── */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
+                  <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide mb-5 flex items-center gap-2"><FileText size={14} className="text-[#137789]"/> DRE Simplificado · Mensal</h3>
+                  <div className="space-y-2">
+                    {[
+                      {label:'Faturamento Bruto',     valor:metrics.receita,     pct:100,                                                bg:'bg-emerald-50',  txt:'text-emerald-800', border:'border-emerald-100'},
+                      {label:'(-) Custos Diretos',    valor:-metrics.custDir,    pct:metrics.receita>0?-(metrics.custDir/metrics.receita*100):0,   bg:'bg-red-50',      txt:'text-red-700',    border:'border-red-100'},
+                      {label:'(=) Margem Bruta',      valor:metrics.receita-metrics.custDir, pct:metrics.margemBruta,                   bg:'bg-slate-50',    txt:'text-[#05121b]',  border:'border-slate-200', bold:true},
+                      {label:'(-) Custos Fixos',      valor:-metrics.custFix,    pct:metrics.receita>0?-(metrics.custFix/metrics.receita*100):0,   bg:'bg-red-50',      txt:'text-red-700',    border:'border-red-100'},
+                      {label:'(=) Resultado Líquido', valor:metrics.lucro,       pct:metrics.margLiq,                                   bg:metrics.lucro>=0?'bg-emerald-50':'bg-red-50', txt:metrics.lucro>=0?'text-emerald-800':'text-red-700', border:metrics.lucro>=0?'border-emerald-200':'border-red-200', bold:true, destaque:true},
+                    ].map((row,i)=>(
+                      <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${row.bg} ${row.border} ${row.destaque?'ring-1 ring-offset-0 ring-current/20':''}`}>
+                        <span className={`text-xs ${row.bold?'font-black':'font-medium'} ${row.txt}`}>{row.label}</span>
+                        <div className="flex items-center gap-4">
+                          <span className={`text-[10px] font-bold ${row.txt} opacity-60`}>{row.pct.toFixed(1)}%</span>
+                          <span className={`text-sm ${row.bold?'font-black':'font-bold'} ${row.txt} min-w-[110px] text-right`}>{formatBRL(Math.abs(row.valor))}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── ALERTAS ── */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm mb-6">
                   <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-                    <h3 className="font-black text-[#05121b] uppercase text-xs tracking-widest flex items-center gap-2"><Bell size={13} className="text-[#ff7b00]"/> Alertas do Diagnóstico</h3>
-                    {alertsFeed.filter(a=>a.type==='red').length>0&&<span className="text-[9px] bg-red-50 text-red-600 border border-red-100 font-black px-3 py-1 rounded-full uppercase tracking-widest">{alertsFeed.filter(a=>a.type==='red').length} crítico{alertsFeed.filter(a=>a.type==='red').length>1?'s':''}</span>}
+                    <h3 className="font-black text-[#05121b] uppercase text-xs tracking-widest flex items-center gap-2"><Bell size={13} className="text-[#ff7b00]"/> Alertas do CFO Digital</h3>
+                    <div className="flex items-center gap-2">
+                      {alertsFeed.filter(a=>a.type==='red').length>0&&<span className="text-[9px] bg-red-50 text-red-600 border border-red-100 font-black px-3 py-1 rounded-full uppercase tracking-widest">{alertsFeed.filter(a=>a.type==='red').length} crítico{alertsFeed.filter(a=>a.type==='red').length>1?'s':''}</span>}
+                      {alertsFeed.filter(a=>a.type==='yellow').length>0&&<span className="text-[9px] bg-amber-50 text-amber-600 border border-amber-100 font-black px-3 py-1 rounded-full uppercase tracking-widest">{alertsFeed.filter(a=>a.type==='yellow').length} atenção</span>}
+                    </div>
                   </div>
                   <div className="divide-y divide-slate-50">
                     {alertsFeed.map((a,i)=>{const I=a.icon;const c=AC[a.type];const lbl={red:'Crítico',yellow:'Atenção',green:'Oportunidade'}[a.type];return(
                       <div key={i} className="p-5 flex items-start gap-4 hover:bg-slate-50/50 transition-colors">
                         <div className={`w-9 h-9 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center shrink-0`}><I size={15} className={c.ic}/></div>
-                        <div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${c.bg} ${c.border} ${c.ic}`}>{lbl}</span></div><p className="text-xs font-semibold text-[#05121b] leading-relaxed">{a.msg}</p></div>
+                        <div className="flex-1 min-w-0">
+                          <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border mb-1.5 ${c.bg} ${c.border} ${c.ic}`}>{lbl}</span>
+                          <p className="text-xs font-semibold text-[#05121b] leading-relaxed">{a.msg}</p>
+                        </div>
                       </div>
                     );})}
                   </div>
                 </div>
 
-                {/* ── INDICADORES FASE 1 ── */}
-                <div className="mt-8">
-                  <div className="flex items-center gap-3 mb-4">
+                {/* ── INDICADORES COMPLETOS ── */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
                     <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Indicadores Financeiros</h3>
-                    <span className="text-[8px] bg-[#05121b] text-white px-2.5 py-1 rounded-full font-black uppercase tracking-widest">Fase 1</span>
+                    <span className="text-[8px] bg-[#05121b] text-white px-2.5 py-1 rounded-full font-black uppercase tracking-widest">Completo</span>
                   </div>
+
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><TrendingUp size={10}/> Rentabilidade</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="(Receita − Custos Diretos) ÷ Receita" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
                     <IndicadorCard titulo="Margem de Contribuição" valor={`${metrics.margContrib.toFixed(1)}%`} formula="(Receita − Custos Variáveis) ÷ Receita" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'} destaque/>
                     <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                     <IndicadorCard titulo="Ponto de Equilíbrio" valor={formatBRL(metrics.pontoEq)} formula="Custo Fixo ÷ Margem de Contribuição" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.85?'yellow':'red'}/>
                   </div>
+
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Total de custos por mês" status="neutral"/>
                     <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
                     <IndicadorCard titulo="Ticket Médio" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula="Faturamento ÷ Nº de vendas/mês" status="neutral"/>
                     <IndicadorCard titulo="Prazo Médio Recebimento" valor={metrics.pmr>0?`${metrics.pmr} dias`:'—'} formula="Média de dias até o cliente pagar" status={metrics.pmr>0?(metrics.pmr<=30?'green':metrics.pmr<=60?'yellow':'red'):'neutral'}/>
+                  </div>
+
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Shield size={10}/> Estrutura de Custos</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <IndicadorCard titulo="Custos Variáveis" valor={formatBRL(metrics.custVar)} formula="CMV + Taxas + Comissões" status="neutral"/>
+                    <IndicadorCard titulo="Custos Fixos" valor={formatBRL(metrics.custFix)} formula="Folha + Aluguel + Fixos" status="neutral"/>
+                    <IndicadorCard titulo="% Custo sobre Receita" valor={metrics.receita>0?`${(metrics.totalCust/metrics.receita*100).toFixed(1)}%`:'—'} formula="Total custos ÷ Receita" status={metrics.receita>0?(metrics.totalCust/metrics.receita<=0.7?'green':metrics.totalCust/metrics.receita<=0.85?'yellow':'red'):'neutral'} destaque/>
+                    <IndicadorCard titulo="Resultado Mensal" valor={formatBRL(metrics.lucro)} formula="Receita − Total de Custos" status={metrics.lucro>0?'green':metrics.lucro===0?'neutral':'red'}/>
                   </div>
                 </div>
               </>
