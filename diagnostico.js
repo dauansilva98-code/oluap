@@ -392,6 +392,178 @@ const genAlerts = (m) => {
   return alerts;
 };
 
+// ── MÉTRICAS EM TEMPO REAL (calculadas dos lançamentos) ───────────────────────
+const calcLiveMetrics = (lancamentos, bancos, dividas) => {
+  if (!lancamentos || lancamentos.length === 0) return null;
+  const mesAtual = new Date().toISOString().slice(0,7);
+  let src = lancamentos.filter(l => l.data && l.data.startsWith(mesAtual));
+  let divisor = 1;
+  if (src.length === 0) {
+    src = lancamentos;
+    divisor = Math.max(1, new Set(lancamentos.map(l=>l.data?.slice(0,7)).filter(Boolean)).size);
+  }
+  const receita = src.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0) / divisor;
+  const allDesp = src.filter(l=>l.tipo==='despesa');
+  const despTotal = allDesp.reduce((a,l)=>a+Number(l.valor),0) / divisor;
+  if (receita===0 && despTotal===0) return null;
+  const cogsCats = new Set(['Fornecedor','Cartão de Crédito']);
+  const custDir = allDesp.filter(l=>cogsCats.has(l.categoria)).reduce((a,l)=>a+Number(l.valor),0) / divisor;
+  const custFix = despTotal - custDir;
+  const custVar = custDir;
+  const totalCust = custVar + custFix;
+  const lucro = receita - totalCust;
+  const margemBruta = receita>0 ? ((receita-custDir)/receita)*100 : 0;
+  const margContrib = receita>0 ? ((receita-custVar)/receita)*100 : 0;
+  const margLiq = receita>0 ? (lucro/receita)*100 : 0;
+  const pontoEq = margContrib>0 ? custFix/(margContrib/100) : 0;
+  const burnRate = totalCust;
+  const saldo = bancos.reduce((a,b)=>{
+    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0);
+    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((s,l)=>s+Number(l.valor),0);
+    return a+Number(b.saldo_inicial)+ent-sai;
+  },0);
+  const runwayMeses = burnRate>0&&saldo>0 ? saldo/burnRate : 0;
+  const folegoDias = Math.round(runwayMeses*30);
+  let score=50;
+  if(margLiq>=15)score+=20; else if(margLiq>=5)score+=10; else if(margLiq<0)score-=25;
+  if(folegoDias>=90)score+=15; else if(folegoDias>=45)score+=5; else if(folegoDias>0&&folegoDias<20)score-=15;
+  if(receita>0&&pontoEq<=receita)score+=10; else if(receita>0)score-=10;
+  if(margemBruta>=40)score+=5; else if(margemBruta<15)score-=5;
+  score=Math.max(10,Math.min(100,Math.round(score)));
+  return {receita,custDir,custVar,custFix,totalCust,lucro,saldo,margemBruta,margContrib,margLiq,pontoEq,burnRate,runwayMeses,folegoDias,ticketMedio:0,pmr:0,pmp:0,score};
+};
+
+const genLiveCashFlowData = (lancamentos) => {
+  const result=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);
+    const mes=d.toISOString().slice(0,7);
+    const label=d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
+    const ent=lancamentos.filter(l=>l.data&&l.data.startsWith(mes)&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+    const sai=lancamentos.filter(l=>l.data&&l.data.startsWith(mes)&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+    result.push({name:label,Entradas:ent,Saidas:sai});
+  }
+  return result;
+};
+
+const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => {
+  if(!m) return [];
+  const alerts = [];
+
+  // ── CRÍTICOS (vermelho) ───────────────────────────────────────────────────
+  if(m.margLiq < 0)
+    alerts.push({cat:'Resultado',type:'red',icon:AlertOctagon,titulo:'Prejuízo operacional',
+      msg:`A empresa está gastando mais do que fatura. Prejuízo de ${formatBRL(Math.abs(m.lucro))}/mês. Sem ação imediata, o caixa se esgota em ${m.folegoDias>0?m.folegoDias+' dias':'breve'}.`});
+
+  if(m.folegoDias > 0 && m.folegoDias < 15)
+    alerts.push({cat:'Caixa',type:'red',icon:AlertOctagon,titulo:'Caixa em estado crítico',
+      msg:`Apenas ${m.folegoDias} dias de fôlego sem novas receitas. Risco real de insolvência. Priorize cobrança, corte gastos não essenciais e avalie crédito de emergência.`});
+
+  if(m.burnRate > 0 && m.receita > 0 && m.burnRate >= m.receita)
+    alerts.push({cat:'Custos',type:'red',icon:AlertOctagon,titulo:'Burn rate supera a receita',
+      msg:`Os custos (${formatBRL(m.burnRate)}/mês) são iguais ou maiores que o faturamento (${formatBRL(m.receita)}/mês). A operação está consumindo o caixa.`});
+
+  const atPag = contasPagar.filter(cp=>cp.vencimento<today&&cp.status!=='pago');
+  if(atPag.length>0){
+    const tot=atPag.reduce((a,cp)=>a+Number(cp.valor),0);
+    const mais=atPag.sort((a,b)=>b.valor-a.valor)[0];
+    alerts.push({cat:'Contas a Pagar',type:'red',icon:Receipt,titulo:`${atPag.length} conta${atPag.length>1?'s':''} vencida${atPag.length>1?'s':''}`,
+      msg:`${formatBRL(tot)} em atraso. Maior: "${mais?.descricao||'—'}" (${formatBRL(mais?.valor||0)}). Atrasos geram juros, multas e comprometem o crédito da empresa.`});
+  }
+
+  const divAtivas = dividas.filter(d=>d.status==='ativa');
+  const totalDividas = divAtivas.reduce((a,d)=>a+Number(d.valor_total||0),0);
+  const parcelasMes = divAtivas.reduce((a,d)=>a+Number(d.valor_parcela||0),0);
+  if(m.receita>0 && totalDividas > m.receita*12)
+    alerts.push({cat:'Endividamento',type:'red',icon:AlertOctagon,titulo:'Endividamento crítico',
+      msg:`Dívidas totais (${formatBRL(totalDividas)}) representam mais de 12 meses de faturamento. Comprometimento financeiro elevado com risco de insolvência.`});
+
+  // ── ATENÇÃO (amarelo) ─────────────────────────────────────────────────────
+  if(m.margLiq >= 0 && m.margLiq < 5)
+    alerts.push({cat:'Resultado',type:'yellow',icon:AlertTriangle,titulo:'Margem líquida muito baixa',
+      msg:`${m.margLiq.toFixed(1)}% de margem líquida — por cada R$100 faturados, sobram apenas R$${m.margLiq.toFixed(0)}. Pequenas variações de custo ou queda de receita geram prejuízo.`});
+
+  if(m.folegoDias >= 15 && m.folegoDias < 30)
+    alerts.push({cat:'Caixa',type:'yellow',icon:AlertTriangle,titulo:'Fôlego de caixa baixo',
+      msg:`${m.folegoDias} dias de operação garantidos. Abaixo do mínimo recomendado (60 dias). Priorize cobrança de recebíveis em aberto.`});
+  else if(m.folegoDias >= 30 && m.folegoDias < 60)
+    alerts.push({cat:'Caixa',type:'yellow',icon:AlertTriangle,titulo:'Reserva operacional insuficiente',
+      msg:`Fôlego de ${m.folegoDias} dias. Recomenda-se ao menos 60 dias para absorver sazonalidade e imprevistos.`});
+
+  if(m.receita>0 && m.pontoEq > m.receita)
+    alerts.push({cat:'Ponto de Equilíbrio',type:'yellow',icon:AlertTriangle,titulo:'Faturamento abaixo do PE',
+      msg:`O ponto de equilíbrio é ${formatBRL(m.pontoEq)}/mês, mas o faturamento é ${formatBRL(m.receita)}/mês. Falta ${formatBRL(m.pontoEq-m.receita)}/mês para cobrir todos os custos fixos.`});
+
+  if(m.margContrib > 0 && m.margContrib < 20)
+    alerts.push({cat:'Margem de Contribuição',type:'yellow',icon:AlertTriangle,titulo:'Margem de contribuição crítica',
+      msg:`${m.margContrib.toFixed(1)}% de margem de contribuição. Cada venda cobre pouco além dos custos variáveis. Revise precificação ou negocie custos diretos.`});
+
+  if(m.receita>0 && m.totalCust/m.receita > 0.85)
+    alerts.push({cat:'Eficiência',type:'yellow',icon:AlertTriangle,titulo:'Estrutura de custos pesada',
+      msg:`${(m.totalCust/m.receita*100).toFixed(1)}% da receita comprometida com custos. Margem de manobra muito baixa para crescimento ou imprevistos.`});
+
+  const atRec = contasReceber.filter(cr=>cr.vencimento<today&&cr.status!=='recebido');
+  const totRec = contasReceber.filter(cr=>cr.status!=='recebido').reduce((a,cr)=>a+Number(cr.valor),0);
+  if(atRec.length>0){
+    const totAtRec=atRec.reduce((a,cr)=>a+Number(cr.valor),0);
+    const pctInad=totRec>0?totAtRec/totRec*100:0;
+    alerts.push({cat:'Inadimplência',type:'yellow',icon:Wallet,titulo:`${atRec.length} recebível${atRec.length>1?'s':''} em atraso`,
+      msg:`${formatBRL(totAtRec)} a cobrar (${pctInad.toFixed(0)}% dos recebíveis pendentes). Inadimplência prolongada afeta o fluxo de caixa e exige provisão.`});
+  }
+
+  const d7 = new Date(today); d7.setDate(d7.getDate()+7);
+  const d7s = d7.toISOString().split('T')[0];
+  const vencendoBreve = contasPagar.filter(cp=>cp.vencimento>=today&&cp.vencimento<=d7s&&cp.status!=='pago');
+  if(vencendoBreve.length>0){
+    const tot7=vencendoBreve.reduce((a,cp)=>a+Number(cp.valor),0);
+    alerts.push({cat:'Contas a Pagar',type:'yellow',icon:CalendarDays,titulo:`${vencendoBreve.length} conta${vencendoBreve.length>1?'s':''} vencendo em 7 dias`,
+      msg:`${formatBRL(tot7)} com vencimento nos próximos 7 dias. Verifique a disponibilidade de caixa para honrar esses compromissos.`});
+  }
+
+  if(divAtivas.length>0 && parcelasMes>0 && m.receita>0 && parcelasMes/m.receita>0.3)
+    alerts.push({cat:'Endividamento',type:'yellow',icon:AlertOctagon,titulo:'Parcelas comprometem a receita',
+      msg:`As parcelas de dívidas somam ${formatBRL(parcelasMes)}/mês, representando ${(parcelasMes/m.receita*100).toFixed(0)}% do faturamento — acima do recomendado (máx. 30%).`});
+
+  if(m.custFix>0 && m.receita>0 && m.custFix/m.receita>0.5)
+    alerts.push({cat:'Custos Fixos',type:'yellow',icon:AlertTriangle,titulo:'Custos fixos elevados',
+      msg:`Custos fixos representam ${(m.custFix/m.receita*100).toFixed(1)}% do faturamento. Alta rigidez operacional — uma queda de receita pode ser fatal para o resultado.`});
+
+  // ── POSITIVOS (verde) ─────────────────────────────────────────────────────
+  if(m.margLiq >= 15)
+    alerts.push({cat:'Resultado',type:'green',icon:TrendingUp,titulo:'Margem líquida saudável',
+      msg:`${m.margLiq.toFixed(1)}% de margem líquida. A empresa gera ${formatBRL(m.lucro)}/mês de resultado positivo. Continue monitorando os custos para sustentar esse nível.`});
+  else if(m.margLiq >= 5 && m.margLiq < 15)
+    alerts.push({cat:'Resultado',type:'green',icon:TrendingUp,titulo:'Resultado positivo',
+      msg:`Margem líquida de ${m.margLiq.toFixed(1)}%. Resultado positivo de ${formatBRL(m.lucro)}/mês. Foco em aumentar receita ou reduzir custos para ampliar essa margem.`});
+
+  if(m.folegoDias >= 90)
+    alerts.push({cat:'Caixa',type:'green',icon:CheckCircle,titulo:'Caixa bem capitalizado',
+      msg:`${m.folegoDias} dias de fôlego operacional — boa reserva de segurança. Considere aplicar o excedente em investimentos de curto prazo.`});
+  else if(m.folegoDias >= 60)
+    alerts.push({cat:'Caixa',type:'green',icon:CheckCircle,titulo:'Fôlego de caixa adequado',
+      msg:`${m.folegoDias} dias de operação garantidos sem novas receitas. Reserve mínimo está bem posicionado.`});
+
+  if(m.receita>0 && m.pontoEq>0 && m.receita >= m.pontoEq*1.2)
+    alerts.push({cat:'Ponto de Equilíbrio',type:'green',icon:Target,titulo:'Operando acima do ponto de equilíbrio',
+      msg:`Faturamento (${formatBRL(m.receita)}) está ${(m.receita/m.pontoEq*100-100).toFixed(0)}% acima do PE (${formatBRL(m.pontoEq)}). Boa margem de segurança operacional.`});
+
+  if(m.margContrib >= 40)
+    alerts.push({cat:'Margem de Contribuição',type:'green',icon:TrendingUp,titulo:'Margem de contribuição forte',
+      msg:`${m.margContrib.toFixed(1)}% de margem de contribuição. Cada venda gera boa sobra para cobrir custos fixos e gerar lucro.`});
+
+  if(atPag.length===0 && contasPagar.length>0)
+    alerts.push({cat:'Contas a Pagar',type:'green',icon:CheckCircle,titulo:'Contas a pagar em dia',
+      msg:'Nenhuma conta em atraso. Boa gestão de pagamentos preserva o crédito da empresa e evita juros e multas.'});
+
+  if(alerts.length===0)
+    alerts.push({cat:'Geral',type:'green',icon:CheckCircle,titulo:'Indicadores equilibrados',
+      msg:'Todos os indicadores estão dentro do esperado. Registre lançamentos regularmente para manter o CFO Digital atualizado.'});
+
+  // Ordenar: vermelho → amarelo → verde
+  const order = {red:0,yellow:1,green:2};
+  return alerts.sort((a,b)=>order[a.type]-order[b.type]);
+};
+
 // ── INDICADOR CARD ────────────────────────────────────────────────────────────
 const IndicadorCard = ({titulo, valor, formula, status, destaque=false}) => {
   const C = {
@@ -801,9 +973,13 @@ const App = () => {
     {id:'profile',         label:'Meu Perfil',            icon:User},
   ];
 
-  const metrics = calcMetrics(diagnostics[0]);
-  const cashFlowData = genCashFlowData(metrics);
-  const alertsFeed = genAlerts(metrics);
+  const diagnosticMetrics = calcMetrics(diagnostics[0]);
+  const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas);
+  const metrics = liveMetrics || diagnosticMetrics;
+  const liveCFD = genLiveCashFlowData(lancamentos);
+  const usingLiveData = liveCFD.some(d=>d.Entradas>0||d.Saidas>0);
+  const cashFlowData = usingLiveData ? liveCFD : genCashFlowData(diagnosticMetrics);
+  const alertsFeed = liveMetrics ? genLiveAlerts(liveMetrics, contasPagar, contasReceber, dividas, today) : genAlerts(diagnosticMetrics);
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
 
   // ── SIDEBAR ────────────────────────────────────────────────────────────────
@@ -923,8 +1099,8 @@ const App = () => {
                   </div>
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
                     <div className="flex items-center justify-between mb-5">
-                      <div><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Projeção de Caixa</h3><p className="text-[10px] text-slate-400 mt-0.5">Entradas vs Saídas — Próximas 6 semanas</p></div>
-                      <span className="text-[9px] bg-slate-50 border border-slate-200 text-slate-500 font-bold px-3 py-1.5 rounded-full uppercase tracking-widest">Baseado no diagnóstico</span>
+                      <div><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">{usingLiveData?'Fluxo de Caixa Real':'Projeção de Caixa'}</h3><p className="text-[10px] text-slate-400 mt-0.5">{usingLiveData?'Entradas vs Saídas · Últimos 6 meses':'Entradas vs Saídas — Próximas 6 semanas'}</p></div>
+                      <span className="text-[9px] bg-slate-50 border border-slate-200 text-slate-500 font-bold px-3 py-1.5 rounded-full uppercase tracking-widest">{usingLiveData?'Dados reais':'Baseado no diagnóstico'}</span>
                     </div>
                     <div className="h-[210px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -946,9 +1122,9 @@ const App = () => {
                 </div>
                 <div className="xl:col-span-1">
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm h-full">
-                    <div className="p-5 border-b border-slate-50"><div className="flex items-center gap-2"><Cpu size={15} className="text-[#ff7b00]"/><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Alertas do Diagnóstico</h3></div><p className="text-[10px] text-slate-400 mt-1">Baseado nos dados que você enviou</p></div>
+                    <div className="p-5 border-b border-slate-50"><div className="flex items-center gap-2"><Cpu size={15} className="text-[#ff7b00]"/><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Alertas do CFO Digital</h3></div><p className="text-[10px] text-slate-400 mt-1">{usingLiveData?'Baseado nos seus lançamentos reais':'Baseado no diagnóstico enviado'}</p></div>
                     <div className="p-3 space-y-2 max-h-[460px] overflow-y-auto">
-                      {alertsFeed.map((a,i)=>{const I=a.icon;const c=AC[a.type];return(<div key={i} className={`${c.bg} border ${c.border} rounded-xl p-3.5 flex gap-3`}><I size={14} className={`${c.ic} shrink-0 mt-0.5`}/><div><p className="text-[11px] font-semibold text-[#05121b] leading-relaxed">{a.msg}</p></div></div>);})}
+                      {alertsFeed.slice(0,6).map((a,i)=>{const I=a.icon;const c=AC[a.type];return(<div key={i} className={`${c.bg} border ${c.border} rounded-xl p-3.5 flex gap-3`}><I size={14} className={`${c.ic} shrink-0 mt-0.5`}/><div>{a.titulo&&<p className="text-[10px] font-black text-[#05121b] mb-0.5">{a.titulo}</p>}<p className="text-[10px] text-slate-500 leading-relaxed">{a.msg}</p></div></div>);})}
                     </div>
                   </div>
                 </div>
@@ -1134,10 +1310,13 @@ const App = () => {
 
             {!metrics ? (
               <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-12 text-center">
-                <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto mb-5 flex items-center justify-center"><Brain size={26} className="text-slate-300"/></div>
-                <h2 className="text-lg font-black text-[#05121b] mb-2">Nenhum diagnóstico enviado ainda</h2>
-                <p className="text-slate-400 text-sm font-medium mb-6 max-w-sm mx-auto leading-relaxed">Envie seu primeiro diagnóstico para que o CFO Digital calcule todos os indicadores com base nos dados reais da sua empresa.</p>
-                <button onClick={()=>{setFormMode(null);setFormStep(0);setView('form');}} className="bg-[#ff7b00] text-white px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-transform inline-flex items-center gap-2"><Plus size={13}/> Solicitar Diagnóstico</button>
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl mx-auto mb-5 flex items-center justify-center"><Activity size={26} className="text-slate-300"/></div>
+                <h2 className="text-lg font-black text-[#05121b] mb-2">Nenhum dado financeiro ainda</h2>
+                <p className="text-slate-400 text-sm font-medium mb-4 max-w-sm mx-auto leading-relaxed">Registre receitas e despesas no <strong>Fluxo de Caixa</strong> para que o CFO Digital calcule todos os indicadores automaticamente.</p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button onClick={()=>setView('fluxo')} className="bg-[#137789] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#0e5f6b] transition-colors inline-flex items-center gap-2"><Plus size={13}/> Registrar Lançamentos</button>
+                  <button onClick={()=>setView('receitas')} className="bg-slate-50 border border-slate-200 text-slate-500 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-[#137789] hover:text-[#137789] transition-colors inline-flex items-center gap-2"><TrendingUp size={13}/> Receitas & Despesas</button>
+                </div>
               </div>
             ) : (
               <>
@@ -1148,7 +1327,7 @@ const App = () => {
                     <ScoreRing score={metrics.score}/>
                     <div className="text-center">
                       <p className={`font-black text-sm ${metrics.score>=70?'text-emerald-400':metrics.score>=40?'text-amber-400':'text-red-400'}`}>{metrics.score>=70?'Financeiramente Saudável':metrics.score>=40?'Requer Atenção':'Situação Crítica'}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">Baseado no seu último diagnóstico</p>
+                      <p className="text-[10px] text-slate-400 mt-1">{usingLiveData?'Calculado dos dados lançados':'Baseado no último diagnóstico'}</p>
                     </div>
                     <div className="w-full border-t border-white/10 pt-4 grid grid-cols-2 gap-3">
                       <div className="text-center"><p className="text-[9px] text-slate-400 uppercase tracking-widest mb-0.5">Resultado</p><p className={`text-sm font-black ${metrics.lucro>=0?'text-emerald-400':'text-red-400'}`}>{formatBRL(metrics.lucro)}</p></div>
@@ -1166,7 +1345,7 @@ const App = () => {
                 {/* ── PROJEÇÃO DE CAIXA ── */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
                   <div className="flex items-center justify-between mb-5">
-                    <div><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Projeção de Caixa</h3><p className="text-[10px] text-slate-400 mt-0.5">Entradas vs Saídas — Próximas 6 semanas (baseado no diagnóstico)</p></div>
+                    <div><h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">{usingLiveData?'Fluxo de Caixa Real':'Projeção de Caixa'}</h3><p className="text-[10px] text-slate-400 mt-0.5">{usingLiveData?'Entradas vs Saídas · Últimos 6 meses · dados reais':'Entradas vs Saídas — Próximas 6 semanas · baseado no diagnóstico'}</p></div>
                     <div className="flex items-center gap-4 text-[9px] font-bold">
                       <span className="flex items-center gap-1.5 text-[#137789]"><span className="w-2 h-2 rounded-full bg-[#137789] inline-block"/>Entradas</span>
                       <span className="flex items-center gap-1.5 text-[#ff7b00]"><span className="w-2 h-2 rounded-full bg-[#ff7b00] inline-block"/>Saídas</span>
@@ -1192,7 +1371,10 @@ const App = () => {
 
                 {/* ── DRE SIMPLIFICADO ── */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
-                  <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide mb-5 flex items-center gap-2"><FileText size={14} className="text-[#137789]"/> DRE Simplificado · Mensal</h3>
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide flex items-center gap-2"><FileText size={14} className="text-[#137789]"/> DRE Simplificado · Mensal</h3>
+                    <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${usingLiveData?'bg-emerald-50 border-emerald-200 text-emerald-700':'bg-slate-50 border-slate-200 text-slate-500'}`}>{usingLiveData?'Dados reais':'Baseado no diagnóstico'}</span>
+                  </div>
                   <div className="space-y-2">
                     {[
                       {label:'Faturamento Bruto',     valor:metrics.receita,     pct:100,                                                bg:'bg-emerald-50',  txt:'text-emerald-800', border:'border-emerald-100'},
@@ -1215,7 +1397,7 @@ const App = () => {
                 {/* ── ALERTAS ── */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm mb-6">
                   <div className="p-6 border-b border-slate-50 flex items-center justify-between">
-                    <h3 className="font-black text-[#05121b] uppercase text-xs tracking-widest flex items-center gap-2"><Bell size={13} className="text-[#ff7b00]"/> Alertas do CFO Digital</h3>
+                    <h3 className="font-black text-[#05121b] uppercase text-xs tracking-widest flex items-center gap-2"><Bell size={13} className="text-[#ff7b00]"/> Alertas do CFO Digital {usingLiveData&&<span className="text-[8px] bg-emerald-50 border border-emerald-200 text-emerald-700 font-black px-2 py-0.5 rounded-full">Dados reais</span>}</h3>
                     <div className="flex items-center gap-2">
                       {alertsFeed.filter(a=>a.type==='red').length>0&&<span className="text-[9px] bg-red-50 text-red-600 border border-red-100 font-black px-3 py-1 rounded-full uppercase tracking-widest">{alertsFeed.filter(a=>a.type==='red').length} crítico{alertsFeed.filter(a=>a.type==='red').length>1?'s':''}</span>}
                       {alertsFeed.filter(a=>a.type==='yellow').length>0&&<span className="text-[9px] bg-amber-50 text-amber-600 border border-amber-100 font-black px-3 py-1 rounded-full uppercase tracking-widest">{alertsFeed.filter(a=>a.type==='yellow').length} atenção</span>}
@@ -1224,10 +1406,14 @@ const App = () => {
                   <div className="divide-y divide-slate-50">
                     {alertsFeed.map((a,i)=>{const I=a.icon;const c=AC[a.type];const lbl={red:'Crítico',yellow:'Atenção',green:'Oportunidade'}[a.type];return(
                       <div key={i} className="p-5 flex items-start gap-4 hover:bg-slate-50/50 transition-colors">
-                        <div className={`w-9 h-9 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center shrink-0`}><I size={15} className={c.ic}/></div>
+                        <div className={`w-9 h-9 rounded-xl ${c.bg} border ${c.border} flex items-center justify-center shrink-0 mt-0.5`}><I size={15} className={c.ic}/></div>
                         <div className="flex-1 min-w-0">
-                          <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border mb-1.5 ${c.bg} ${c.border} ${c.ic}`}>{lbl}</span>
-                          <p className="text-xs font-semibold text-[#05121b] leading-relaxed">{a.msg}</p>
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className={`inline-block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${c.bg} ${c.border} ${c.ic}`}>{lbl}</span>
+                            {a.cat&&<span className="inline-block text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500">{a.cat}</span>}
+                          </div>
+                          {a.titulo&&<p className="text-xs font-black text-[#05121b] mb-0.5">{a.titulo}</p>}
+                          <p className="text-[11px] text-slate-500 leading-relaxed">{a.msg}</p>
                         </div>
                       </div>
                     );})}
@@ -1258,11 +1444,19 @@ const App = () => {
                   </div>
 
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Shield size={10}/> Estrutura de Custos</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Custos Variáveis" valor={formatBRL(metrics.custVar)} formula="CMV + Taxas + Comissões" status="neutral"/>
                     <IndicadorCard titulo="Custos Fixos" valor={formatBRL(metrics.custFix)} formula="Folha + Aluguel + Fixos" status="neutral"/>
                     <IndicadorCard titulo="% Custo sobre Receita" valor={metrics.receita>0?`${(metrics.totalCust/metrics.receita*100).toFixed(1)}%`:'—'} formula="Total custos ÷ Receita" status={metrics.receita>0?(metrics.totalCust/metrics.receita<=0.7?'green':metrics.totalCust/metrics.receita<=0.85?'yellow':'red'):'neutral'} destaque/>
                     <IndicadorCard titulo="Resultado Mensal" valor={formatBRL(metrics.lucro)} formula="Receita − Total de Custos" status={metrics.lucro>0?'green':metrics.lucro===0?'neutral':'red'}/>
+                  </div>
+
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <IndicadorCard titulo="EBITDA (simplificado)" valor={formatBRL(metrics.lucro+metrics.custFix*0.1)} formula="Resultado + estimativa D&A" status={metrics.lucro>=0?'green':'red'}/>
+                    <IndicadorCard titulo="EBITDA Margin" valor={metrics.receita>0?`${((metrics.lucro+metrics.custFix*0.1)/metrics.receita*100).toFixed(1)}%`:'—'} formula="EBITDA ÷ Receita" status={metrics.receita>0?((metrics.lucro+metrics.custFix*0.1)/metrics.receita>=0.15?'green':(metrics.lucro+metrics.custFix*0.1)/metrics.receita>=0.05?'yellow':'red'):'neutral'} destaque/>
+                    <IndicadorCard titulo="Eficiência Operacional" valor={metrics.receita>0?`${(metrics.custFix/metrics.receita*100).toFixed(1)}%`:'—'} formula="Custos Fixos ÷ Receita" status={metrics.receita>0?(metrics.custFix/metrics.receita<=0.4?'green':metrics.custFix/metrics.receita<=0.6?'yellow':'red'):'neutral'}/>
+                    <IndicadorCard titulo="Alavancagem Operacional" valor={metrics.margContrib>0?`${(metrics.margContrib/Math.max(0.1,metrics.margLiq)).toFixed(1)}×`:'—'} formula="Margem Contribuição ÷ Margem Líquida" status={metrics.lucro>0?'green':'neutral'}/>
                   </div>
                 </div>
               </>
@@ -1287,7 +1481,7 @@ const App = () => {
             {!metrics&&(
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3 mb-6">
                 <Info size={15} className="text-amber-500 shrink-0 mt-0.5"/>
-                <p className="text-[12px] text-amber-700 font-medium leading-relaxed">Envie um diagnóstico financeiro para ver projeções com os dados reais da sua empresa. Sem dados, não há como calcular antes × depois.</p>
+                <p className="text-[12px] text-amber-700 font-medium leading-relaxed">Registre receitas e despesas no <strong>Fluxo de Caixa</strong> para que o simulador calcule o impacto com base nos dados reais da sua empresa.</p>
               </div>
             )}
 
