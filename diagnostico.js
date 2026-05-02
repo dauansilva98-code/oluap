@@ -762,15 +762,20 @@ const App = () => {
     let s=document.getElementById('oluap-dark-css');
     if(!s){s=document.createElement('style');s.id='oluap-dark-css';document.head.appendChild(s);}
     s.textContent=isDark?`
-      .dk{background-color:#0d1117!important;color:#c9d1d9!important}
+      .dk{background-color:#0d1117!important;color:#e6edf3!important}
       .dk aside.bg-white{background-color:#161b22!important;border-color:#30363d!important}
       .dk .bg-white{background-color:#1c2333!important}
       .dk .bg-slate-50{background-color:#161b22!important}
-      .dk .bg-slate-100{background-color:#1c2333!important}
+      .dk .bg-slate-100{background-color:#21262d!important}
+      .dk .bg-slate-200{background-color:#2d333b!important}
       .dk .bg-\\[#f5f5f0\\]{background-color:#0d1117!important}
+      .dk .bg-\\[#05121b\\]{background-color:#101827!important}
       .dk .border-slate-100{border-color:#30363d!important}
       .dk .border-slate-200{border-color:#374151!important}
+      .dk .border-slate-300{border-color:#484f58!important}
       .dk .text-\\[#05121b\\]{color:#e6edf3!important}
+      .dk .text-slate-700{color:#c9d1d9!important}
+      .dk .text-slate-600{color:#8b949e!important}
       .dk .text-slate-500{color:#8b949e!important}
       .dk .text-slate-400{color:#6e7681!important}
       .dk input:not([type=range]):not([type=checkbox]):not([type=radio]),.dk textarea,.dk select{background-color:#161b22!important;border-color:#30363d!important;color:#c9d1d9!important}
@@ -780,7 +785,39 @@ const App = () => {
       .dk .shadow-sm{box-shadow:0 1px 4px rgba(0,0,0,.6)!important}
       .dk .shadow-xl,.dk .shadow-2xl{box-shadow:0 8px 32px rgba(0,0,0,.8)!important}
       .dk .hover\\:bg-slate-50:hover{background-color:#1c2333!important}
-      .dk .bg-\\[#05121b\\]{background-color:#101827!important}
+      .dk .bg-white\\/95{background-color:rgba(22,27,34,0.95)!important}
+      .dk .bg-emerald-50{background-color:#0b2318!important}
+      .dk .bg-emerald-100{background-color:#0f2d1e!important}
+      .dk .border-emerald-100{border-color:#1a4228!important}
+      .dk .border-emerald-200{border-color:#2ea043!important}
+      .dk .text-emerald-800{color:#56d364!important}
+      .dk .text-emerald-700{color:#56d364!important}
+      .dk .text-emerald-600{color:#3fb950!important}
+      .dk .text-emerald-500{color:#3fb950!important}
+      .dk .bg-red-50{background-color:#2d1014!important}
+      .dk .bg-red-100{background-color:#3d1217!important}
+      .dk .border-red-100{border-color:#6e1a1a!important}
+      .dk .border-red-200{border-color:#da3633!important}
+      .dk .text-red-800{color:#f85149!important}
+      .dk .text-red-700{color:#f85149!important}
+      .dk .text-red-600{color:#f85149!important}
+      .dk .text-red-500{color:#ff7b7b!important}
+      .dk .bg-amber-50{background-color:#2b1d0e!important}
+      .dk .bg-amber-100{background-color:#332210!important}
+      .dk .border-amber-100{border-color:#5a3c10!important}
+      .dk .border-amber-200{border-color:#d29922!important}
+      .dk .text-amber-800{color:#e3b341!important}
+      .dk .text-amber-700{color:#e3b341!important}
+      .dk .text-amber-600{color:#d29922!important}
+      .dk .bg-blue-50{background-color:#0d1f2b!important}
+      .dk .bg-blue-100{background-color:#0f2335!important}
+      .dk .bg-blue-200{background-color:#1a3a4e!important}
+      .dk .border-blue-100{border-color:#1a3a4e!important}
+      .dk .border-blue-200{border-color:#1f6feb!important}
+      .dk .text-blue-800{color:#58a6ff!important}
+      .dk .text-blue-700{color:#58a6ff!important}
+      .dk .text-blue-600{color:#58a6ff!important}
+      .dk .text-blue-500{color:#79c0ff!important}
     `:'';
   },[isDark]);
 
