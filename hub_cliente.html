@@ -173,10 +173,9 @@
 
             const handleContratar = async (prod) => {
                 if (prod.isFree) {
-                    await supabase.from('profiles').upsert({
-                        id: user.id,
+                    await supabase.from('profiles').update({
                         [`has_${prod.id}`]: true
-                    }, { onConflict: 'id' });
+                    }).eq('id', user.id);
                     setAccess(prev => ({ ...prev, [prod.id]: true }));
                     window.location.href = prod.url;
                 } else {

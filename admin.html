@@ -514,7 +514,16 @@
         // ─────────────────────────────────────────────────────────────────────
         // APP PRINCIPAL
         // ─────────────────────────────────────────────────────────────────────
+        const ADMIN_EMAILS = ['dauan.silva98@gmail.com', 'oluap.gestao@gmail.com'];
+
         const App = () => {
+          const [adminUser, setAdminUser] = useState(null);
+          const [adminLoading, setAdminLoading] = useState(true);
+          const [loginEmail, setLoginEmail] = useState('');
+          const [loginPassword, setLoginPassword] = useState('');
+          const [loginError, setLoginError] = useState('');
+          const [loginLoading, setLoginLoading] = useState(false);
+
           const [view, setView] = useState('dashboard');
           const [isSidebarOpen, setIsSidebarOpen] = useState(true);
           const [clientTab, setClientTab] = useState('cadastro');
@@ -567,9 +576,48 @@
           const [updatingOpStatus, setUpdatingOpStatus] = useState(null);
 
           useEffect(() => {
+            const checkAdmin = async () => {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session && ADMIN_EMAILS.includes(session.user.email)) {
+                setAdminUser(session.user);
+                fetchData();
+                fetchConsultorias();
+              }
+              setAdminLoading(false);
+            };
+            checkAdmin();
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+              if (session && ADMIN_EMAILS.includes(session.user.email)) {
+                setAdminUser(session.user);
+              } else {
+                setAdminUser(null);
+              }
+            });
+            return () => subscription.unsubscribe();
+          }, []);
+
+          const handleAdminLogin = async (e) => {
+            e.preventDefault();
+            setLoginLoading(true);
+            setLoginError('');
+            const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPassword });
+            if (error) { setLoginError('E-mail ou senha incorretos.'); setLoginLoading(false); return; }
+            if (!ADMIN_EMAILS.includes(data.user?.email)) {
+              await supabase.auth.signOut();
+              setLoginError('Acesso não autorizado para este e-mail.');
+              setLoginLoading(false);
+              return;
+            }
+            setAdminUser(data.user);
             fetchData();
             fetchConsultorias();
-          }, []);
+            setLoginLoading(false);
+          };
+
+          const handleAdminLogout = async () => {
+            await supabase.auth.signOut();
+            setAdminUser(null);
+          };
 
           const fetchConsultorias = async () => {
               try {
@@ -708,6 +756,11 @@
               clientsMap[key].userId = p.user_id || p.id;
               clientsMap[key].creditoStatus = p.credito_cnpj_status || 'aguardando';
               clientsMap[key].operacaoStatus = p.credito_operacao_status || null;
+              // Produtos selecionados no hub_cliente (has_* das profiles)
+              if (p.has_credito) clientsMap[key].hasCredito = true;
+              if (p.has_diagnostico) clientsMap[key].hasDiagnostico = true;
+              if (p.has_erp) clientsMap[key].hasERP = true;
+              if (p.has_consultoria) clientsMap[key].hasConsultoria = true;
             });
 
             // 2. Seed a partir de diagnosticos (todos, pending ou completed)
@@ -1111,6 +1164,38 @@
               );
           };
 
+          if (adminLoading) return (
+            <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+              <div className="w-8 h-8 border-4 border-[#137789] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          );
+
+          if (!adminUser) return (
+            <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+              <div className="w-full max-w-sm">
+                <div className="text-center mb-8">
+                  <img src="logo2.png" alt="OLUAP" className="h-10 mx-auto mb-4 object-contain" onError={(e) => { e.target.style.display='none'; }}/>
+                  <h1 className="text-xl font-black text-[#05121b] uppercase tracking-tighter">Área Administrativa</h1>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Acesso restrito</p>
+                </div>
+                <form onSubmit={handleAdminLogin} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 space-y-5">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">E-mail</label>
+                    <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required placeholder="seu@email.com" className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-[#05121b] outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">Senha</label>
+                    <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required placeholder="••••••••" className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-[#05121b] outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all" />
+                  </div>
+                  {loginError && <p className="text-xs font-bold text-red-500 text-center">{loginError}</p>}
+                  <button type="submit" disabled={loginLoading} className="w-full bg-[#05121b] text-white py-4 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-[#137789] transition-all disabled:opacity-60">
+                    {loginLoading ? 'Entrando...' : 'Entrar'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+
           return (
             <div className="min-h-screen flex text-[#05121b] font-sans bg-slate-50/40 print:bg-white">
               
@@ -1123,6 +1208,12 @@
                         <img src="icone.png" alt="Ícone OLUAP" className="w-8 h-8 object-contain shrink-0" />
                     )}
                 </div>
+                {isSidebarOpen && (
+                  <div className="px-4 pb-2 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold truncate max-w-[160px]">{adminUser?.email}</span>
+                    <button onClick={handleAdminLogout} title="Sair" className="text-slate-400 hover:text-red-500 transition-colors p-1 shrink-0"><LogOut size={14}/></button>
+                  </div>
+                )}
                 <nav className={`flex-1 space-y-3 mt-4 overflow-y-auto no-scrollbar pb-6 ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
                     <button onClick={goCadastros} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='cadastros'||view==='client_registration'?'bg-[#05121b] text-white shadow-md':'text-[#05121b] hover:bg-slate-50'}`}>
                         <FolderOpen size={20} className={`shrink-0 ${view==='cadastros'||view==='client_registration'?'text-[#ff7b00]':'text-slate-400'}`}/> 
@@ -1269,7 +1360,7 @@
                                         <th className="px-6 py-4 text-xs font-medium text-slate-500">Clientes</th>
                                         <th className="px-6 py-4 text-xs font-medium text-slate-500">Data</th>
                                         <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Produto Optante</th>
-                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Status</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">{view === 'credito_base' ? 'Status Crédito' : 'Status'}</th>
                                         <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Opções</th>
                                     </tr>
                                 </thead>
@@ -1300,11 +1391,27 @@
                                                     )}
                                                 </div>
                                             </td>
-                                            {/* STATUS: Pendente ou Ativo baseado nos produtos */}
-                                            <td className="px-6 py-5 text-center align-top pt-6">
-                                                <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.clientStatus === 'Ativo' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
-                                                    {c.clientStatus || "Pendente"}
-                                                </span>
+                                            {/* STATUS */}
+                                            <td className="px-6 py-5 text-center align-top pt-5">
+                                                {view === 'credito_base' ? (() => {
+                                                    const CREDITO_STATUS_LABELS = { aguardando: { label: 'Aguardando', cls: 'bg-slate-100 text-slate-500' }, em_analise: { label: 'Em Análise', cls: 'bg-amber-50 text-amber-600 border border-amber-200' }, aprovado: { label: 'Aprovado', cls: 'bg-emerald-50 text-emerald-600 border border-emerald-200' }, reprovado: { label: 'Reprovado', cls: 'bg-red-50 text-red-600 border border-red-200' } };
+                                                    const st = c.creditoStatus || 'aguardando';
+                                                    const info = CREDITO_STATUS_LABELS[st] || CREDITO_STATUS_LABELS.aguardando;
+                                                    const profileId = c.userId;
+                                                    return (
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full ${info.cls}`}>{info.label}</span>
+                                                            <div className="flex gap-1.5">
+                                                                <button onClick={() => updateCreditoStatus(profileId, 'aprovado')} disabled={st === 'aprovado' || updatingCreditoStatus === profileId} className="text-[9px] font-black px-2.5 py-1 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40 transition-all">Aprovar</button>
+                                                                <button onClick={() => updateCreditoStatus(profileId, 'reprovado')} disabled={st === 'reprovado' || updatingCreditoStatus === profileId} className="text-[9px] font-black px-2.5 py-1 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 transition-all">Reprovar</button>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })() : (
+                                                    <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.clientStatus === 'Ativo' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                                                        {c.clientStatus || "Pendente"}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-5 text-center align-top pt-6">
                                                 <button className="text-slate-400 hover:text-[#05121b] transition-colors"><MoreHorizontal size={20}/></button>

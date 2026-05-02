@@ -199,10 +199,9 @@
             const solicitarAnalise = async () => {
                 setSendingAnalise(true);
                 try {
-                    await supabase.from('profiles').upsert({
-                        id: user.id,
+                    await supabase.from('profiles').update({
                         credito_cnpj_status: 'em_analise'
-                    });
+                    }).eq('id', user.id);
                     setProfile(prev => ({ ...prev, credito_cnpj_status: 'em_analise' }));
                     setAnaliseEnviada(true);
                     setTimeout(() => setAnaliseEnviada(false), 8000);
