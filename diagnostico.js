@@ -38,7 +38,8 @@ import {
   AlertCircle, Save, TrendingUp, Zap, Activity, Database,
   FileSpreadsheet, PenLine, FolderOpen, ArrowRight, DollarSign,
   Shield, Brain, Cpu, AlertOctagon, X,
-  TrendingDown, Trash2, Pencil, CalendarDays, Wallet, Receipt
+  TrendingDown, Trash2, Pencil, CalendarDays, Wallet, Receipt,
+  Camera, Menu
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
@@ -752,6 +753,9 @@ const App = () => {
   const [simLoading, setSimLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState(null);
   const [isDark, setIsDark] = useState(()=>{try{return localStorage.getItem('oluap_theme')==='dark';}catch{return false;}});
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileDropdown, setProfileDropdown] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
 
   useEffect(()=>{
     try{localStorage.setItem('oluap_theme',isDark?'dark':'light');}catch{}
@@ -823,6 +827,7 @@ const App = () => {
         if(cu.user_metadata){
           const m=cu.user_metadata;
           setProfileData({full_name:m.full_name||'',email:cu.email||'',phone:m.phone||'',cnpj:m.cnpj||'',razao_social:m.razao_social||''});
+          setAvatarUrl(m.avatar_url||'');
           setProfileFilledForm(!!(m.full_name||m.cnpj||m.razao_social));
           setFormData(prev=>({...prev,
             v1_responsavel:m.full_name||prev.v1_responsavel,v1_email:cu.email||prev.v1_email,v1_phone:m.phone||prev.v1_phone,v1_cnpj:m.cnpj||prev.v1_cnpj,v1_razao:m.razao_social||prev.v1_razao,
@@ -913,6 +918,30 @@ const App = () => {
       setFormData(prev=>({...prev,v1_responsavel:profileData.full_name,v1_phone:profileData.phone,v1_cnpj:profileData.cnpj,v1_razao:profileData.razao_social,g_responsavel:profileData.full_name,g_phone:profileData.phone,g_cnpj:profileData.cnpj,g_razao:profileData.razao_social}));
       setProfileFilledForm(true);setTimeout(()=>setProfileSuccess(""),4000);
     }
+  };
+
+  const handleAvatarUpload=(e)=>{
+    const file=e.target.files?.[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      const img=new Image();
+      img.onload=async()=>{
+        const canvas=document.createElement('canvas');
+        const size=160;
+        canvas.width=size;canvas.height=size;
+        const ctx=canvas.getContext('2d');
+        const min=Math.min(img.width,img.height);
+        const sx=(img.width-min)/2;
+        const sy=(img.height-min)/2;
+        ctx.drawImage(img,sx,sy,min,min,0,0,size,size);
+        const dataUrl=canvas.toDataURL('image/jpeg',0.85);
+        setAvatarUrl(dataUrl);
+        await supabase.auth.updateUser({data:{avatar_url:dataUrl}});
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleLogout=async()=>{await supabase.auth.signOut();window.location.href='login.html';};
@@ -1043,12 +1072,19 @@ const App = () => {
   const alertsFeed = liveMetrics ? genLiveAlerts(liveMetrics, contasPagar, contasReceber, dividas, today) : [];
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
 
+  const firstName=(profileData.full_name||'Cliente').split(' ')[0];
+
   // ── RENDER ────────────────────────────────────────────────────────────────
   return(
     <div className={`min-h-screen bg-[#f5f5f0] flex text-[#05121b] overflow-x-hidden${isDark?' dk':''}`}>
 
-      <aside className={`bg-white h-screen border-r border-slate-100 py-5 flex flex-col fixed left-0 top-0 z-40 print:hidden transition-all duration-300 ${isSidebarOpen?'w-56 px-4':'w-16 px-2'}`}>
-        <button onClick={()=>setIsSidebarOpen(!isSidebarOpen)} className="absolute -right-3 top-8 bg-white border border-slate-200 p-1.5 rounded-full shadow-sm text-slate-400 hover:text-[#ff7b00] z-50 flex items-center justify-center transition-all hover:scale-110">
+      {/* Mobile overlay */}
+      {mobileOpen&&<div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={()=>setMobileOpen(false)}/>}
+
+      <aside className={`bg-white h-screen border-r border-slate-100 py-5 flex flex-col fixed left-0 top-0 z-40 print:hidden transition-all duration-300
+        ${isSidebarOpen?'w-56 px-4':'w-16 px-2'}
+        ${mobileOpen?'translate-x-0':'-translate-x-full lg:translate-x-0'}`}>
+        <button onClick={()=>setIsSidebarOpen(!isSidebarOpen)} className="hidden lg:flex absolute -right-3 top-8 bg-white border border-slate-200 p-1.5 rounded-full shadow-sm text-slate-400 hover:text-[#ff7b00] z-50 items-center justify-center transition-all hover:scale-110">
           <ChevronLeft size={13} style={{transform:isSidebarOpen?'rotate(0deg)':'rotate(180deg)',transition:'transform 0.3s'}}/>
         </button>
         <div className={`flex items-center ${isSidebarOpen?'justify-start px-1':'justify-center'} mb-6 mt-1`}>
@@ -1061,6 +1097,7 @@ const App = () => {
             const handleNavClick = () => {
               if (item.id === 'nova_analise') { setFormMode(null); setFormStep(0); setView('form'); }
               else setView(item.id);
+              setMobileOpen(false);
             };
             return(<button key={item.id} onClick={handleNavClick} title={!isSidebarOpen?item.label:''}
               className={`w-full flex items-center ${isSidebarOpen?'justify-start gap-3 px-3':'justify-center px-0'} py-2.5 rounded-xl font-bold text-[11px] transition-all ${active?'bg-[#05121b] text-white shadow-md':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
@@ -1080,7 +1117,49 @@ const App = () => {
         </div>
       </aside>
 
-      <main className={`flex-1 transition-all duration-300 ${isSidebarOpen?'ml-56':'ml-16'} p-6 md:p-8 overflow-y-auto min-h-screen min-w-0`}>
+      <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen?'lg:ml-56':'lg:ml-16'} min-h-screen min-w-0`}>
+
+        {/* Top bar */}
+        <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-slate-100 px-4 py-2.5 flex items-center justify-between shadow-sm print:hidden">
+          <button onClick={()=>setMobileOpen(true)} className="lg:hidden p-2 -ml-1 rounded-lg hover:bg-slate-50 transition-colors">
+            <Menu size={20} className="text-[#05121b]"/>
+          </button>
+          <span className="lg:hidden text-sm font-black text-[#05121b]">
+            {navItems.find(n=>n.id===view)?.label||'Dashboard'}
+          </span>
+          <div className="hidden lg:block flex-1"/>
+          {/* Profile widget */}
+          <div className="relative">
+            <button onClick={()=>setProfileDropdown(v=>!v)}
+              className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-full pl-1 pr-3 py-1 shadow-sm hover:shadow-md transition-all">
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-[#137789]/10 border border-[#137789]/20 flex items-center justify-center shrink-0">
+                {avatarUrl?<img src={avatarUrl} className="w-full h-full object-cover" alt="avatar"/>:<span className="text-xs font-black text-[#137789]">{firstName[0]}</span>}
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="text-xs font-black text-[#05121b] leading-tight">{firstName}</p>
+                <p className="text-[10px] text-slate-400 leading-none">{profileData.email}</p>
+              </div>
+            </button>
+            {profileDropdown&&(
+              <>
+                <div className="fixed inset-0 z-40" onClick={()=>setProfileDropdown(false)}/>
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+                  <button onClick={()=>{setView('profile');setProfileDropdown(false);setMobileOpen(false);}}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 text-xs font-bold text-[#05121b] transition-colors">
+                    <User size={14}/> Meu Perfil
+                  </button>
+                  <div className="border-t border-slate-100"/>
+                  <button onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-xs font-bold text-red-500 transition-colors">
+                    <LogOut size={14}/> Sair
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </header>
+
+      <main className={`flex-1 p-6 md:p-8 overflow-y-auto min-w-0`}>
 
         {/* ── DASHBOARD ──────────────────────────────────────────────────── */}
         {view==='dashboard'&&(
@@ -2524,6 +2603,21 @@ const App = () => {
         {view==='profile'&&(
           <div className="max-w-3xl mx-auto fade-in">
             <header className="mb-8"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Configurações</p><h1 className="text-2xl font-black text-[#05121b] italic">Meu Perfil</h1></header>
+
+            {/* Avatar upload */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm mb-5 flex flex-col items-center gap-3">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-[#137789]/10 border-2 border-[#137789]/20 flex items-center justify-center">
+                  {avatarUrl?<img src={avatarUrl} className="w-full h-full object-cover" alt="avatar"/>:<span className="text-2xl font-black text-[#137789]">{firstName[0]}</span>}
+                </div>
+                <label className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#137789] hover:bg-[#05121b] rounded-full flex items-center justify-center cursor-pointer shadow-md transition-colors">
+                  <Camera size={13} className="text-white"/>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload}/>
+                </label>
+              </div>
+              <p className="text-[10px] text-slate-400">Clique no ícone para alterar a foto</p>
+            </div>
+
             <div className="mb-5 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3"><Lightbulb size={14} className="text-blue-500 shrink-0 mt-0.5"/><p className="text-[11px] text-blue-700 font-medium leading-relaxed"><strong>Dica:</strong> Com CNPJ e Razão Social preenchidos, esses campos são preenchidos automaticamente em novos formulários.</p></div>
             <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm mb-5">
               <form onSubmit={handleUpdateProfile} className="space-y-5">
@@ -2714,6 +2808,7 @@ const App = () => {
         )}
 
       </main>
+      </div>
     </div>
   );
 };
