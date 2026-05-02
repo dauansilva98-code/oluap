@@ -762,7 +762,7 @@ const App = () => {
     let s=document.getElementById('oluap-dark-css');
     if(!s){s=document.createElement('style');s.id='oluap-dark-css';document.head.appendChild(s);}
     s.textContent=isDark?`
-      .dk{background-color:#0d1117!important;color:#e6edf3!important}
+      .dk{background-color:#0d1117!important;color:#ffffff!important}
       .dk aside.bg-white{background-color:#161b22!important;border-color:#30363d!important}
       .dk .bg-white{background-color:#1c2333!important}
       .dk .bg-slate-50{background-color:#161b22!important}
@@ -773,9 +773,9 @@ const App = () => {
       .dk .border-slate-100{border-color:#30363d!important}
       .dk .border-slate-200{border-color:#374151!important}
       .dk .border-slate-300{border-color:#484f58!important}
-      .dk .text-\\[#05121b\\]{color:#e6edf3!important}
-      .dk .text-slate-700{color:#c9d1d9!important}
-      .dk .text-slate-600{color:#8b949e!important}
+      .dk .text-\\[#05121b\\]{color:#ffffff!important}
+      .dk .text-slate-700{color:#ffffff!important}
+      .dk .text-slate-600{color:#c9d1d9!important}
       .dk .text-slate-500{color:#8b949e!important}
       .dk .text-slate-400{color:#6e7681!important}
       .dk input:not([type=range]):not([type=checkbox]):not([type=radio]),.dk textarea,.dk select{background-color:#161b22!important;border-color:#30363d!important;color:#c9d1d9!important}
