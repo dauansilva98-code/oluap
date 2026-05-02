@@ -1,4 +1,34 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿// ═══════════════════════════════════════════════════════════════════════════
+// DIAGNÓSTICO OLUAP  ·  diagnostico.js
+// ═══════════════════════════════════════════════════════════════════════════
+//
+//  Use Ctrl+F com o prefixo "§" para navegar diretamente entre seções.
+//
+//  §1  CONFIGURAÇÃO & CONSTANTES ............... ~ln 16
+//  §2  UTILITÁRIOS ............................. ~ln 22
+//        formatBRL · formatCurrency · máscaras · validadores · parseChartData
+//  §3  COMPONENTES DE FORMULÁRIO ............... ~ln 62
+//        InputField · RadioGroup · TextAreaField · FileUploadField
+//  §4  COMPONENTES DE UI ....................... ~ln 163
+//        StepBar · StatusBadge · SemaforoCard · ScoreRing
+//        IndicadorCard · SimComparativo · MultiFileDropzone
+//  §5  DEFINIÇÃO DOS FORMULÁRIOS ............... ~ln 195
+//        STEPS_V1 · FormStepV1 · STEPS_G · FormStepG · EMPTY_FORM
+//  §6  LÓGICA DE NEGÓCIO ....................... ~ln 299
+//        calcMetrics · calcLiveMetrics
+//        genCashFlowData · genLiveCashFlowData
+//        genAlerts · genLiveAlerts · SCENARIOS
+//  §7  APP PRINCIPAL ........................... ~ln 665
+//        Estado · Effects · Handlers
+//        Views: Dashboard · Alertas · Fluxo · Receitas · Despesas
+//               Contas a Pagar/Receber · Simulador · Dívidas
+//               Bancos · Investimentos · Fontes · Análises · Perfil
+//        Modals: Banco · Receita · Despesa · CP · CR
+//                Dívida · Investimento · Solicitar Análise
+//
+// ═══════════════════════════════════════════════════════════════════════════
+
+import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   LayoutDashboard, LogOut, ShieldCheck, AlertTriangle, Plus,
@@ -13,12 +43,18 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// §1  CONFIGURAÇÃO & CONSTANTES
+// ─────────────────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhheG9ubm5ieWN5cGlyaWd4c3ZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNTYwMzEsImV4cCI6MjA4OTYzMjAzMX0.keYNqjbu7DxBYV9f4_HW1MTaP1_TJZ_bNDTRIvSeSYw';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const DRAFT_KEY = 'oluap_form_draft';
 const CHART_COLORS = ['#137789','#ff7b00','#05121b','#fbbf24','#34d399','#f87171','#a78bfa','#60a5fa'];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// §2  UTILITÁRIOS  —  formatadores, máscaras, validadores, parser de gráficos
+// ─────────────────────────────────────────────────────────────────────────────
 const formatBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
 const formatCurrency = value => {
   if (!value) return "";
@@ -58,7 +94,10 @@ const parseChartData = text => {
   return data;
 };
 
-// ── FORM COMPONENTS ──────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// §3  COMPONENTES DE FORMULÁRIO
+//     InputField · RadioGroup · TextAreaField · FileUploadField
+// ─────────────────────────────────────────────────────────────────────────────
 const InputField = ({label,value,onChange,placeholder,maskType="text",error,optional=false,subLabel,readOnly=false,type="text",icon:Icon,fieldId}) => {
   const handleChange = e => {
     const r = e.target.value;
@@ -160,7 +199,13 @@ const FileUploadField = ({onFilesSelected,readOnly}) => {
   );
 };
 
-// ── STEP BAR ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// §4  COMPONENTES DE UI
+//     StepBar · StatusBadge · SemaforoCard · ScoreRing
+//     IndicadorCard · SimComparativo · MultiFileDropzone
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── StepBar ───────────────────────────────────────────────────────────────────
 const StepBar = ({steps,currentStep,isV1}) => {
   const ac = isV1 ? '#137789' : '#ff7b00';
   return (
@@ -192,7 +237,14 @@ const StepBar = ({steps,currentStep,isV1}) => {
   );
 };
 
-// ── FORM STEPS V1 ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// §5  DEFINIÇÃO DOS FORMULÁRIOS
+//     STEPS_V1 · FormStepV1  (formulário estruturado, 5 etapas)
+//     STEPS_G  · FormStepG   (formulário guiado, 5 etapas)
+//     EMPTY_FORM             (estado inicial do formData)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── FormStepV1 — Formulário Estruturado ───────────────────────────────────────
 const STEPS_V1 = [{label:'Identificação'},{label:'Vendas'},{label:'Custos'},{label:'Caixa e Dívidas'},{label:'Visão e Docs'}];
 const FormStepV1 = ({step,formData:fd,setFormData,fieldErrors:fe}) => {
   const set = (k,v) => setFormData({...fd,[k]:v});
@@ -204,7 +256,7 @@ const FormStepV1 = ({step,formData:fd,setFormData,fieldErrors:fe}) => {
   return null;
 };
 
-// ── FORM STEPS GUIADO ─────────────────────────────────────────────────────────
+// ── FormStepG — Formulário Guiado ─────────────────────────────────────────────
 const STEPS_G = [{label:'Identificação'},{label:'Negócio e Vendas'},{label:'Gastos'},{label:'Dívidas e Caixa'},{label:'Futuro e Docs'}];
 const FormStepG = ({step,formData:fd,setFormData,fieldErrors:fe}) => {
   const set = (k,v) => setFormData({...fd,[k]:v});
@@ -216,7 +268,7 @@ const FormStepG = ({step,formData:fd,setFormData,fieldErrors:fe}) => {
   return null;
 };
 
-// ── EMPTY FORM ────────────────────────────────────────────────────────────────
+// ── EMPTY_FORM — estado inicial do formData ───────────────────────────────────
 const EMPTY_FORM = {
   v1_razao:"",v1_cnpj:"",v1_responsavel:"",v1_email:"",v1_phone:"",v1_segmento:"",
   v1_tempoOperacao:"",v1_numFuncionarios:"",v1_controleFinanceiro:"",
@@ -234,7 +286,7 @@ const EMPTY_FORM = {
   g_desafio:"",g_futuro:"",g_linksAnexos:"",g_nomesArquivos:""
 };
 
-// ── STATUS BADGE ──────────────────────────────────────────────────────────────
+// ── StatusBadge ───────────────────────────────────────────────────────────────
 const StatusBadge = ({internalStatus}) => {
   if(internalStatus==='completed') return(
     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -258,7 +310,7 @@ const StatusBadge = ({internalStatus}) => {
   );
 };
 
-// ── SEMAFORO CARD ─────────────────────────────────────────────────────────────
+// ── SemaforoCard ──────────────────────────────────────────────────────────────
 const SemaforoCard = ({icon:Icon,title,value,subtitle,status}) => {
   const C = {
     green:{bg:'bg-emerald-50',border:'border-emerald-200',dot:'bg-emerald-500',txt:'text-emerald-700',val:'text-emerald-800'},
@@ -280,7 +332,7 @@ const SemaforoCard = ({icon:Icon,title,value,subtitle,status}) => {
   );
 };
 
-// ── SCORE RING ────────────────────────────────────────────────────────────────
+// ── ScoreRing ─────────────────────────────────────────────────────────────────
 const ScoreRing = ({score}) => {
   const r=40, circ=2*Math.PI*r, offset=circ-(score/100)*circ;
   const color = score>=70?'#22c55e':score>=40?'#f59e0b':'#ef4444';
@@ -296,7 +348,14 @@ const ScoreRing = ({score}) => {
   );
 };
 
-// ── MÉTRICAS REAIS ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// §6  LÓGICA DE NEGÓCIO
+//     calcMetrics · calcLiveMetrics
+//     genCashFlowData · genLiveCashFlowData
+//     genAlerts · genLiveAlerts · SCENARIOS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── calcMetrics — métricas calculadas a partir do formulário ──────────────────
 const pc = v => parseFloat((v||'').replace(/\D/g,'')) / 100 || 0;
 
 const calcMetrics = (diag) => {
@@ -392,7 +451,7 @@ const genAlerts = (m) => {
   return alerts;
 };
 
-// ── MÉTRICAS EM TEMPO REAL (calculadas dos lançamentos) ───────────────────────
+// ── calcLiveMetrics — métricas calculadas dos lançamentos reais ───────────────
 const calcLiveMetrics = (lancamentos, bancos, dividas) => {
   if (!lancamentos || lancamentos.length === 0) return null;
   const mesAtual = new Date().toISOString().slice(0,7);
@@ -564,7 +623,7 @@ const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => {
   return alerts.sort((a,b)=>order[a.type]-order[b.type]);
 };
 
-// ── INDICADOR CARD ────────────────────────────────────────────────────────────
+// ── IndicadorCard ─────────────────────────────────────────────────────────────
 const IndicadorCard = ({titulo, valor, formula, status, destaque=false}) => {
   const C = {
     green:   {bg:'bg-emerald-50', border:'border-emerald-200', val:'text-emerald-800', badge:'bg-emerald-100 text-emerald-700 border-emerald-200'},
@@ -585,7 +644,7 @@ const IndicadorCard = ({titulo, valor, formula, status, destaque=false}) => {
   );
 };
 
-// ── SCENARIOS ─────────────────────────────────────────────────────────────────
+// ── SCENARIOS — cenários disponíveis no simulador ─────────────────────────────
 const SCENARIOS = [
   {id:'aumentar_ticket',group:'Receita',     emoji:'📈',label:'Aumentar Preço',        desc:'Cobrar % a mais por venda ou serviço',            tipo:'pct',   inputLabel:'Aumento no preço (%)'},
   {id:'queda_receita',  group:'Receita',     emoji:'📉',label:'Queda na Receita',       desc:'Simule sazonalidade ou perda de clientes',        tipo:'pct',   inputLabel:'Queda percentual (%)'},
@@ -599,7 +658,7 @@ const SCENARIOS = [
   {id:'pagar_divida',   group:'Dívida',      emoji:'🎯',label:'Quitar Parcela Mensal',  desc:'Elimina custo fixo mensal, consome caixa hoje',   tipo:'valor', inputLabel:'Parcela quitada/mês'},
 ];
 
-// ── SIM COMPARATIVO ───────────────────────────────────────────────────────────
+// ── SimComparativo ────────────────────────────────────────────────────────────
 const SimComparativo = ({label, before, after, formato, lowerIsBetter=false}) => {
   const melhorou = lowerIsBetter ? after <= before : after >= before;
   const diff = Math.abs(after - before);
@@ -617,7 +676,7 @@ const SimComparativo = ({label, before, after, formato, lowerIsBetter=false}) =>
   );
 };
 
-// ── MULTI FILE DROPZONE ───────────────────────────────────────────────────────
+// ── MultiFileDropzone ─────────────────────────────────────────────────────────
 const MultiFileDropzone = () => {
   const [files,setFiles] = useState([]);
   const add = e => {
@@ -662,7 +721,10 @@ const MultiFileDropzone = () => {
   );
 };
 
-// ── MAIN APP ──────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// §7  APP PRINCIPAL
+//     Estado · Effects · Handlers · Render (Sidebar + todas as Views + Modals)
+// ─────────────────────────────────────────────────────────────────────────────
 const App = () => {
   const [view, setView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -718,7 +780,7 @@ const App = () => {
     `:'';
   },[isDark]);
 
-  // ── FINANCIAL MODULE STATE ─────────────────────────────────────────────────
+  // ── Estado: módulo financeiro (bancos, lançamentos, contas, modals) ──────────
   const [bancos, setBancos] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [contasPagar, setContasPagar] = useState([]);
@@ -981,7 +1043,7 @@ const App = () => {
   const alertsFeed = liveMetrics ? genLiveAlerts(liveMetrics, contasPagar, contasReceber, dividas, today) : [];
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
 
-  // ── SIDEBAR ────────────────────────────────────────────────────────────────
+  // ── RENDER ────────────────────────────────────────────────────────────────
   return(
     <div className={`min-h-screen bg-[#f5f5f0] flex text-[#05121b] overflow-x-hidden${isDark?' dk':''}`}>
 
