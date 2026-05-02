@@ -388,19 +388,39 @@
                                             </div>
                                         )}
 
-                                        {/* Aprovado → Simular Operação */}
+                                        {/* Aprovado → Simular Operação ou Operação Concluída */}
                                         {cnpjStatus === 'aprovado' && (
                                             <div className="mt-6 pt-6 border-t border-emerald-200">
-                                                <div className="bg-white border border-emerald-100 rounded-xl p-4 mb-5 flex items-start gap-3">
-                                                    <Zap size={14} className="text-[#ff7b00] shrink-0 mt-0.5" />
-                                                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                                                        Seu CNPJ está aprovado! Simule uma operação de antecipação de recebíveis <strong className="text-[#05121b]">sem cadastro</strong>, até <strong className="text-[#05121b]">R$ 50.000</strong>.
-                                                    </p>
-                                                </div>
-                                                <a href={PARCEIRO_URL} target="_blank" rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-7 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all hover:scale-[1.02] shadow-lg shadow-emerald-600/20">
-                                                    <TrendingUp size={14} /> Simular Operação até R$ 50k <ExternalLink size={13} />
-                                                </a>
+                                                {opStatus === 'paga' ? (
+                                                    <div className="bg-white border border-emerald-100 rounded-xl p-5 flex items-start gap-3">
+                                                        <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0">
+                                                            <CheckCircle size={15} className="text-white" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-black text-emerald-700 mb-1">Primeira operação concluída!</p>
+                                                            <p className="text-[11px] text-slate-500 leading-relaxed mb-3">
+                                                                Para realizar novas operações, acesse a plataforma do nosso parceiro e anexe os documentos da próxima nota fiscal.
+                                                            </p>
+                                                            <a href={PARCEIRO_URL} target="_blank" rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] shadow-md">
+                                                                <ExternalLink size={13} /> Acessar Plataforma do Parceiro
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="bg-white border border-emerald-100 rounded-xl p-4 mb-5 flex items-start gap-3">
+                                                            <Zap size={14} className="text-[#ff7b00] shrink-0 mt-0.5" />
+                                                            <p className="text-[11px] text-slate-600 leading-relaxed">
+                                                                Seu CNPJ está aprovado! Simule uma operação de antecipação de recebíveis <strong className="text-[#05121b]">sem cadastro</strong>, até <strong className="text-[#05121b]">R$ 50.000</strong>.
+                                                            </p>
+                                                        </div>
+                                                        <a href={PARCEIRO_URL} target="_blank" rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-7 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all hover:scale-[1.02] shadow-lg shadow-emerald-600/20">
+                                                            <TrendingUp size={14} /> Simular Operação até R$ 50k <ExternalLink size={13} />
+                                                        </a>
+                                                    </>
+                                                )}
                                             </div>
                                         )}
 
@@ -476,9 +496,10 @@
                                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-8">Linha do tempo</p>
                                             <div>
                                                 {OPERACAO_STEPS.map((step, idx) => {
-                                                    const done    = idx < currentStep;
-                                                    const current = idx === currentStep;
-                                                    const pending = idx > currentStep;
+                                                    const allDone = opStatus === 'paga';
+                                                    const done    = allDone || idx < currentStep;
+                                                    const current = !allDone && idx === currentStep;
+                                                    const pending = !allDone && idx > currentStep;
                                                     const last    = idx === OPERACAO_STEPS.length - 1;
                                                     const lineColor = done ? '#137789' : '#e2e8f0';
 
@@ -515,6 +536,27 @@
                                                     );
                                                 })}
                                             </div>
+
+                                            {/* Banner de conclusão */}
+                                            {opStatus === 'paga' && (
+                                                <div className="mt-7 pt-6 border-t border-slate-100">
+                                                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-start gap-4">
+                                                        <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0">
+                                                            <CheckCircle size={20} className="text-white" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-black text-emerald-700 mb-1">Operação Concluída!</p>
+                                                            <p className="text-[11px] text-slate-600 leading-relaxed mb-4">
+                                                                O valor foi creditado na sua conta. Para realizar novas operações, acesse a plataforma do nosso parceiro e anexe os documentos da próxima nota fiscal.
+                                                            </p>
+                                                            <a href={PARCEIRO_URL} target="_blank" rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] shadow-md shadow-emerald-600/20">
+                                                                <ExternalLink size={13} /> Acessar Plataforma do Parceiro
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

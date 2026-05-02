@@ -1361,7 +1361,7 @@
                                         <th className="px-6 py-4 text-xs font-medium text-slate-500">Data</th>
                                         <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Produto Optante</th>
                                         <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">{view === 'credito_base' ? 'Status Crédito' : 'Status'}</th>
-                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Opções</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">{view === 'credito_base' ? 'Ação' : 'Opções'}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -1385,36 +1385,46 @@
                                                     {c.hasDiagnostico && <span className="bg-[#05121b] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Diagnóstico Financeiro</span>}
                                                     {c.hasCredito && <span className="bg-[#ff7b00] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Crédito</span>}
                                                     {c.hasERP && <span className="bg-[#137789] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">ERP Financeiro</span>}
-                                                    {c.hasConsultoria && <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Consultoria</span>}
+                                                    {c.hasConsultoria && <span className="bg-slate-500 text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Consultoria</span>}
                                                     {!c.hasDiagnostico && !c.hasCredito && !c.hasERP && !c.hasConsultoria && (
                                                         <span className="text-slate-300 text-[10px] font-bold">Nenhum produto</span>
                                                     )}
                                                 </div>
                                             </td>
                                             {/* STATUS */}
-                                            <td className="px-6 py-5 text-center align-top pt-5">
+                                            <td className="px-6 py-5 text-center align-middle">
                                                 {view === 'credito_base' ? (() => {
-                                                    const CREDITO_STATUS_LABELS = { aguardando: { label: 'Aguardando', cls: 'bg-slate-100 text-slate-500' }, em_analise: { label: 'Em Análise', cls: 'bg-amber-50 text-amber-600 border border-amber-200' }, aprovado: { label: 'Aprovado', cls: 'bg-emerald-50 text-emerald-600 border border-emerald-200' }, reprovado: { label: 'Reprovado', cls: 'bg-red-50 text-red-600 border border-red-200' } };
                                                     const st = c.creditoStatus || 'aguardando';
-                                                    const info = CREDITO_STATUS_LABELS[st] || CREDITO_STATUS_LABELS.aguardando;
-                                                    const profileId = c.userId;
-                                                    return (
-                                                        <div className="flex flex-col items-center gap-2">
-                                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full ${info.cls}`}>{info.label}</span>
-                                                            <div className="flex gap-1.5">
-                                                                <button onClick={() => updateCreditoStatus(profileId, 'aprovado')} disabled={st === 'aprovado' || updatingCreditoStatus === profileId} className="text-[9px] font-black px-2.5 py-1 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-40 transition-all">Aprovar</button>
-                                                                <button onClick={() => updateCreditoStatus(profileId, 'reprovado')} disabled={st === 'reprovado' || updatingCreditoStatus === profileId} className="text-[9px] font-black px-2.5 py-1 rounded-lg bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 transition-all">Reprovar</button>
-                                                            </div>
-                                                        </div>
-                                                    );
+                                                    if (st === 'aprovado') return <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Aprovado</span>;
+                                                    if (st === 'reprovado') return <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-red-50 text-red-600 border border-red-200">Reprovado</span>;
+                                                    return <span className="text-slate-300 text-[10px]">—</span>;
                                                 })() : (
                                                     <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.clientStatus === 'Ativo' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
                                                         {c.clientStatus || "Pendente"}
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-5 text-center align-top pt-6">
-                                                <button className="text-slate-400 hover:text-[#05121b] transition-colors"><MoreHorizontal size={20}/></button>
+                                            {/* AÇÕES / OPÇÕES */}
+                                            <td className="px-6 py-5 text-center align-middle">
+                                                {view === 'credito_base' ? (() => {
+                                                    const st = c.creditoStatus || 'aguardando';
+                                                    const profileId = c.userId;
+                                                    const loading = updatingCreditoStatus === profileId;
+                                                    return (
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <button onClick={() => updateCreditoStatus(profileId, 'aprovado')} disabled={st === 'aprovado' || loading}
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all border ${st === 'aprovado' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 cursor-default' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50 disabled:opacity-40'}`}>
+                                                                Aprovar
+                                                            </button>
+                                                            <button onClick={() => updateCreditoStatus(profileId, 'reprovado')} disabled={st === 'reprovado' || loading}
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all border ${st === 'reprovado' ? 'bg-red-50 text-red-600 border-red-200 cursor-default' : 'bg-white text-red-500 border-red-200 hover:bg-red-50 disabled:opacity-40'}`}>
+                                                                Reprovar
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })() : (
+                                                    <button className="text-slate-400 hover:text-[#05121b] transition-colors"><MoreHorizontal size={20}/></button>
+                                                )}
                                             </td>
                                         </tr>
                                     )) : (
