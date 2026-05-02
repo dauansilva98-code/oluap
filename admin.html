@@ -56,7 +56,7 @@
           Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote,
           X, Printer, MessageCircle, Send, Download, RefreshCw, Upload, FileBox,
           FolderOpen, CreditCard, Briefcase, Database, Activity, ChevronDown, MoreHorizontal,
-          TrendingUp, PlusCircle, ClipboardList, DollarSign, BarChart, CheckSquare, AlertCircle
+          TrendingUp, PlusCircle, ClipboardList, DollarSign, BarChart, CheckSquare, AlertCircle, XCircle
         } from 'lucide-react';
 
         const SUPABASE_URL = 'https://haxonnnbycypirigxsvj.supabase.co';
@@ -554,6 +554,18 @@
           const [generalClientNotes, setGeneralClientNotes] = useState("");
           const [clientNotesSaveStatus, setClientNotesSaveStatus] = useState("");
 
+          // Crédito – Fila de Análise
+          const [rawProfiles, setRawProfiles] = useState([]);
+          const [creditoAnaliseSearch, setCreditoAnaliseSearch] = useState("");
+          const [creditoAnaliseDateFrom, setCreditoAnaliseDateFrom] = useState("");
+          const [creditoAnaliseDateTo, setCreditoAnaliseDateTo] = useState("");
+          const [updatingCreditoStatus, setUpdatingCreditoStatus] = useState(null);
+
+          // Crédito – Operações
+          const [creditoOpSearch, setCreditoOpSearch] = useState("");
+          const [confirmEtapaModal, setConfirmEtapaModal] = useState(null); // { profile, direction }
+          const [updatingOpStatus, setUpdatingOpStatus] = useState(null);
+
           useEffect(() => {
             fetchData();
             fetchConsultorias();
@@ -688,9 +700,14 @@
               return key;
             };
 
+            setRawProfiles(safeProfiles);
+
             // 1. Seed a partir de profiles (base central)
             safeProfiles.forEach(p => {
-              ensureClient(p.cnpj, p.full_name || p.name, p.razao_social || p.full_name || p.name, p.email, p.phone || p.telefone, p.created_at, p.user_id || p.id);
+              const key = ensureClient(p.cnpj, p.full_name || p.name, p.razao_social || p.full_name || p.name, p.email, p.phone || p.telefone, p.created_at, p.user_id || p.id);
+              clientsMap[key].userId = p.user_id || p.id;
+              clientsMap[key].creditoStatus = p.credito_cnpj_status || 'aguardando';
+              clientsMap[key].operacaoStatus = p.credito_operacao_status || null;
             });
 
             // 2. Seed a partir de diagnosticos (todos, pending ou completed)
@@ -782,12 +799,57 @@
           const goClients = () => { setView('clients'); setSelectedClient(null); setSelectedSubmission(null); };
           const goCadastros = () => { setView('cadastros'); setSelectedClient(null); setSelectedSubmission(null); };
           const goCreditoBase = () => { setView('credito_base'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goCreditoAnalise = () => { setView('credito_analise'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goCreditoOperacao = () => { setView('credito_operacao'); setSelectedClient(null); setSelectedSubmission(null); };
           const goErpBase = () => { setView('erp_base'); setSelectedClient(null); setSelectedSubmission(null); }; 
           const goConsultoriaBase = () => { setView('consultoria_base'); setSelectedClient(null); setSelectedSubmission(null); };
           const goConsultoriaAcompanhar = () => { setView('consultoria_acompanhar'); setSelectedClient(null); setSelectedSubmission(null); };
           const goConsultoriaNova = () => { setView('consultoria_nova'); setSelectedClient(null); setSelectedSubmission(null); };
           
-          const openClientProfile = (client) => { 
+          const OPERACAO_STEPS_ADMIN = [
+            { id: 'preenchimento', label: 'Preenchimento de Dados' },
+            { id: 'aprovado',      label: 'Aprovado' },
+            { id: 'criada',        label: 'Operação Criada' },
+            { id: 'paga',          label: 'Operação Paga' },
+          ];
+
+          const updateCreditoStatus = async (profileId, newStatus) => {
+            setUpdatingCreditoStatus(profileId);
+            try {
+              await supabase.from('profiles').update({ credito_cnpj_status: newStatus }).eq('id', profileId);
+              setRawProfiles(prev => prev.map(p => p.id === profileId || p.user_id === profileId ? { ...p, credito_cnpj_status: newStatus } : p));
+              fetchData();
+            } catch {}
+            setUpdatingCreditoStatus(null);
+          };
+
+          const updateOperacaoStatus = async (profileId, newStatus) => {
+            setUpdatingOpStatus(profileId);
+            try {
+              await supabase.from('profiles').update({ credito_operacao_status: newStatus }).eq('id', profileId);
+              setRawProfiles(prev => prev.map(p => p.id === profileId || p.user_id === profileId ? { ...p, credito_operacao_status: newStatus } : p));
+              fetchData();
+            } catch {}
+            setUpdatingOpStatus(null);
+            setConfirmEtapaModal(null);
+          };
+
+          const handleConfirmEtapa = (profile, direction) => {
+            setConfirmEtapaModal({ profile, direction });
+          };
+
+          const executeEtapa = () => {
+            if (!confirmEtapaModal) return;
+            const { profile, direction } = confirmEtapaModal;
+            const steps = OPERACAO_STEPS_ADMIN.map(s => s.id);
+            const cur = profile.credito_operacao_status ? steps.indexOf(profile.credito_operacao_status) : -1;
+            let next;
+            if (direction === 'next') next = steps[Math.min(cur + 1, steps.length - 1)];
+            else next = cur > 0 ? steps[cur - 1] : steps[0];
+            updateOperacaoStatus(profile.id || profile.user_id, next);
+          };
+
+          const openClientProfile = (client) => {
               setSelectedClient(client); setGeneralClientNotes(client.generalNotes); setView('client_profile'); window.scrollTo({ top: 0, behavior: 'smooth' });
           };
           const openClientRegistration = (client) => {
@@ -1127,10 +1189,10 @@
                         )}
                     </div>
                     <div className="flex flex-col w-full">
-                        <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsCreditoMenuOpen(!isCreditoMenuOpen); }} 
-                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='credito_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
+                        <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsCreditoMenuOpen(!isCreditoMenuOpen); }}
+                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${['credito_base','credito_analise','credito_operacao'].includes(view) ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
                             <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
-                                <CreditCard size={20} className={`shrink-0 ${view==='credito_base' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
+                                <CreditCard size={20} className={`shrink-0 ${['credito_base','credito_analise','credito_operacao'].includes(view) ? 'text-[#ff7b00]' : 'text-slate-400'}`}/>
                                 {isSidebarOpen && <span className="whitespace-nowrap truncate">Crédito</span>}
                             </div>
                             {isSidebarOpen && <ChevronDown size={16} className={`shrink-0 transition-transform duration-200 ${isCreditoMenuOpen ? 'rotate-180' : ''}`} />}
@@ -1139,6 +1201,12 @@
                             <div className="pl-5 mt-2 space-y-1">
                                 <button onClick={goCreditoBase} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='credito_base'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
                                     <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='credito_base' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Base de Clientes</span>
+                                </button>
+                                <button onClick={goCreditoAnalise} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='credito_analise'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='credito_analise' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Análises</span>
+                                </button>
+                                <button onClick={goCreditoOperacao} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='credito_operacao'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='credito_operacao' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Operações</span>
                                 </button>
                             </div>
                         )}
@@ -1261,6 +1329,208 @@
                         )}
                     </div>
                 )}
+
+                {/* FILA DE ANÁLISE – CRÉDITO */}
+                {view === 'credito_analise' && (() => {
+                    const analiseProfiles = rawProfiles.filter(p => p.credito_cnpj_status === 'em_analise');
+                    let filtered = analiseProfiles;
+                    if (creditoAnaliseSearch.trim()) {
+                        const q = creditoAnaliseSearch.toLowerCase();
+                        filtered = filtered.filter(p =>
+                            (p.full_name || '').toLowerCase().includes(q) ||
+                            (p.email || '').toLowerCase().includes(q) ||
+                            (p.cnpj || '').includes(q) ||
+                            (p.razao_social || '').toLowerCase().includes(q)
+                        );
+                    }
+                    if (creditoAnaliseDateFrom) filtered = filtered.filter(p => new Date(p.created_at) >= new Date(creditoAnaliseDateFrom));
+                    if (creditoAnaliseDateTo) {
+                        const to = new Date(creditoAnaliseDateTo); to.setHours(23,59,59,999);
+                        filtered = filtered.filter(p => new Date(p.created_at) <= to);
+                    }
+                    filtered = [...filtered].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                    return (
+                        <div className="max-w-6xl mx-auto w-full">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                <header>
+                                    <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Fila de Análise</h1>
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Clientes que solicitaram análise de crédito · por ordem de chegada</p>
+                                </header>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><RefreshCw size={16} /> Sincronizar</button>
+                            </div>
+
+                            <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                                <div className="flex-1 w-full relative">
+                                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Pesquisar por nome, e-mail, CNPJ..." value={creditoAnaliseSearch} onChange={e => setCreditoAnaliseSearch(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                                </div>
+                                <div className="w-full md:w-48 relative">
+                                    <input type="text" placeholder="Data início" onFocus={e => e.target.type='date'} onBlur={e => { if(!e.target.value) e.target.type='text'; }} value={creditoAnaliseDateFrom} onChange={e => setCreditoAnaliseDateFrom(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                                </div>
+                                <div className="w-full md:w-48 relative">
+                                    <input type="text" placeholder="Data fim" onFocus={e => e.target.type='date'} onBlur={e => { if(!e.target.value) e.target.type='text'; }} value={creditoAnaliseDateTo} onChange={e => setCreditoAnaliseDateTo(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                                </div>
+                                <button onClick={() => { setCreditoAnaliseSearch(''); setCreditoAnaliseDateFrom(''); setCreditoAnaliseDateTo(''); }} className="text-slate-500 hover:text-[#137789] font-medium text-sm px-4 whitespace-nowrap transition-colors">Limpar</button>
+                            </div>
+
+                            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-white border-b border-slate-200">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500">#</th>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500">Cliente</th>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500">CNPJ</th>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500">Chegada</th>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filtered.length > 0 ? filtered.map((p, idx) => (
+                                            <tr key={p.id || p.user_id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-5 text-slate-400 font-bold text-sm">{idx + 1}º</td>
+                                                <td className="px-6 py-5">
+                                                    <div className="text-[15px] font-medium text-[#05121b] mb-0.5">{p.razao_social || p.full_name || '—'}</div>
+                                                    <div className="text-[11px] text-slate-400">{p.email || '—'} · {p.phone || p.telefone || '—'}</div>
+                                                </td>
+                                                <td className="px-6 py-5 text-sm text-slate-600">{p.cnpj || '—'}</td>
+                                                <td className="px-6 py-5 text-sm text-slate-500">{p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '—'}</td>
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button onClick={() => updateCreditoStatus(p.id || p.user_id, 'aprovado')} disabled={updatingCreditoStatus === (p.id || p.user_id)}
+                                                            className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-emerald-100 transition-all disabled:opacity-50">
+                                                            {updatingCreditoStatus === (p.id || p.user_id) ? <RefreshCw size={11} className="animate-spin"/> : <CheckCircle size={11}/>} Aprovar
+                                                        </button>
+                                                        <button onClick={() => updateCreditoStatus(p.id || p.user_id, 'reprovado')} disabled={updatingCreditoStatus === (p.id || p.user_id)}
+                                                            className="flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-red-100 transition-all disabled:opacity-50">
+                                                            {updatingCreditoStatus === (p.id || p.user_id) ? <RefreshCw size={11} className="animate-spin"/> : <XCircle size={11}/>} Reprovar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr><td colSpan="5" className="p-16 text-center text-slate-400 text-sm">Nenhuma solicitação de análise aguardando.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* OPERAÇÕES – CRÉDITO */}
+                {view === 'credito_operacao' && (() => {
+                    const opSteps = OPERACAO_STEPS_ADMIN.map(s => s.id);
+                    let opProfiles = rawProfiles.filter(p => p.credito_cnpj_status === 'aprovado');
+                    if (creditoOpSearch.trim()) {
+                        const q = creditoOpSearch.toLowerCase();
+                        opProfiles = opProfiles.filter(p =>
+                            (p.full_name || '').toLowerCase().includes(q) ||
+                            (p.email || '').toLowerCase().includes(q) ||
+                            (p.cnpj || '').includes(q) ||
+                            (p.razao_social || '').toLowerCase().includes(q)
+                        );
+                    }
+                    return (
+                        <div className="max-w-6xl mx-auto w-full">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                <header>
+                                    <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Operações</h1>
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Gestão da linha do tempo de cada operação de crédito</p>
+                                </header>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><RefreshCw size={16} /> Sincronizar</button>
+                            </div>
+
+                            <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                                <div className="flex-1 w-full relative">
+                                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Pesquisar por nome, e-mail, CNPJ..." value={creditoOpSearch} onChange={e => setCreditoOpSearch(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                                </div>
+                                <button onClick={() => setCreditoOpSearch('')} className="text-slate-500 hover:text-[#137789] font-medium text-sm px-4 whitespace-nowrap transition-colors">Limpar</button>
+                            </div>
+
+                            {opProfiles.length === 0 ? (
+                                <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
+                                    <p className="text-slate-400 text-sm">Nenhum cliente aprovado encontrado.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {opProfiles.map(p => {
+                                        const cur = p.credito_operacao_status ? opSteps.indexOf(p.credito_operacao_status) : -1;
+                                        const isFirst = cur <= 0;
+                                        const isLast = cur >= opSteps.length - 1;
+                                        const isUpdating = updatingOpStatus === (p.id || p.user_id);
+                                        return (
+                                            <div key={p.id || p.user_id} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+                                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                                                    <div>
+                                                        <p className="text-base font-black text-[#05121b]">{p.razao_social || p.full_name || '—'}</p>
+                                                        <p className="text-[11px] text-slate-400 mt-0.5">{p.cnpj || '—'} · {p.email || '—'}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <button onClick={() => handleConfirmEtapa(p, 'prev')} disabled={isFirst || isUpdating}
+                                                            className="flex items-center gap-1.5 bg-slate-50 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-slate-100 transition-all disabled:opacity-40">
+                                                            <ChevronLeft size={12}/> Etapa Anterior
+                                                        </button>
+                                                        <button onClick={() => handleConfirmEtapa(p, 'next')} disabled={isLast || isUpdating}
+                                                            className="flex items-center gap-1.5 bg-[#05121b] text-white border border-[#05121b] px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-[#137789] hover:border-[#137789] transition-all disabled:opacity-40">
+                                                            {isUpdating ? <RefreshCw size={11} className="animate-spin"/> : <ChevronRight size={12}/>} Próxima Etapa
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-0">
+                                                    {OPERACAO_STEPS_ADMIN.map((step, idx) => {
+                                                        const done = idx <= cur;
+                                                        const current = idx === cur;
+                                                        const last = idx === OPERACAO_STEPS_ADMIN.length - 1;
+                                                        return (
+                                                            <div key={step.id} className="flex items-center flex-1">
+                                                                <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                                                                    <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all
+                                                                        ${done ? 'bg-[#137789] border-[#137789] text-white' : 'bg-white border-slate-200 text-slate-300'}`}>
+                                                                        {done ? <CheckCircle size={14}/> : idx + 1}
+                                                                    </div>
+                                                                    <span className={`text-[8px] font-bold uppercase tracking-wide text-center whitespace-nowrap ${done ? 'text-[#137789]' : 'text-slate-300'}`}>{step.label}</span>
+                                                                    {current && <span className="text-[7px] bg-[#137789]/10 text-[#137789] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider">Atual</span>}
+                                                                </div>
+                                                                {!last && <div className={`flex-1 h-0.5 mx-1 mb-5 transition-all ${done && idx < cur ? 'bg-[#137789]' : 'bg-slate-200'}`}/>}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Modal de Confirmação de Etapa */}
+                            {confirmEtapaModal && (
+                                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                                    <div className="bg-white rounded-2xl p-7 max-w-sm w-full shadow-2xl">
+                                        <h3 className="text-base font-black text-[#05121b] mb-2">
+                                            {confirmEtapaModal.direction === 'next' ? 'Avançar para próxima etapa?' : 'Voltar para etapa anterior?'}
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                                            {(() => {
+                                                const steps = OPERACAO_STEPS_ADMIN.map(s => s.id);
+                                                const cur = confirmEtapaModal.profile.credito_operacao_status ? steps.indexOf(confirmEtapaModal.profile.credito_operacao_status) : -1;
+                                                let next;
+                                                if (confirmEtapaModal.direction === 'next') next = OPERACAO_STEPS_ADMIN[Math.min(cur + 1, steps.length - 1)];
+                                                else next = OPERACAO_STEPS_ADMIN[Math.max(cur - 1, 0)];
+                                                const cur_label = cur >= 0 ? OPERACAO_STEPS_ADMIN[cur]?.label : 'Não iniciada';
+                                                return `Cliente: ${confirmEtapaModal.profile.razao_social || confirmEtapaModal.profile.full_name || '—'}. ${confirmEtapaModal.direction === 'next' ? `De "${cur_label}" para "${next?.label}".` : `De "${cur_label}" para "${next?.label}".`}`;
+                                            })()}
+                                        </p>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => setConfirmEtapaModal(null)} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">Cancelar</button>
+                                            <button onClick={executeEtapa} className="flex-1 py-3 bg-[#05121b] text-white rounded-xl text-sm font-black hover:bg-[#137789] transition-all">Confirmar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
 
                 {/* FICHA DE CADASTRO DO CLIENTE */}
                 {view === 'client_registration' && selectedClient && (
