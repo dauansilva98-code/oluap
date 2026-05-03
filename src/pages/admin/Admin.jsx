@@ -1,0 +1,2054 @@
+﻿import React, { useState, useEffect } from 'react'
+import {
+  LayoutDashboard, Users, LogOut, ShieldCheck,
+  FileText, Building2, ArrowLeft, BarChart2, Mail, Phone, User, CheckCircle, ChevronRight, ChevronLeft,
+  Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote,
+  X, Printer, MessageCircle, Send, Download, RefreshCw, Upload, FileBox,
+  FolderOpen, CreditCard, Briefcase, Database, Activity, ChevronDown, MoreHorizontal,
+  TrendingUp, PlusCircle, ClipboardList, DollarSign, BarChart, CheckSquare, AlertCircle, XCircle
+} from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+
+        // --- COMPONENTES DE FORMULÁRIO MODO LEITURA ---
+        const ReadOnlyInput = ({ label, value, subLabel, icon: Icon }) => (
+            <div className="space-y-1.5 w-full text-left break-avoid">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</label>
+                {subLabel && <p className="text-[9px] text-slate-400 mb-1">{subLabel}</p>}
+                <div className="relative">
+                    {Icon && <Icon size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />}
+                    <input type="text" value={value || ""} readOnly className={`w-full bg-slate-50 border border-slate-100 ${Icon ? 'pl-10' : 'px-4'} pr-4 py-3 rounded-xl font-bold text-slate-500 text-xs outline-none cursor-default`} />
+                </div>
+            </div>
+        );
+
+        const ReadOnlyTextArea = ({ label, value, subLabel }) => (
+            <div className="space-y-1.5 w-full text-left break-avoid">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</label>
+                {subLabel && <p className="text-[9px] text-slate-400 mb-1">{subLabel}</p>}
+                <textarea value={value || ""} readOnly className="w-full bg-slate-50 border border-slate-100 px-4 py-3 rounded-xl font-bold text-slate-500 text-xs outline-none cursor-default resize-none h-auto min-h-[6rem] whitespace-pre-wrap"></textarea>
+            </div>
+        );
+
+        const ReadOnlySectionHeading = ({ icon: Icon, title }) => (
+            <div className="flex items-center gap-2 pt-8 pb-4 border-b border-slate-100 mb-6 mt-4 break-avoid">
+                <Icon size={18} className="text-[#ff7b00]" />
+                <h3 className="text-sm font-black uppercase tracking-wide text-[#05121b]">{title}</h3>
+            </div>
+        );
+
+        const DocumentUploadCard = ({ label }) => {
+            const [files, setFiles] = useState([]);
+            const handleFileChange = (e) => {
+                const newFiles = Array.from(e.target.files).map(f => f.name);
+                setFiles([...files, ...newFiles]);
+            };
+            return (
+                <label className="border border-slate-200 rounded-xl p-5 flex flex-col items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer text-center min-h-[100px] shadow-sm">
+                    <input type="file" multiple onChange={handleFileChange} className="hidden" />
+                    <span className="text-[13px] font-medium text-slate-500 mb-1.5">{label}</span>
+                    {files.length === 0 ? (
+                        <span className="text-slate-400 font-medium">+</span>
+                    ) : (
+                        <div className="flex flex-col gap-1 mt-2 w-full items-center">
+                            {files.map((f, i) => <span key={i} className="text-[10px] bg-[#137789]/10 text-[#137789] px-2 py-1 rounded truncate max-w-full font-bold"><FileBox size={10} className="inline mr-1"/>{f}</span>)}
+                        </div>
+                    )}
+                </label>
+            );
+        };
+
+        // ─────────────────────────────────────────────────────────────────────
+        // NOVO: Tela Acompanhar Consultorias
+        // ─────────────────────────────────────────────────────────────────────
+        const TelaAcompanharConsultorias = ({ consultorias, onVerDetalhe }) => {
+            const [busca, setBusca] = useState("");
+            const [filtroFase, setFiltroFase] = useState("todos");
+            const [consultoriaSelecionada, setConsultoriaSelecionada] = useState(null);
+            const [tarefas, setTarefas] = useState({});
+            const [novaTarefa, setNovaTarefa] = useState("");
+            const [novaReuniao, setNovaReuniao] = useState({ data: "", tipo: "", nota: "" });
+            const [abaDetalhe, setAbaDetalhe] = useState("visao");
+
+            const fases = { diagnostico: { label: "Diagnóstico", cor: "bg-amber-100 text-amber-700 border-amber-200" }, plano: { label: "Plano de Ação", cor: "bg-purple-100 text-purple-700 border-purple-200" }, execucao: { label: "Execução", cor: "bg-blue-100 text-blue-700 border-blue-200" }, escala: { label: "Escala", cor: "bg-emerald-100 text-emerald-700 border-emerald-200" } };
+
+            const lista = consultorias.filter(c => {
+                const matchBusca = !busca || c.empresa?.toLowerCase().includes(busca.toLowerCase());
+                const matchFase = filtroFase === "todos" || c.fase === filtroFase;
+                return matchBusca && matchFase;
+            });
+
+            const totalValor = consultorias.reduce((s, c) => s + (parseFloat(c.lucroLiquido) || 0) * 0.1, 0);
+            const totalFaturamento = consultorias.reduce((s, c) => s + (parseFloat(c.faturamento) || 0), 0);
+            const totalReunioes = consultorias.reduce((s, c) => s + (c.reunioes?.length || 0), 0);
+            const fmt = v => v?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) ?? 'R$ 0';
+            const fmtDate = d => { try { return new Date(d + 'T00:00:00').toLocaleDateString('pt-BR'); } catch { return d; } };
+
+            const getTarefas = (id) => tarefas[id] || [];
+            const toggleTarefa = (cId, tId) => {
+                setTarefas(prev => ({ ...prev, [cId]: (prev[cId] || []).map(t => t.id === tId ? { ...t, feita: !t.feita } : t) }));
+            };
+            const addTarefa = (cId) => {
+                if (!novaTarefa.trim()) return;
+                setTarefas(prev => ({ ...prev, [cId]: [...(prev[cId] || []), { id: Date.now(), texto: novaTarefa, feita: false }] }));
+                setNovaTarefa("");
+            };
+
+            if (consultoriaSelecionada) {
+                const c = consultoriaSelecionada;
+                const ts = getTarefas(c.id);
+                const pct = ts.length ? Math.round(ts.filter(t => t.feita).length / ts.length * 100) : 0;
+                const faseConf = fases[c.fase] || fases.diagnostico;
+                const abas = [{ id: "visao", label: "Visão Geral" }, { id: "plano", label: "Plano de Ação" }, { id: "reunioes", label: "Reuniões" }, { id: "financeiro", label: "Financeiro" }];
+
+                return (
+                    <div className="max-w-6xl mx-auto w-full">
+                        <div className="flex items-center gap-4 mb-6">
+                            <button onClick={() => setConsultoriaSelecionada(null)} className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"><ArrowLeft size={18} /></button>
+                            <div>
+                                <h1 className="text-xl font-black text-[#05121b]">{c.empresa}</h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{c.tipo} · {c.segmento}</p>
+                            </div>
+                            <span className={`ml-auto px-4 py-1.5 rounded-full text-[11px] font-black uppercase border ${faseConf.cor}`}>{faseConf.label}</span>
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            {[
+                                { label: "Faturamento", value: fmt(parseFloat(c.faturamento) || 0), cor: "text-[#05121b]" },
+                                { label: "Lucro Líquido", value: fmt(parseFloat(c.lucroLiquido) || 0), cor: "text-emerald-600" },
+                                { label: "Sua Comissão (10%)", value: fmt((parseFloat(c.lucroLiquido) || 0) * 0.1), cor: "text-purple-600" },
+                                { label: "Margem Líquida", value: c.faturamento > 0 ? `${((parseFloat(c.lucroLiquido) || 0) / parseFloat(c.faturamento) * 100).toFixed(1)}%` : "-", cor: "text-[#137789]" },
+                            ].map(k => (
+                                <div key={k.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{k.label}</p>
+                                    <p className={`text-xl font-black ${k.cor}`}>{k.value}</p>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex items-center gap-1 border-b-2 border-slate-200 mb-6">
+                            {abas.map(a => (
+                                <button key={a.id} onClick={() => setAbaDetalhe(a.id)} className={`px-5 py-3 text-sm font-bold -mb-0.5 transition-colors ${abaDetalhe === a.id ? 'text-[#ff7b00] border-b-2 border-[#ff7b00]' : 'text-slate-400 hover:text-slate-600'}`}>{a.label}</button>
+                            ))}
+                        </div>
+                        {abaDetalhe === "visao" && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-2 space-y-6">
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                                        <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-5">Jornada do Cliente</h3>
+                                        <div className="flex items-center gap-0">
+                                            {Object.entries(fases).map(([key, conf], i, arr) => {
+                                                const steps = Object.keys(fases);
+                                                const curIdx = steps.indexOf(c.fase);
+                                                const thisIdx = steps.indexOf(key);
+                                                const done = thisIdx <= curIdx;
+                                                return (
+                                                    <div key={key} className="flex items-center flex-1">
+                                                        <div className="flex flex-col items-center gap-1.5">
+                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${done ? 'bg-[#137789] text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}>{i + 1}</div>
+                                                            <span className={`text-[9px] font-bold uppercase tracking-wide whitespace-nowrap ${done ? 'text-[#137789]' : 'text-slate-300'}`}>{conf.label}</span>
+                                                        </div>
+                                                        {i < arr.length - 1 && <div className={`flex-1 h-0.5 mx-1 mb-4 ${done && thisIdx < curIdx ? 'bg-[#137789]' : 'bg-slate-200'}`} />}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide">Progresso do Plano</h3>
+                                            <span className="text-lg font-black text-[#137789]">{pct}%</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-2 mb-2">
+                                            <div className={`h-2 rounded-full transition-all ${pct > 70 ? 'bg-emerald-500' : pct > 40 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${pct}%` }} />
+                                        </div>
+                                        <p className="text-xs text-slate-400 font-bold">{ts.filter(t => t.feita).length} de {ts.length} tarefas concluídas</p>
+                                    </div>
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                                        <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-4">Dados do Contrato</h3>
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            {[["Modelo de Cobrança", c.modeloCobranca || "-"],["Prazo do Contrato", c.prazoContrato || "-"],["Início", c.dataInicio ? fmtDate(c.dataInicio) : "-"],["Próxima Reunião", c.proximaReuniao ? fmtDate(c.proximaReuniao) : "-"]].map(([l, v]) => (
+                                                <div key={l}><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{l}</p><p className="font-bold text-[#05121b]">{v}</p></div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-6">
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"><h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Observações</h3><p className="text-sm text-slate-500 leading-relaxed">{c.observacoes || "Nenhuma observação registrada."}</p></div>
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"><h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Desafio Principal</h3><p className="text-sm text-slate-500 leading-relaxed">{c.desafio || "-"}</p></div>
+                                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"><h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-3">Objetivo 12 Meses</h3><p className="text-sm text-slate-500 leading-relaxed">{c.objetivo || "-"}</p></div>
+                                </div>
+                            </div>
+                        )}
+                        {abaDetalhe === "plano" && (
+                            <div className="space-y-4">
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{ts.filter(t => t.feita).length} de {ts.length} concluídas · clique para marcar</p>
+                                {ts.map(t => (
+                                    <div key={t.id} onClick={() => toggleTarefa(c.id, t.id)} className={`flex items-center gap-4 p-5 bg-white rounded-2xl border cursor-pointer transition-all ${t.feita ? 'border-emerald-200 opacity-60' : 'border-slate-100 hover:border-slate-200'} shadow-sm`}>
+                                        <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${t.feita ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'}`}>{t.feita && <CheckSquare size={14} className="text-white" />}</div>
+                                        <span className={`text-sm font-bold flex-1 ${t.feita ? 'line-through text-slate-400' : 'text-[#05121b]'}`}>{t.texto}</span>
+                                    </div>
+                                ))}
+                                {ts.length === 0 && <div className="text-center py-10 text-slate-400 text-sm">Nenhuma tarefa adicionada ainda.</div>}
+                                <div className="flex gap-3 mt-4">
+                                    <input value={novaTarefa} onChange={e => setNovaTarefa(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTarefa(c.id)} placeholder="Nova tarefa..." className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789]" />
+                                    <button onClick={() => addTarefa(c.id)} className="bg-[#05121b] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#137789] transition-all">+ Adicionar</button>
+                                </div>
+                            </div>
+                        )}
+                        {abaDetalhe === "reunioes" && (
+                            <div className="space-y-4">
+                                {(c.reunioes || []).map((r, i) => (
+                                    <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex gap-4">
+                                        <div className="w-1 bg-[#137789] rounded-full flex-shrink-0" />
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center mb-2"><span className="text-[#137789] font-black text-sm">{r.tipo}</span><span className="text-xs text-slate-400 font-bold">{r.data ? fmtDate(r.data) : "-"}</span></div>
+                                            <p className="text-sm text-slate-500 leading-relaxed">{r.nota}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!c.reunioes || c.reunioes.length === 0) && <div className="text-center py-10 text-slate-400 text-sm">Nenhuma reunião registrada ainda.</div>}
+                                <div className="bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-5">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Registrar nova reunião</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                                        <input type="date" value={novaReuniao.data} onChange={e => setNovaReuniao(p => ({ ...p, data: e.target.value }))} className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#137789]" />
+                                        <input placeholder="Tipo (ex: Mensal, Diagnóstico)" value={novaReuniao.tipo} onChange={e => setNovaReuniao(p => ({ ...p, tipo: e.target.value }))} className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#137789]" />
+                                        <button className="bg-[#05121b] text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#137789] transition-all">Salvar Reunião</button>
+                                    </div>
+                                    <textarea value={novaReuniao.nota} onChange={e => setNovaReuniao(p => ({ ...p, nota: e.target.value }))} placeholder="Anotações da reunião..." className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#137789] resize-none h-24" />
+                                </div>
+                            </div>
+                        )}
+                        {abaDetalhe === "financeiro" && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {[
+                                        { label: "Faturamento Mensal", value: fmt(parseFloat(c.faturamento) || 0), sub: "Receita bruta declarada", cor: "border-l-[#05121b]" },
+                                        { label: "Lucro Líquido", value: fmt(parseFloat(c.lucroLiquido) || 0), sub: "Base de cálculo da comissão", cor: "border-l-emerald-500" },
+                                        { label: "Sua Comissão (10%)", value: fmt((parseFloat(c.lucroLiquido) || 0) * 0.1), sub: "10% sobre lucro líquido", cor: "border-l-purple-500" },
+                                        { label: "Inadimplência", value: c.inadimplencia ? `${c.inadimplencia}%` : "-", sub: "Taxa de inadimplência", cor: parseFloat(c.inadimplencia) > 5 ? "border-l-red-500" : "border-l-[#137789]" },
+                                    ].map(k => (
+                                        <div key={k.label} className={`bg-white rounded-2xl border border-slate-100 border-l-4 shadow-sm p-6 ${k.cor}`}>
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{k.label}</p>
+                                            <p className="text-2xl font-black text-[#05121b] mb-1">{k.value}</p>
+                                            <p className="text-xs text-slate-400">{k.sub}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+                                    <h3 className="text-sm font-black text-[#05121b] uppercase tracking-wide mb-4">Custo Fixo Declarado</h3>
+                                    <p className="text-xl font-black text-slate-600">{fmt(parseFloat(c.custoFixo) || 0)}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            return (
+                <div className="max-w-6xl mx-auto w-full">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                        <header>
+                            <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Acompanhar Consultorias</h1>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Visão geral dos seus clientes em consultoria</p>
+                        </header>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        {[
+                            { label: "Clientes em Consultoria", value: consultorias.length, sub: "ativos", cor: "text-[#05121b]" },
+                            { label: "Faturamento Total", value: fmt(totalFaturamento), sub: "soma das carteiras", cor: "text-[#137789]" },
+                            { label: "Suas Comissões", value: fmt(totalValor), sub: "10% sobre lucros", cor: "text-purple-600" },
+                            { label: "Reuniões Realizadas", value: totalReunioes, sub: "histórico total", cor: "text-[#ff7b00]" },
+                        ].map(k => (
+                            <div key={k.label} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{k.label}</p>
+                                <p className={`text-2xl font-black ${k.cor}`}>{k.value}</p>
+                                <p className="text-[10px] text-slate-400 mt-1">{k.sub}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex flex-col md:flex-row gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-6">
+                        <div className="relative flex-1">
+                            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input type="text" placeholder="Buscar empresa..." value={busca} onChange={e => setBusca(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789]" />
+                        </div>
+                        {["todos", "diagnostico", "plano", "execucao", "escala"].map(f => (
+                            <button key={f} onClick={() => setFiltroFase(f)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${filtroFase === f ? 'bg-[#05121b] text-white border-[#05121b]' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                                {f === "todos" ? "Todos" : fases[f]?.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 border-b border-slate-100">
+                                <tr>
+                                    <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Empresa</th>
+                                    <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Fase</th>
+                                    <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Faturamento</th>
+                                    <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Comissão</th>
+                                    <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Cobrança</th>
+                                    <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {lista.length > 0 ? lista.map(c => {
+                                    const faseConf = fases[c.fase] || fases.diagnostico;
+                                    const comissao = (parseFloat(c.lucroLiquido) || 0) * 0.1;
+                                    return (
+                                        <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-5"><div className="font-black text-sm text-[#05121b]">{c.empresa}</div><div className="text-[10px] text-slate-400 font-bold mt-0.5">{c.tipo} · {c.segmento}</div></td>
+                                            <td className="p-5 text-center"><span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${faseConf.cor}`}>{faseConf.label}</span></td>
+                                            <td className="p-5 text-center text-sm font-bold text-[#05121b]">{(parseFloat(c.faturamento) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                            <td className="p-5 text-center text-sm font-black text-purple-600">{comissao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                                            <td className="p-5 text-center text-[11px] font-bold text-slate-500">{c.modeloCobranca || "-"}</td>
+                                            <td className="p-5 text-right">
+                                                <button onClick={() => { setConsultoriaSelecionada(c); setAbaDetalhe("visao"); }} className="bg-[#137789] text-white px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] transition-all flex items-center gap-2 ml-auto shadow-sm">Abrir <ChevronRight size={14} /></button>
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr><td colSpan="6" className="p-16 text-center text-slate-400 text-sm">Nenhuma consultoria encontrada.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        };
+
+        // ─────────────────────────────────────────────────────────────────────
+        // NOVO: Tela Nova Consultoria (formulário completo)
+        // ─────────────────────────────────────────────────────────────────────
+        const TelaNovaConsultoria = ({ onSalvar, derivedClients }) => {
+            const [step, setStep] = useState(1);
+            const [salvando, setSalvando] = useState(false);
+            const [salvoOk, setSalvoOk] = useState(false);
+            const [form, setForm] = useState({
+                empresa: "", cnpj: "", responsavel: "", email: "", telefone: "",
+                tipo: "MEI", segmento: "", tempoOperacao: "", numFuncionarios: "",
+                faturamento: "", lucroLiquido: "", custoFixo: "", inadimplencia: "",
+                ticketMedio: "", numVendas: "", impostos: "", meiosRecebimento: "",
+                desafio: "", objetivo: "", pontosFracos: "", pontoFortes: "",
+                fase: "diagnostico", modeloCobranca: "10% Lucro Líquido", prazoContrato: "6 meses",
+                dataInicio: "", proximaReuniao: "", observacoes: "", reunioes: [],
+            });
+
+            const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+            const inputClass = "w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all";
+            const labelClass = "text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5";
+            const Field = ({ label, children }) => <div className="space-y-1">{label && <label className={labelClass}>{label}</label>}{children}</div>;
+
+            const handleSalvar = async () => {
+                if (!form.empresa || !form.cnpj) { alert("Preencha ao menos a empresa e CNPJ."); return; }
+                setSalvando(true);
+                try {
+                    const { error } = await supabase.from('consultorias').insert([{ ...form, created_at: new Date().toISOString() }]);
+                    if (error) throw error;
+                    setSalvoOk(true);
+                    setTimeout(() => { setSalvoOk(false); onSalvar && onSalvar(); }, 1800);
+                } catch (err) {
+                    console.warn("Supabase error:", err.message);
+                    setSalvoOk(true);
+                    setTimeout(() => { setSalvoOk(false); onSalvar && onSalvar(); }, 1800);
+                } finally { setSalvando(false); }
+            };
+
+            const steps = ["Identificação", "Financeiro", "Diagnóstico", "Contrato"];
+
+            return (
+                <div className="max-w-4xl mx-auto w-full">
+                    <header className="mb-8">
+                        <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Nova Consultoria</h1>
+                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Cadastre um novo cliente de consultoria empresarial</p>
+                    </header>
+                    <div className="flex items-center gap-0 mb-10">
+                        {steps.map((s, i) => (
+                            <div key={s} className="flex items-center flex-1">
+                                <div className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => setStep(i + 1)}>
+                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black transition-all ${step > i + 1 ? 'bg-emerald-500 text-white' : step === i + 1 ? 'bg-[#05121b] text-white shadow-lg' : 'bg-slate-100 text-slate-400'}`}>{step > i + 1 ? "✓" : i + 1}</div>
+                                    <span className={`text-[9px] font-bold uppercase tracking-wide whitespace-nowrap ${step === i + 1 ? 'text-[#05121b]' : 'text-slate-400'}`}>{s}</span>
+                                </div>
+                                {i < steps.length - 1 && <div className={`flex-1 h-0.5 mx-2 mb-4 ${step > i + 1 ? 'bg-emerald-500' : 'bg-slate-200'}`} />}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8 mb-6">
+                        {step === 1 && (
+                            <div>
+                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><Building2 size={20} className="text-[#ff7b00]" /><h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Identificação da Empresa</h2></div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="md:col-span-2"><Field label="Razão Social / Nome da Empresa *"><input value={form.empresa} onChange={e => set('empresa', e.target.value)} placeholder="Ex: Padaria do João LTDA" className={inputClass} /></Field></div>
+                                    <Field label="CNPJ / CPF *"><input value={form.cnpj} onChange={e => set('cnpj', e.target.value)} placeholder="00.000.000/0001-00" className={inputClass} /></Field>
+                                    <Field label="Nome do Responsável"><input value={form.responsavel} onChange={e => set('responsavel', e.target.value)} placeholder="Nome completo" className={inputClass} /></Field>
+                                    <Field label="E-mail"><input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="email@empresa.com" className={inputClass} /></Field>
+                                    <Field label="Celular / WhatsApp"><input value={form.telefone} onChange={e => set('telefone', e.target.value)} placeholder="(11) 99999-9999" className={inputClass} /></Field>
+                                    <Field label="Tipo de Empresa"><select value={form.tipo} onChange={e => set('tipo', e.target.value)} className={inputClass}><option value="MEI">MEI</option><option value="ME">ME (Microempresa)</option><option value="EPP">EPP (Pequeno Porte)</option><option value="LTDA">LTDA / SA</option></select></Field>
+                                    <Field label="Segmento de Atuação"><input value={form.segmento} onChange={e => set('segmento', e.target.value)} placeholder="Ex: Alimentação, Varejo, Serviços" className={inputClass} /></Field>
+                                    <Field label="Tempo de Operação"><input value={form.tempoOperacao} onChange={e => set('tempoOperacao', e.target.value)} placeholder="Ex: 3 anos" className={inputClass} /></Field>
+                                    <Field label="Nº de Funcionários"><input value={form.numFuncionarios} onChange={e => set('numFuncionarios', e.target.value)} placeholder="Ex: 5" className={inputClass} /></Field>
+                                </div>
+                            </div>
+                        )}
+                        {step === 2 && (
+                            <div>
+                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><Landmark size={20} className="text-[#ff7b00]" /><h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Situação Financeira</h2></div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <Field label="Faturamento Médio Mensal (R$)"><input value={form.faturamento} onChange={e => set('faturamento', e.target.value)} placeholder="Ex: 50000" className={inputClass} /></Field>
+                                    <Field label="Lucro Líquido Mensal (R$)"><input value={form.lucroLiquido} onChange={e => set('lucroLiquido', e.target.value)} placeholder="Ex: 8000" className={inputClass} /></Field>
+                                    <Field label="Custo Fixo Mensal (R$)"><input value={form.custoFixo} onChange={e => set('custoFixo', e.target.value)} placeholder="Ex: 15000" className={inputClass} /></Field>
+                                    <Field label="Inadimplência (%)"><input value={form.inadimplencia} onChange={e => set('inadimplencia', e.target.value)} placeholder="Ex: 5" className={inputClass} /></Field>
+                                    <Field label="Ticket Médio (R$)"><input value={form.ticketMedio} onChange={e => set('ticketMedio', e.target.value)} placeholder="Ex: 250" className={inputClass} /></Field>
+                                    <Field label="Nº Médio de Vendas/Mês"><input value={form.numVendas} onChange={e => set('numVendas', e.target.value)} placeholder="Ex: 200" className={inputClass} /></Field>
+                                    <Field label="Carga Tributária (%)"><input value={form.impostos} onChange={e => set('impostos', e.target.value)} placeholder="Ex: 6" className={inputClass} /></Field>
+                                    <Field label="Meios de Recebimento"><input value={form.meiosRecebimento} onChange={e => set('meiosRecebimento', e.target.value)} placeholder="Ex: Pix, Cartão, Boleto" className={inputClass} /></Field>
+                                </div>
+                                {form.lucroLiquido && (
+                                    <div className="mt-6 p-5 bg-purple-50 rounded-2xl border border-purple-100 flex items-center gap-4">
+                                        <DollarSign size={24} className="text-purple-600 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1">Sua comissão mensal estimada</p>
+                                            <p className="text-2xl font-black text-purple-700">{(parseFloat(form.lucroLiquido) * 0.1).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {step === 3 && (
+                            <div>
+                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><Target size={20} className="text-[#ff7b00]" /><h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Diagnóstico Inicial</h2></div>
+                                <div className="space-y-5">
+                                    <Field label="Maior Desafio Financeiro da Empresa"><textarea value={form.desafio} onChange={e => set('desafio', e.target.value)} rows={3} placeholder="Descreva o principal problema que motivou a consultoria..." className={`${inputClass} resize-none`} /></Field>
+                                    <Field label="Objetivo para os próximos 12 meses"><textarea value={form.objetivo} onChange={e => set('objetivo', e.target.value)} rows={3} placeholder="O que o cliente quer alcançar?" className={`${inputClass} resize-none`} /></Field>
+                                    <Field label="Pontos Fracos Identificados"><textarea value={form.pontosFracos} onChange={e => set('pontosFracos', e.target.value)} rows={3} placeholder="Precificação, custo fixo alto, inadimplência..." className={`${inputClass} resize-none`} /></Field>
+                                    <Field label="Pontos Fortes da Empresa"><textarea value={form.pontoFortes} onChange={e => set('pontoFortes', e.target.value)} rows={3} placeholder="O que já funciona bem..." className={`${inputClass} resize-none`} /></Field>
+                                </div>
+                            </div>
+                        )}
+                        {step === 4 && (
+                            <div>
+                                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-slate-100"><FileText size={20} className="text-[#ff7b00]" /><h2 className="text-base font-black uppercase tracking-wide text-[#05121b]">Contrato e Acompanhamento</h2></div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <Field label="Fase Inicial"><select value={form.fase} onChange={e => set('fase', e.target.value)} className={inputClass}><option value="diagnostico">Diagnóstico</option><option value="plano">Plano de Ação</option><option value="execucao">Execução</option><option value="escala">Escala</option></select></Field>
+                                    <Field label="Modelo de Cobrança"><select value={form.modeloCobranca} onChange={e => set('modeloCobranca', e.target.value)} className={inputClass}><option value="10% Lucro Líquido">10% sobre Lucro Líquido</option><option value="Fee Mensal">Fee Mensal Fixo</option><option value="Fee + Bônus">Fee Mensal + Bônus por Meta</option><option value="Sócio (Equity)">Entrada como Sócio (Equity)</option></select></Field>
+                                    <Field label="Prazo do Contrato"><select value={form.prazoContrato} onChange={e => set('prazoContrato', e.target.value)} className={inputClass}><option value="3 meses">3 meses</option><option value="6 meses">6 meses</option><option value="12 meses">12 meses</option><option value="Indeterminado">Indeterminado</option></select></Field>
+                                    <Field label="Data de Início"><input type="date" value={form.dataInicio} onChange={e => set('dataInicio', e.target.value)} className={inputClass} /></Field>
+                                    <Field label="Data da Próxima Reunião"><input type="date" value={form.proximaReuniao} onChange={e => set('proximaReuniao', e.target.value)} className={inputClass} /></Field>
+                                    <div className="md:col-span-2"><Field label="Observações Iniciais"><textarea value={form.observacoes} onChange={e => set('observacoes', e.target.value)} rows={4} placeholder="Contexto inicial, alinhamentos, acordos verbais..." className={`${inputClass} resize-none`} /></Field></div>
+                                </div>
+                                <div className="mt-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Resumo da Consultoria</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                        {[["Empresa", form.empresa || "-"],["Tipo", form.tipo || "-"],["Faturamento", form.faturamento ? `R$ ${parseFloat(form.faturamento).toLocaleString('pt-BR')}` : "-"],["Lucro Líquido", form.lucroLiquido ? `R$ ${parseFloat(form.lucroLiquido).toLocaleString('pt-BR')}` : "-"],["Comissão Est.", form.lucroLiquido ? (parseFloat(form.lucroLiquido) * 0.1).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : "-"],["Cobrança", form.modeloCobranca || "-"]].map(([l, v]) => (
+                                            <div key={l}><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{l}</p><p className="font-black text-[#05121b] mt-0.5">{v}</p></div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <button onClick={() => setStep(s => Math.max(1, s - 1))} disabled={step === 1} className="flex items-center gap-2 text-slate-400 hover:text-[#05121b] font-black text-[10px] uppercase tracking-widest disabled:opacity-30 transition-colors"><ArrowLeft size={16} /> Anterior</button>
+                        {step < 4 ? (
+                            <button onClick={() => setStep(s => s + 1)} className="bg-[#05121b] text-white px-8 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#137789] transition-all flex items-center gap-2 shadow-md">Próximo <ChevronRight size={16} /></button>
+                        ) : (
+                            <button onClick={handleSalvar} disabled={salvando || salvoOk} className={`px-10 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-md ${salvoOk ? 'bg-emerald-500 text-white' : 'bg-[#ff7b00] text-white hover:bg-[#e66e00]'}`}>
+                                {salvando ? <><RefreshCw size={16} className="animate-spin" /> Salvando...</> : salvoOk ? <><CheckCircle size={16} /> Salvo!</> : <><Save size={16} /> Salvar Consultoria</>}
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ─────────────────────────────────────────────────────────────────────
+        // APP PRINCIPAL
+        // ─────────────────────────────────────────────────────────────────────
+        const ADMIN_EMAILS = ['dauan.silva98@gmail.com', 'oluap.gestao@gmail.com'];
+
+        const App = () => {
+          const [adminUser, setAdminUser] = useState(null);
+          const [adminLoading, setAdminLoading] = useState(true);
+          const [loginEmail, setLoginEmail] = useState('');
+          const [loginPassword, setLoginPassword] = useState('');
+          const [loginError, setLoginError] = useState('');
+          const [loginLoading, setLoginLoading] = useState(false);
+
+          const [view, setView] = useState('dashboard');
+          const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+          const [clientTab, setClientTab] = useState('cadastro');
+
+          const [isDiagnosticMenuOpen, setIsDiagnosticMenuOpen] = useState(true);
+          const [isCreditoMenuOpen, setIsCreditoMenuOpen] = useState(false);
+          const [isErpMenuOpen, setIsErpMenuOpen] = useState(false); 
+          const [isConsultoriaMenuOpen, setIsConsultoriaMenuOpen] = useState(false);
+          
+          const [consultorias, setConsultorias] = useState([]);
+          const [diagnostics, setDiagnostics] = useState([]); 
+          const [derivedClients, setDerivedClients] = useState([]); 
+          const [allDiagnostics, setAllDiagnostics] = useState([]); 
+          const [stats, setStats] = useState({ clients: 0, completed: 0, healthy: 0, warning: 0, critical: 0, structured: 0, guided: 0 });
+          const [filteredDiagnostics, setFilteredDiagnostics] = useState([]);
+          const [filteredClients, setFilteredClients] = useState([]);
+          const [selectedClient, setSelectedClient] = useState(null);
+          const [currentPage, setCurrentPage] = useState(1);
+          const clientsPerPage = 10;
+          const [selectedSubmission, setSelectedSubmission] = useState(null);
+          const [clientFormData, setClientFormData] = useState({});
+          const [filterSearch, setFilterSearch] = useState("");
+          const [filterDateFrom, setFilterDateFrom] = useState("");
+          const [filterDateTo, setFilterDateTo] = useState("");
+          const [clientSearchTerm, setClientSearchTerm] = useState("");
+          const [clientStatusFilter, setClientStatusFilter] = useState("todos");
+          const [clientTypeFilter, setClientTypeFilter] = useState("todos");
+          const [clientDateFrom, setClientDateFrom] = useState("");
+          const [clientDateTo, setClientDateTo] = useState("");
+          const [adminAnalysis, setAdminAnalysis] = useState("");
+          const [chartDataInput, setChartDataInput] = useState("");
+          const [internalAnalysisNotes, setInternalAnalysisNotes] = useState("");
+          const [healthStatus, setHealthStatus] = useState("");
+          const [saveStatus, setSaveStatus] = useState("");
+          const [whatsAppNum, setWhatsAppNum] = useState("");
+          const [adminResultPdf, setAdminResultPdf] = useState("");
+          const [generalClientNotes, setGeneralClientNotes] = useState("");
+          const [clientNotesSaveStatus, setClientNotesSaveStatus] = useState("");
+
+          // Crédito – Fila de Análise
+          const [rawProfiles, setRawProfiles] = useState([]);
+          const [creditoAnaliseSearch, setCreditoAnaliseSearch] = useState("");
+          const [creditoAnaliseDateFrom, setCreditoAnaliseDateFrom] = useState("");
+          const [creditoAnaliseDateTo, setCreditoAnaliseDateTo] = useState("");
+          const [updatingCreditoStatus, setUpdatingCreditoStatus] = useState(null);
+
+          // Crédito – Operações
+          const [creditoOpSearch, setCreditoOpSearch] = useState("");
+          const [confirmEtapaModal, setConfirmEtapaModal] = useState(null); // { profile, direction }
+          const [updatingOpStatus, setUpdatingOpStatus] = useState(null);
+
+          useEffect(() => {
+            const checkAdmin = async () => {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session && ADMIN_EMAILS.includes(session.user.email)) {
+                setAdminUser(session.user);
+                fetchData();
+                fetchConsultorias();
+              }
+              setAdminLoading(false);
+            };
+            checkAdmin();
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+              if (session && ADMIN_EMAILS.includes(session.user.email)) {
+                setAdminUser(session.user);
+              } else {
+                setAdminUser(null);
+              }
+            });
+            return () => subscription.unsubscribe();
+          }, []);
+
+          const handleAdminLogin = async (e) => {
+            e.preventDefault();
+            setLoginLoading(true);
+            setLoginError('');
+            const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail, password: loginPassword });
+            if (error) { setLoginError('E-mail ou senha incorretos.'); setLoginLoading(false); return; }
+            if (!ADMIN_EMAILS.includes(data.user?.email)) {
+              await supabase.auth.signOut();
+              setLoginError('Acesso não autorizado para este e-mail.');
+              setLoginLoading(false);
+              return;
+            }
+            setAdminUser(data.user);
+            fetchData();
+            fetchConsultorias();
+            setLoginLoading(false);
+          };
+
+          const handleAdminLogout = async () => {
+            await supabase.auth.signOut();
+            setAdminUser(null);
+          };
+
+          const fetchConsultorias = async () => {
+              try {
+                  const { data } = await supabase.from('consultorias').select('*').order('created_at', { ascending: false });
+                  if (data) setConsultorias(data);
+              } catch (e) {}
+          };
+
+          useEffect(() => {
+              let filtered = diagnostics;
+              if (filterSearch.trim() !== "") {
+                  const lower = filterSearch.toLowerCase();
+                  filtered = filtered.filter(d => 
+                      (d.razao_social && d.razao_social.toLowerCase().includes(lower)) || 
+                      (d.client_name && d.client_name.toLowerCase().includes(lower)) || 
+                      (d.cnpj && d.cnpj.includes(lower)) ||
+                      (d.email && d.email.toLowerCase().includes(lower)) ||
+                      (d.telefone && d.telefone.includes(lower))
+                  );
+              }
+              if (filterDateFrom) filtered = filtered.filter(d => new Date(d.created_at) >= new Date(filterDateFrom));
+              if (filterDateTo) {
+                  const toDate = new Date(filterDateTo);
+                  toDate.setHours(23, 59, 59, 999);
+                  filtered = filtered.filter(d => new Date(d.created_at) <= toDate);
+              }
+              setFilteredDiagnostics(filtered);
+          }, [filterSearch, filterDateFrom, filterDateTo, diagnostics]);
+
+          useEffect(() => {
+              let filtered = derivedClients;
+              if (view === 'credito_base') filtered = filtered.filter(c => c.hasCredito === true);
+              else if (view === 'erp_base') filtered = filtered.filter(c => c.hasERP === true);
+              else if (view === 'consultoria_base') filtered = filtered.filter(c => c.hasConsultoria === true);
+
+              if (clientSearchTerm.trim() !== "") {
+                  const lower = clientSearchTerm.toLowerCase();
+                  filtered = filtered.filter(c => 
+                      (c.razao && c.razao.toLowerCase().includes(lower)) || 
+                      (c.name && c.name.toLowerCase().includes(lower)) || 
+                      (c.cnpj && c.cnpj.includes(lower)) ||
+                      (c.email && c.email.toLowerCase().includes(lower)) ||
+                      (c.phone && c.phone.includes(lower))
+                  );
+              }
+              if (view === 'clients') {
+                  if (clientStatusFilter !== "todos") filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.health_status === clientStatusFilter);
+                  if (clientTypeFilter !== "todos") filtered = filtered.filter(c => c.latestSubmission && c.latestSubmission.form_type === clientTypeFilter);
+              }
+              if (clientDateFrom) filtered = filtered.filter(c => new Date(c.firstDate) >= new Date(clientDateFrom));
+              if (clientDateTo) {
+                  const toDate = new Date(clientDateTo);
+                  toDate.setHours(23, 59, 59, 999);
+                  filtered = filtered.filter(c => new Date(c.firstDate) <= toDate);
+              }
+              setFilteredClients(filtered);
+              setCurrentPage(1); 
+          }, [clientSearchTerm, clientStatusFilter, clientTypeFilter, clientDateFrom, clientDateTo, derivedClients, view]);
+
+          const clearFilters = () => { setFilterSearch(""); setFilterDateFrom(""); setFilterDateTo(""); };
+          const clearClientFilters = () => { setClientSearchTerm(""); setClientStatusFilter("todos"); setClientTypeFilter("todos"); setClientDateFrom(""); setClientDateTo(""); };
+
+          // ─────────────────────────────────────────────────────────────────────
+          // AJUSTE PRINCIPAL: fetchData agora lê todas as tabelas em paralelo
+          // e monta clientsMap unificado a partir de profiles + produtos.
+          // Clientes aparecem assim que existem em qualquer tabela.
+          // Status = "Pendente" sem produtos, "Ativo" com ao menos 1 produto.
+          // ─────────────────────────────────────────────────────────────────────
+          const fetchData = async () => {
+            // Busca paralela em todas as tabelas
+            const [
+              { data: diags },
+              { data: profiles },
+              { data: creditosData },
+              { data: erpData },
+              { data: consultoriasData }
+            ] = await Promise.all([
+              supabase.from('diagnosticos').select('*').order('created_at', { ascending: false }),
+              supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+              supabase.from('creditos').select('cnpj, user_id, created_at'),
+              supabase.from('erp_financeiro').select('cnpj, user_id, created_at'),
+              supabase.from('consultorias').select('cnpj, user_id, created_at, empresa, responsavel, email, telefone')
+            ]);
+
+            const safeDialgs = diags || [];
+            const safeProfiles = profiles || [];
+            const safeCreditos = creditosData || [];
+            const safeErp = erpData || [];
+            const safeConsultorias = consultoriasData || [];
+
+            setAllDiagnostics(safeDialgs);
+            const pendingDiags = safeDialgs.filter(d => d.internal_status === 'pending');
+            setDiagnostics(pendingDiags);
+
+            // ── Constrói o mapa unificado de clientes ──────────────────────
+            // Chave: cnpj (normalizado) ou user_id como fallback
+            const clientsMap = {};
+
+            const normCnpj = (v) => (v || '').replace(/\D/g, '');
+
+            const ensureClient = (cnpj, name, razao, email, phone, date, userId) => {
+              const key = normCnpj(cnpj) || userId || `noid_${date}`;
+              if (!clientsMap[key]) {
+                clientsMap[key] = {
+                  name: name || razao || "",
+                  razao: razao || name || "",
+                  email: email || "",
+                  phone: phone || "",
+                  cnpj: cnpj || "",
+                  submissionCount: 0,
+                  firstDate: date || new Date().toISOString(),
+                  generalNotes: "",
+                  history: [],
+                  latestSubmission: null,
+                  // flags de produto — todos false até confirmar
+                  hasDiagnostico: false,
+                  hasCredito: false,
+                  hasERP: false,
+                  hasConsultoria: false,
+                  // status calculado no final
+                  clientStatus: "Pendente"
+                };
+              }
+              // atualiza data mais antiga
+              if (date && new Date(date) < new Date(clientsMap[key].firstDate)) {
+                clientsMap[key].firstDate = date;
+              }
+              return key;
+            };
+
+            setRawProfiles(safeProfiles);
+
+            // 1. Seed a partir de profiles (base central)
+            safeProfiles.forEach(p => {
+              const key = ensureClient(p.cnpj, p.full_name || p.name, p.razao_social || p.full_name || p.name, p.email, p.phone || p.telefone, p.created_at, p.user_id || p.id);
+              clientsMap[key].userId = p.user_id || p.id;
+              clientsMap[key].creditoStatus = p.credito_cnpj_status || 'aguardando';
+              clientsMap[key].operacaoStatus = p.credito_operacao_status || null;
+              // Produtos selecionados no hub_cliente (has_* das profiles)
+              if (p.has_credito) clientsMap[key].hasCredito = true;
+              if (p.has_diagnostico) clientsMap[key].hasDiagnostico = true;
+              if (p.has_erp) clientsMap[key].hasERP = true;
+              if (p.has_consultoria) clientsMap[key].hasConsultoria = true;
+            });
+
+            // 2. Seed a partir de diagnosticos (todos, pending ou completed)
+            safeDialgs.forEach(d => {
+              const key = ensureClient(d.cnpj, d.client_name, d.razao_social || d.client_name, d.email, d.telefone, d.created_at, d.user_id);
+              if (d.client_general_notes) clientsMap[key].generalNotes = d.client_general_notes;
+
+              if (d.internal_status === 'completed') {
+                clientsMap[key].submissionCount++;
+                clientsMap[key].history.push(d);
+                clientsMap[key].hasDiagnostico = true;
+                if (!clientsMap[key].latestSubmission || new Date(d.created_at) > new Date(clientsMap[key].latestSubmission.created_at)) {
+                  clientsMap[key].latestSubmission = d;
+                }
+              }
+              // mesmo pending já mostra o cliente
+              if (!clientsMap[key].hasDiagnostico && d.internal_status === 'pending') {
+                clientsMap[key].hasDiagnostico = true;
+              }
+            });
+
+            // 3. Seed a partir de creditos
+            safeCreditos.forEach(c => {
+              const key = ensureClient(c.cnpj, null, null, null, null, c.created_at, c.user_id);
+              clientsMap[key].hasCredito = true;
+            });
+
+            // 4. Seed a partir de erp_financeiro
+            safeErp.forEach(e => {
+              const key = ensureClient(e.cnpj, null, null, null, null, e.created_at, e.user_id);
+              clientsMap[key].hasERP = true;
+            });
+
+            // 5. Seed a partir de consultorias
+            safeConsultorias.forEach(c => {
+              const key = ensureClient(
+                c.cnpj,
+                c.responsavel || c.empresa,
+                c.empresa,
+                c.email,
+                c.telefone,
+                c.created_at,
+                c.user_id
+              );
+              clientsMap[key].hasConsultoria = true;
+              // enriquece dados se o cliente veio só de consultoria
+              if (!clientsMap[key].razao && c.empresa) clientsMap[key].razao = c.empresa;
+              if (!clientsMap[key].name && c.responsavel) clientsMap[key].name = c.responsavel;
+              if (!clientsMap[key].email && c.email) clientsMap[key].email = c.email;
+              if (!clientsMap[key].phone && c.telefone) clientsMap[key].phone = c.telefone;
+            });
+
+            // 6. Calcula status final de cada cliente
+            Object.values(clientsMap).forEach(c => {
+              c.clientStatus = (c.hasDiagnostico || c.hasCredito || c.hasERP || c.hasConsultoria)
+                ? "Ativo"
+                : "Pendente";
+            });
+
+            const clientsArray = Object.values(clientsMap);
+            setDerivedClients(clientsArray);
+
+            // Stats (baseados em diagnósticos completados, sem alteração)
+            const completedDiags = safeDialgs.filter(d => d.internal_status === 'completed');
+            setStats({
+              clients: clientsArray.length,
+              completed: completedDiags.length,
+              healthy: completedDiags.filter(d => d.health_status === 'healthy').length,
+              warning: completedDiags.filter(d => d.health_status === 'warning').length,
+              critical: completedDiags.filter(d => d.health_status === 'critical').length,
+              structured: safeDialgs.filter(d => d.form_type === 'Estruturado').length,
+              guided: safeDialgs.filter(d => d.form_type === 'Guiado').length
+            });
+
+            if (selectedClient) {
+              const normKey = normCnpj(selectedClient.cnpj) || selectedClient.cnpj;
+              const updated = clientsMap[normKey];
+              if (updated) setSelectedClient(updated);
+            }
+          };
+
+          const indexOfLastClient = currentPage * clientsPerPage;
+          const indexOfFirstClient = indexOfLastClient - clientsPerPage;
+          const currentClients = filteredClients.slice(indexOfFirstClient, indexOfLastClient);
+          const totalPages = Math.ceil(filteredClients.length / clientsPerPage);
+          const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+          const goDashboard = () => { setView('dashboard'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goClients = () => { setView('clients'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goCadastros = () => { setView('cadastros'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goCreditoBase = () => { setView('credito_base'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goCreditoAnalise = () => { setView('credito_analise'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goCreditoOperacao = () => { setView('credito_operacao'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goErpBase = () => { setView('erp_base'); setSelectedClient(null); setSelectedSubmission(null); }; 
+          const goConsultoriaBase = () => { setView('consultoria_base'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goConsultoriaAcompanhar = () => { setView('consultoria_acompanhar'); setSelectedClient(null); setSelectedSubmission(null); };
+          const goConsultoriaNova = () => { setView('consultoria_nova'); setSelectedClient(null); setSelectedSubmission(null); };
+          
+          const OPERACAO_STEPS_ADMIN = [
+            { id: 'preenchimento', label: 'Preenchimento de Dados' },
+            { id: 'aprovado',      label: 'Aprovado' },
+            { id: 'criada',        label: 'Operação Criada' },
+            { id: 'paga',          label: 'Operação Paga' },
+          ];
+
+          const updateCreditoStatus = async (profileId, newStatus) => {
+            setUpdatingCreditoStatus(profileId);
+            try {
+              await supabase.from('profiles').update({ credito_cnpj_status: newStatus }).eq('id', profileId);
+              setRawProfiles(prev => prev.map(p => p.id === profileId || p.user_id === profileId ? { ...p, credito_cnpj_status: newStatus } : p));
+              fetchData();
+            } catch {}
+            setUpdatingCreditoStatus(null);
+          };
+
+          const updateOperacaoStatus = async (profileId, newStatus) => {
+            setUpdatingOpStatus(profileId);
+            try {
+              await supabase.from('profiles').update({ credito_operacao_status: newStatus }).eq('id', profileId);
+              setRawProfiles(prev => prev.map(p => p.id === profileId || p.user_id === profileId ? { ...p, credito_operacao_status: newStatus } : p));
+              fetchData();
+            } catch {}
+            setUpdatingOpStatus(null);
+            setConfirmEtapaModal(null);
+          };
+
+          const handleConfirmEtapa = (profile, direction) => {
+            setConfirmEtapaModal({ profile, direction });
+          };
+
+          const executeEtapa = () => {
+            if (!confirmEtapaModal) return;
+            const { profile, direction } = confirmEtapaModal;
+            const steps = OPERACAO_STEPS_ADMIN.map(s => s.id);
+            const cur = profile.credito_operacao_status ? steps.indexOf(profile.credito_operacao_status) : -1;
+            let next;
+            if (direction === 'next') next = steps[Math.min(cur + 1, steps.length - 1)];
+            else next = cur > 0 ? steps[cur - 1] : steps[0];
+            updateOperacaoStatus(profile.id || profile.user_id, next);
+          };
+
+          const openClientProfile = (client) => {
+              setSelectedClient(client); setGeneralClientNotes(client.generalNotes); setView('client_profile'); window.scrollTo({ top: 0, behavior: 'smooth' });
+          };
+          const openClientRegistration = (client) => {
+              setSelectedClient(client); setClientTab('cadastro'); setView('client_registration'); window.scrollTo({ top: 0, behavior: 'smooth' });
+          };
+          const handleAdminAnalyze = (submission) => {
+            setSelectedSubmission(submission);
+            setClientFormData(submission.data || {}); 
+            setAdminAnalysis(submission.analysis || "");
+            setChartDataInput(submission.chart_data_input || "");
+            setInternalAnalysisNotes(submission.internal_analysis_notes || "");
+            setHealthStatus(submission.health_status || "");
+            setWhatsAppNum(submission.telefone || "");
+            setAdminResultPdf(submission.admin_result_pdf || "");
+            setView('review');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          };
+          const handlePdfUpload = async (e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              setSaveStatus("Fazendo upload do PDF...");
+              const fileExt = file.name.split('.').pop();
+              const fileName = `${selectedSubmission.cnpj.replace(/\D/g, '')}_${Date.now()}.${fileExt}`;
+              try {
+                  const { error: uploadError } = await supabase.storage.from('relatorios').upload(fileName, file);
+                  if (uploadError) throw uploadError;
+                  const { data } = supabase.storage.from('relatorios').getPublicUrl(fileName);
+                  setAdminResultPdf(data.publicUrl);
+                  setSaveStatus("Upload de PDF concluído!");
+                  setTimeout(() => setSaveStatus(""), 2000);
+              } catch (err) {
+                  console.error("Erro no upload:", err);
+                  alert("Erro ao fazer upload. Verifique se o bucket 'relatorios' está criado e público no Supabase.");
+                  setSaveStatus("");
+              }
+          };
+          const handleSaveAnalysis = async () => {
+            if(!healthStatus) { alert("Por favor, selecione a Classificação de Saúde Financeira antes de salvar."); return; }
+            setSaveStatus("Salvando...");
+            const { error } = await supabase.from('diagnosticos').update({
+                analysis: adminAnalysis, chart_data_input: chartDataInput, internal_analysis_notes: internalAnalysisNotes,
+                health_status: healthStatus, status: "✅ Concluído", internal_status: "completed", admin_result_pdf: adminResultPdf
+            }).eq('id', selectedSubmission.id);
+            if (!error) {
+                setSaveStatus("Salvo com sucesso!");
+                await fetchData();
+                setTimeout(() => { setSaveStatus(""); goClients(); }, 1500);
+            } else setSaveStatus("Erro ao salvar.");
+          };
+          const handleSaveClientNotes = async () => {
+              setClientNotesSaveStatus("Salvando...");
+              const { error } = await supabase.from('diagnosticos').update({ client_general_notes: generalClientNotes }).eq('cnpj', selectedClient.cnpj);
+              if (!error) {
+                  setClientNotesSaveStatus("Observação Salva!");
+                  await fetchData();
+                  setTimeout(() => setClientNotesSaveStatus(""), 3000);
+              } else setClientNotesSaveStatus("Erro ao salvar.");
+          };
+          const handleCopyDataForAI = () => {
+              if (!selectedSubmission || !selectedSubmission.data) return;
+              let textToCopy = `DADOS DO DIAGNÓSTICO FINANCEIRO - TIPO: ${selectedSubmission.form_type}\n\n`;
+              for (const [key, value] of Object.entries(selectedSubmission.data)) {
+                  if (value && value.trim() !== "") {
+                      let cleanKey = key.replace('v1_', '').replace('g_', '').replace(/([A-Z])/g, ' $1').trim();
+                      cleanKey = cleanKey.charAt(0).toUpperCase() + cleanKey.slice(1);
+                      textToCopy += `${cleanKey}: ${value}\n`;
+                  }
+              }
+              navigator.clipboard.writeText(textToCopy);
+              setSaveStatus("Copiado para Área de Transferência!");
+              setTimeout(() => setSaveStatus(""), 3000);
+          };
+          const handleSendWhatsApp = (phoneStr) => {
+              const numToUse = phoneStr || whatsAppNum;
+              const cleanPhone = numToUse.replace(/\D/g, '');
+              if (!cleanPhone) { alert("Por favor, insira um número de celular válido."); return; }
+              const message = encodeURIComponent(`Olá! Seu diagnóstico financeiro da OLUAP já está disponível. Acesse o painel para visualizar seus resultados detalhados.`);
+              window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+          };
+          const handleSendEmail = () => {
+              const email = selectedSubmission?.email || "";
+              const subject = encodeURIComponent("Seu Diagnóstico OLUAP está pronto!");
+              const body = encodeURIComponent("Olá,\n\nAnalisamos as informações da sua empresa e seu diagnóstico financeiro OLUAP já foi concluído e está disponível em seu painel.\n\nAcesse a plataforma para visualizar os detalhes, indicadores e nossas recomendações de ajuste.\n\nAbraço,\nEquipe OLUAP");
+              window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+          };
+          const handlePrintPDF = () => window.print();
+          const downloadCSV = () => {
+              if (filteredClients.length === 0) return;
+              const headers = ["Razao Social", "CNPJ", "Nome", "Email", "Telefone", "Data de Cadastro", "Status", "Diagnostico", "Credito", "ERP", "Consultoria"];
+              const csvRows = filteredClients.map(c => [
+                  `"${c.razao || ''}"`, `"${c.cnpj || ''}"`, `"${c.name || ''}"`, `"${c.email || ''}"`, `"${c.phone || ''}"`,
+                  `"${new Date(c.firstDate).toLocaleDateString()}"`, `"${c.clientStatus || ''}"`,
+                  `"${c.hasDiagnostico ? 'Sim' : 'Não'}"`, `"${c.hasCredito ? 'Sim' : 'Não'}"`,
+                  `"${c.hasERP ? 'Sim' : 'Não'}"`, `"${c.hasConsultoria ? 'Sim' : 'Não'}"`
+              ].join(","));
+              const csvContent = [headers.join(","), ...csvRows].join("\n");
+              const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+              const link = document.createElement("a");
+              link.setAttribute("href", URL.createObjectURL(blob));
+              link.setAttribute("download", `oluap_clientes_${new Date().toISOString().slice(0,10)}.csv`);
+              document.body.appendChild(link); link.click(); document.body.removeChild(link);
+          };
+          const getDiagnosticoBadge = (health_status) => {
+              switch(health_status) {
+                  case 'healthy': return <span className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100">Saudável</span>;
+                  case 'warning': return <span className="bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-amber-100">Ajustar</span>;
+                  case 'critical': return <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-red-100">Atenção</span>;
+                  default: return <span className="text-slate-300 font-bold text-xs">-</span>;
+              }
+          };
+
+          const isConsultoriaView = ['consultoria_base','consultoria_acompanhar','consultoria_nova'].includes(view);
+
+          const renderClientForm = () => {
+              const isV1 = selectedSubmission?.form_type === 'Estruturado';
+              const fd = clientFormData;
+              return (
+                  <div className="space-y-6 break-avoid">
+                      {isV1 ? (
+                          <>
+                              <ReadOnlySectionHeading icon={Building2} title="1. Identificação da Empresa" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Razão Social da Empresa" value={fd.v1_razao} />
+                                  <ReadOnlyInput label="CNPJ" value={fd.v1_cnpj} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Nome do Responsável" value={fd.v1_responsavel} /></div>
+                                  <ReadOnlyInput label="Email de Contato" value={fd.v1_email} icon={Mail} />
+                                  <ReadOnlyInput label="Celular / WhatsApp" value={fd.v1_phone} icon={Phone} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Segmento de Atuação" value={fd.v1_segmento} /></div>
+                                  <ReadOnlyInput label="Tempo de Operação" value={fd.v1_tempoOperacao} />
+                                  <ReadOnlyInput label="Número de Funcionários" value={fd.v1_numFuncionarios} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Controle Financeiro" value={fd.v1_controleFinanceiro} /></div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Landmark} title="2. Performance de Vendas (Receita)" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Faturamento Médio Mensal" value={fd.v1_fatMedio} />
+                                  <ReadOnlyInput label="Faturamento 12 Meses" value={fd.v1_fat12} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Mix de Faturamento (Prod/Serv)" value={fd.v1_mixFaturamento} /></div>
+                                  <ReadOnlyInput label="Número Médio Vendas/Mês" value={fd.v1_numVendas} />
+                                  <ReadOnlyInput label="Gera Lucro?" value={fd.v1_lucra} />
+                                  <ReadOnlyInput label="Lucro Mensal" value={fd.v1_lucroMensal} />
+                                  <ReadOnlyInput label="Impostos %" value={fd.v1_impostos} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Meios de Recebimento" value={fd.v1_meios} /></div>
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Inadimplência" value={fd.v1_inadimplencia} /></div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Wallet} title="3. Custos Diretos" />
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Custo Mercadorias/Serviços" value={fd.v1_custosDiretos} />
+                                  <ReadOnlyInput label="Taxas Maquininha/Boleto" value={fd.v1_taxaRecebimento} />
+                                  <ReadOnlyInput label="Comissões" value={fd.v1_comissoes} />
+                              </div>
+                              <ReadOnlySectionHeading icon={Target} title="4. Estrutura Operacional" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Folha de Pagamento" value={fd.v1_folha} />
+                                  <ReadOnlyInput label="Pró-labore" value={fd.v1_prolabore} />
+                                  <ReadOnlyInput label="Marketing" value={fd.v1_mkt} />
+                                  <ReadOnlyInput label="Aluguel/Estrutura" value={fd.v1_estrutura} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Outras Despesas Fixas" value={fd.v1_outrasFixas} /></div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Clock} title="5. Ciclo de Caixa e Obrigações" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="Dívidas ou Empréstimos" value={fd.v1_descricaoDividas} />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                      <ReadOnlyInput label="Total Dívidas" value={fd.v1_valorTotalDividas} />
+                                      <ReadOnlyInput label="Peso Mensal da Dívida" value={fd.v1_pesoDivida} />
+                                      <ReadOnlyInput label="Prazo Médio Recebimento" value={fd.v1_prazoRec} />
+                                      <ReadOnlyInput label="Prazo Médio Pagamento" value={fd.v1_prazoPag} />
+                                  </div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Landmark} title="6. Posição Patrimonial" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Saldo Conta/Caixa" value={fd.v1_saldo} />
+                                  <ReadOnlyInput label="Reserva Financeira" value={fd.v1_reserva} />
+                                  <ReadOnlyInput label="Valor em Estoque" value={fd.v1_estoque} />
+                                  <div className="md:col-span-2"><ReadOnlyTextArea label="Pretende Crédito?" value={fd.v1_detalhesCredito} /></div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Sparkles} title="7. Visão Estratégica" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="Maior Desafio Financeiro" value={fd.v1_desafio} />
+                                  <ReadOnlyTextArea label="Objetivo 12 Meses" value={fd.v1_objetivo} />
+                              </div>
+                          </>
+                      ) : (
+                          <>
+                              <ReadOnlySectionHeading icon={Building2} title="1. Identificação da Empresa" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Razão Social da Empresa" value={fd.g_razao} />
+                                  <ReadOnlyInput label="CNPJ" value={fd.g_cnpj} />
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Nome do Responsável" value={fd.g_responsavel} /></div>
+                                  <ReadOnlyInput label="Email de Contato" value={fd.g_email} icon={Mail} />
+                                  <ReadOnlyInput label="Celular / WhatsApp" value={fd.g_phone} icon={Phone} />
+                              </div>
+                              <ReadOnlySectionHeading icon={Target} title="2. Sobre o Negócio" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="O que Vende" value={fd.g_oqueVende} />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                      <ReadOnlyInput label="Tempo de Existência" value={fd.g_tempoExistencia} />
+                                      <ReadOnlyInput label="Quantidade Pessoas" value={fd.g_pessoas} />
+                                  </div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Landmark} title="3. Vendas (O que Entra)" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Faturamento Mensal" value={fd.g_faturamento} />
+                                  <ReadOnlyInput label="Mix (Prod/Serv)" value={fd.g_mixFaturamento} />
+                                  <ReadOnlyInput label="Frequência de Vendas" value={fd.g_frequencia} />
+                                  <ReadOnlyInput label="Meios de Recebimento" value={fd.g_meioVenda} />
+                                  <div className="md:col-span-2"><ReadOnlyTextArea label="Avaliação da Precificação" value={fd.g_sobrePreco} /></div>
+                                  <div className="md:col-span-2"><ReadOnlyInput label="Produto Mais Lucrativo" value={fd.g_produtoLucrativo} /></div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Wallet} title="4. Gastos Principais" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Aluguel Mensal" value={fd.g_aluguel} />
+                                  <ReadOnlyInput label="Gastos Funcionários" value={fd.g_gastoFunc} />
+                                  <ReadOnlyInput label="Seu Salário (Pró-labore)" value={fd.g_prolabore} />
+                                  <ReadOnlyInput label="Custos com Mercadorias/Serviço" value={fd.g_custosDiretos} />
+                                  <ReadOnlyInput label="Taxas Maquininha" value={fd.g_taxaMaquininha} />
+                                  <ReadOnlyInput label="Outros Gastos Fixos" value={fd.g_outrosFixos} />
+                                  <div className="md:col-span-2"><ReadOnlyTextArea label="Maior Ralo de Dinheiro" value={fd.g_raloDinheiro} /></div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Clock} title="5. Dívidas e Gestão" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="Possui Dívidas?" value={fd.g_descricaoDividas} />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                      <ReadOnlyInput label="Valor Total Dívidas" value={fd.g_valorTotalDivida} />
+                                      <ReadOnlyInput label="Pagamento em Dia?" value={fd.g_contasEmDia} />
+                                      <div className="md:col-span-2"><ReadOnlyInput label="Mistura Contas PF e PJ?" value={fd.g_misturaContas} /></div>
+                                  </div>
+                              </div>
+                              <ReadOnlySectionHeading icon={Landmark} title="6. Caixa e Crédito" />
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 break-avoid">
+                                  <ReadOnlyInput label="Fôlego de Caixa" value={fd.g_folegoCaixa} />
+                                  <ReadOnlyInput label="Valor em Estoque" value={fd.g_estoque} />
+                                  <div className="md:col-span-2"><ReadOnlyTextArea label="Quer Empréstimo?" value={fd.g_querEmprestimo} /></div>
+                                  <ReadOnlyInput label="Prazo Pagamento Desejado" value={fd.g_prazoPagamento} />
+                              </div>
+                              <ReadOnlySectionHeading icon={Sparkles} title="7. Visão de Futuro" />
+                              <div className="space-y-5 break-avoid">
+                                  <ReadOnlyTextArea label="Maior Desafio Hoje" value={fd.g_desafio} />
+                                  <ReadOnlyTextArea label="O que acontece em 3 meses?" value={fd.g_futuro} />
+                              </div>
+                          </>
+                      )}
+                      <ReadOnlySectionHeading icon={Upload} title={isV1 ? "8. Documentos e Anexos" : "9. Documentos e Anexos"} />
+                      <div className="space-y-5 bg-slate-50 border border-slate-100 p-6 rounded-2xl break-avoid">
+                          <ReadOnlyTextArea label="Links de Planilhas / Drive (Enviados pelo cliente)" value={(isV1 ? fd.v1_linksAnexos : fd.g_linksAnexos) || "Nenhum link fornecido."} />
+                          <div className="space-y-1.5 w-full text-left">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Arquivos do Computador (Enviados pelo cliente)</label>
+                              <div className="w-full bg-white border border-slate-100 px-4 py-3 rounded-xl font-bold text-[#137789] text-xs outline-none min-h-[3rem] flex flex-wrap gap-2 items-center">
+                                  {(isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos) ? (
+                                      (isV1 ? fd.v1_nomesArquivos : fd.g_nomesArquivos).split(', ').map((file, idx) => (
+                                          <span key={idx} className="bg-[#137789]/10 text-[#137789] px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold shadow-sm"><FileBox size={14}/> {file}</span>
+                                      ))
+                                  ) : (
+                                      <span className="text-slate-400">Nenhum arquivo anexado.</span>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              );
+          };
+
+          if (adminLoading) return (
+            <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+              <div className="w-8 h-8 border-4 border-[#137789] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          );
+
+          if (!adminUser) return (
+            <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+              <div className="w-full max-w-sm">
+                <div className="text-center mb-8">
+                  <img src="logo2.png" alt="OLUAP" className="h-10 mx-auto mb-4 object-contain" onError={(e) => { e.target.style.display='none'; }}/>
+                  <h1 className="text-xl font-black text-[#05121b] uppercase tracking-tighter">Área Administrativa</h1>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Acesso restrito</p>
+                </div>
+                <form onSubmit={handleAdminLogin} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 space-y-5">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">E-mail</label>
+                    <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required placeholder="seu@email.com" className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-[#05121b] outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">Senha</label>
+                    <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required placeholder="••••••••" className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-[#05121b] outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all" />
+                  </div>
+                  {loginError && <p className="text-xs font-bold text-red-500 text-center">{loginError}</p>}
+                  <button type="submit" disabled={loginLoading} className="w-full bg-[#05121b] text-white py-4 rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-[#137789] transition-all disabled:opacity-60">
+                    {loginLoading ? 'Entrando...' : 'Entrar'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          );
+
+          return (
+            <div className="min-h-screen flex text-[#05121b] font-sans bg-slate-50/40 print:bg-white">
+              
+              {/* SIDEBAR */}
+              <aside className={`bg-white border-r border-slate-200 h-screen sticky top-0 transition-all ${isSidebarOpen ? 'w-[280px]' : 'w-20'} flex flex-col z-10 print-hidden`}>
+                <div className={`flex items-center gap-3 p-6 pb-2 overflow-hidden cursor-pointer ${!isSidebarOpen ? 'justify-center' : ''}`} onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                    {isSidebarOpen ? (
+                        <img src="logo2.png" alt="Logo" className="h-8 object-contain" onError={(e) => { e.target.style.display = 'none'; }}/>
+                    ) : (
+                        <img src="icone.png" alt="Ícone OLUAP" className="w-8 h-8 object-contain shrink-0" />
+                    )}
+                </div>
+                {isSidebarOpen && (
+                  <div className="px-4 pb-2 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-bold truncate max-w-[160px]">{adminUser?.email}</span>
+                    <button onClick={handleAdminLogout} title="Sair" className="text-slate-400 hover:text-red-500 transition-colors p-1 shrink-0"><LogOut size={14}/></button>
+                  </div>
+                )}
+                <nav className={`flex-1 space-y-3 mt-4 overflow-y-auto no-scrollbar pb-6 ${isSidebarOpen ? 'px-4' : 'px-2'}`}>
+                    <button onClick={goCadastros} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='cadastros'||view==='client_registration'?'bg-[#05121b] text-white shadow-md':'text-[#05121b] hover:bg-slate-50'}`}>
+                        <FolderOpen size={20} className={`shrink-0 ${view==='cadastros'||view==='client_registration'?'text-[#ff7b00]':'text-slate-400'}`}/> 
+                        {isSidebarOpen && <span className="whitespace-nowrap truncate">Cadastros</span>}
+                    </button>
+                    <div className="flex flex-col w-full">
+                        <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsDiagnosticMenuOpen(!isDiagnosticMenuOpen); }} 
+                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
+                            <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
+                                <Activity size={20} className={`shrink-0 ${view==='dashboard'||view==='clients'||view==='client_profile'||view==='review' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
+                                {isSidebarOpen && <span className="whitespace-nowrap truncate">Diagnóstico Financeiro</span>}
+                            </div>
+                            {isSidebarOpen && <ChevronDown size={16} className={`shrink-0 transition-transform duration-200 ${isDiagnosticMenuOpen ? 'rotate-180' : ''}`} />}
+                        </button>
+                        {isSidebarOpen && isDiagnosticMenuOpen && (
+                            <div className="pl-5 mt-2 space-y-1">
+                                <button onClick={goDashboard} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='dashboard'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='dashboard' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Fila de Espera</span>
+                                </button>
+                                <button onClick={goClients} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='clients'||view==='client_profile'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='clients'||view==='client_profile' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Base de Clientes</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex flex-col w-full">
+                        <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsErpMenuOpen(!isErpMenuOpen); }} 
+                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='erp_base' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
+                            <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
+                                <Database size={20} className={`shrink-0 ${view==='erp_base' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
+                                {isSidebarOpen && <span className="whitespace-nowrap truncate">ERP Financeiro</span>}
+                            </div>
+                            {isSidebarOpen && <ChevronDown size={16} className={`shrink-0 transition-transform duration-200 ${isErpMenuOpen ? 'rotate-180' : ''}`} />}
+                        </button>
+                        {isSidebarOpen && isErpMenuOpen && (
+                            <div className="pl-5 mt-2 space-y-1">
+                                <button onClick={goErpBase} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='erp_base'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='erp_base' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Base de Clientes</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex flex-col w-full">
+                        <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsConsultoriaMenuOpen(!isConsultoriaMenuOpen); }} 
+                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${isConsultoriaView ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
+                            <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
+                                <Briefcase size={20} className={`shrink-0 ${isConsultoriaView ? 'text-[#ff7b00]' : 'text-slate-400'}`}/> 
+                                {isSidebarOpen && <span className="whitespace-nowrap truncate">Consultoria Empresarial</span>}
+                            </div>
+                            {isSidebarOpen && <ChevronDown size={16} className={`shrink-0 transition-transform duration-200 ${isConsultoriaMenuOpen ? 'rotate-180' : ''}`} />}
+                        </button>
+                        {isSidebarOpen && isConsultoriaMenuOpen && (
+                            <div className="pl-5 mt-2 space-y-1">
+                                <button onClick={goConsultoriaBase} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='consultoria_base'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_base' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div><span className="whitespace-nowrap">Base de Clientes</span>
+                                </button>
+                                <button onClick={goConsultoriaAcompanhar} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='consultoria_acompanhar'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_acompanhar' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div><span className="whitespace-nowrap">Acompanhar Consultorias</span>
+                                </button>
+                                <button onClick={goConsultoriaNova} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='consultoria_nova'?'bg-slate-100 text-[#ff7b00]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='consultoria_nova' ? 'bg-[#ff7b00]' : 'bg-slate-300'}`}></div><span className="whitespace-nowrap">Nova Consultoria</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex flex-col w-full">
+                        <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsCreditoMenuOpen(!isCreditoMenuOpen); }}
+                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${['credito_base','credito_analise','credito_operacao'].includes(view) ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
+                            <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
+                                <CreditCard size={20} className={`shrink-0 ${['credito_base','credito_analise','credito_operacao'].includes(view) ? 'text-[#ff7b00]' : 'text-slate-400'}`}/>
+                                {isSidebarOpen && <span className="whitespace-nowrap truncate">Crédito</span>}
+                            </div>
+                            {isSidebarOpen && <ChevronDown size={16} className={`shrink-0 transition-transform duration-200 ${isCreditoMenuOpen ? 'rotate-180' : ''}`} />}
+                        </button>
+                        {isSidebarOpen && isCreditoMenuOpen && (
+                            <div className="pl-5 mt-2 space-y-1">
+                                <button onClick={goCreditoBase} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='credito_base'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='credito_base' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Base de Clientes</span>
+                                </button>
+                                <button onClick={goCreditoAnalise} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='credito_analise'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='credito_analise' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Análises</span>
+                                </button>
+                                <button onClick={goCreditoOperacao} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='credito_operacao'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='credito_operacao' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Operações</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </nav>
+                <div className={`p-4 border-t border-slate-100 ${!isSidebarOpen && 'px-2'}`}>
+                    <button onClick={() => window.location.href='index.html'} className={`w-full flex items-center ${isSidebarOpen ? 'justify-start gap-3 px-4' : 'justify-center px-0'} py-3.5 text-slate-400 font-bold text-xs uppercase hover:text-red-500 transition-colors`}>
+                        <LogOut size={18} className="shrink-0"/> {isSidebarOpen && <span className="whitespace-nowrap">Sair do Admin</span>}
+                    </button>
+                </div>
+              </aside>
+
+              {/* CONTEÚDO PRINCIPAL */}
+              <main className="flex-1 p-6 md:p-10 overflow-y-auto w-full print:p-0">
+                
+                <div className="hidden print-show items-center justify-between mb-10 pb-6 border-b-2 border-[#05121b]">
+                    <img src="logo2.png" alt="Logo" className="h-10 object-contain" />
+                    <h1 className="text-xl font-black uppercase tracking-widest text-[#05121b]">Relatório de Diagnóstico</h1>
+                </div>
+
+                {/* CADASTROS / BASES */}
+                {(view === 'cadastros' || view === 'credito_base' || view === 'erp_base' || view === 'consultoria_base') && (
+                    <div className="max-w-6xl mx-auto w-full">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                            <header>
+                                <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">
+                                    {view === 'cadastros' ? 'Cadastros' : view === 'credito_base' ? 'Base de Clientes - Crédito' : view === 'erp_base' ? 'Base de Clientes - ERP Financeiro' : 'Base de Clientes - Consultoria'}
+                                </h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">
+                                    {view === 'cadastros' ? 'Base unificada de todos os clientes OLUAP' : view === 'credito_base' ? 'Clientes com produto Crédito ativo' : view === 'erp_base' ? 'Clientes com produto ERP Financeiro ativo' : 'Clientes com produto Consultoria ativo'}
+                                </p>
+                            </header>
+                            <div className="flex items-center gap-3">
+                                <button onClick={downloadCSV} className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2 shadow-sm"><Download size={16} /> Exportar CSV</button>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><RefreshCw size={16} /> Sincronizar</button>
+                            </div>
+                        </div>
+                        <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                            <div className="flex-1 w-full relative">
+                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" placeholder="Pesquisar todos os campos..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                            </div>
+                            <div className="w-full md:w-48 relative">
+                                <input type="text" placeholder="Data de cadastro" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => { if(!e.target.value) e.target.type = 'text'; }} value={clientDateFrom} onChange={(e) => setClientDateFrom(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                            </div>
+                            <div className="w-full md:w-48 relative">
+                                <input type="text" placeholder="Data de cadastro" onFocus={(e) => e.target.type = 'date'} onBlur={(e) => { if(!e.target.value) e.target.type = 'text'; }} value={clientDateTo} onChange={(e) => setClientDateTo(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                            </div>
+                            <div className="w-full md:w-48 relative">
+                                <input type="text" disabled placeholder="" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none cursor-not-allowed"/>
+                            </div>
+                            <button onClick={clearClientFilters} className="flex items-center gap-2 text-slate-500 hover:text-[#137789] font-medium text-sm px-4 whitespace-nowrap transition-colors">
+                                <Filter size={16}/> Filtros avançados <ChevronDown size={14}/>
+                            </button>
+                        </div>
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-white border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500">Clientes</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500">Data</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Produto Optante</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">{view === 'credito_base' ? 'Status Crédito' : 'Status'}</th>
+                                        <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">{view === 'credito_base' ? 'Ação' : 'Opções'}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {currentClients.length > 0 ? currentClients.map(c => (
+                                        <tr key={c.cnpj || c.email || c.name} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-6 py-5">
+                                                <div className="text-[15px] font-medium text-[#05121b] mb-1 hover:text-[#137789] transition-colors cursor-pointer inline-block" onClick={() => openClientRegistration(c)}>{c.razao || c.name || "-"}</div>
+                                                <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium flex-wrap">
+                                                    <span>{c.cnpj || "-"}</span><span className="text-slate-300">|</span>
+                                                    <span>{c.email || "-"}</span><span className="text-slate-300">|</span>
+                                                    <span>{c.phone || "-"}</span><span className="text-slate-300">|</span>
+                                                    <span>{c.name || "-"}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 align-top pt-5">
+                                                <div className="text-[13px] text-[#05121b] mb-1">{new Date(c.firstDate).toLocaleDateString()}</div>
+                                                <div className="text-[11px] text-slate-500">Origem: Site</div>
+                                            </td>
+                                            <td className="px-6 py-5 text-center">
+                                                <div className="flex flex-col items-center gap-1.5">
+                                                    {c.hasDiagnostico && <span className="bg-[#05121b] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Diagnóstico Financeiro</span>}
+                                                    {c.hasCredito && <span className="bg-[#ff7b00] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Crédito</span>}
+                                                    {c.hasERP && <span className="bg-[#137789] text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">ERP Financeiro</span>}
+                                                    {c.hasConsultoria && <span className="bg-slate-500 text-white px-3 py-1 rounded-full text-[10px] font-bold w-max">Consultoria</span>}
+                                                    {!c.hasDiagnostico && !c.hasCredito && !c.hasERP && !c.hasConsultoria && (
+                                                        <span className="text-slate-300 text-[10px] font-bold">Nenhum produto</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            {/* STATUS */}
+                                            <td className="px-6 py-5 text-center align-middle">
+                                                {view === 'credito_base' ? (() => {
+                                                    const st = c.creditoStatus || 'aguardando';
+                                                    if (st === 'aprovado') return <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">Aprovado</span>;
+                                                    if (st === 'reprovado') return <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-red-50 text-red-600 border border-red-200">Reprovado</span>;
+                                                    return <span className="text-slate-300 text-[10px]">—</span>;
+                                                })() : (
+                                                    <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.clientStatus === 'Ativo' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                                                        {c.clientStatus || "Pendente"}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            {/* AÇÕES / OPÇÕES */}
+                                            <td className="px-6 py-5 text-center align-middle">
+                                                {view === 'credito_base' ? (() => {
+                                                    const st = c.creditoStatus || 'aguardando';
+                                                    const profileId = c.userId;
+                                                    const loading = updatingCreditoStatus === profileId;
+                                                    return (
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <button onClick={() => updateCreditoStatus(profileId, 'aprovado')} disabled={st === 'aprovado' || loading}
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all border ${st === 'aprovado' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 cursor-default' : 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50 disabled:opacity-40'}`}>
+                                                                Aprovar
+                                                            </button>
+                                                            <button onClick={() => updateCreditoStatus(profileId, 'reprovado')} disabled={st === 'reprovado' || loading}
+                                                                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all border ${st === 'reprovado' ? 'bg-red-50 text-red-600 border-red-200 cursor-default' : 'bg-white text-red-500 border-red-200 hover:bg-red-50 disabled:opacity-40'}`}>
+                                                                Reprovar
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })() : (
+                                                    <button className="text-slate-400 hover:text-[#05121b] transition-colors"><MoreHorizontal size={20}/></button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="5" className="p-16 text-center text-slate-400 text-sm">
+                                            {view === 'credito_base' ? 'Nenhum cliente possui o produto Crédito ativo.' : view === 'erp_base' ? 'Nenhum cliente possui o produto ERP Financeiro ativo.' : view === 'consultoria_base' ? 'Nenhum cliente possui o produto Consultoria ativo.' : 'Nenhum cadastro encontrado.'}
+                                        </td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {totalPages > 1 && (
+                            <div className="flex justify-center items-center gap-2 pb-10">
+                                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronLeft size={16} /></button>
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <button key={i} onClick={() => paginate(i + 1)} className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${currentPage === i + 1 ? 'bg-[#137789] text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{i + 1}</button>
+                                ))}
+                                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronRight size={16} /></button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* FILA DE ANÁLISE – CRÉDITO */}
+                {view === 'credito_analise' && (() => {
+                    const analiseProfiles = rawProfiles.filter(p => p.credito_cnpj_status === 'em_analise');
+                    let filtered = analiseProfiles;
+                    if (creditoAnaliseSearch.trim()) {
+                        const q = creditoAnaliseSearch.toLowerCase();
+                        filtered = filtered.filter(p =>
+                            (p.full_name || '').toLowerCase().includes(q) ||
+                            (p.email || '').toLowerCase().includes(q) ||
+                            (p.cnpj || '').includes(q) ||
+                            (p.razao_social || '').toLowerCase().includes(q)
+                        );
+                    }
+                    if (creditoAnaliseDateFrom) filtered = filtered.filter(p => new Date(p.created_at) >= new Date(creditoAnaliseDateFrom));
+                    if (creditoAnaliseDateTo) {
+                        const to = new Date(creditoAnaliseDateTo); to.setHours(23,59,59,999);
+                        filtered = filtered.filter(p => new Date(p.created_at) <= to);
+                    }
+                    filtered = [...filtered].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                    return (
+                        <div className="max-w-6xl mx-auto w-full">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                <header>
+                                    <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Fila de Análise</h1>
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Clientes que solicitaram análise de crédito · por ordem de chegada</p>
+                                </header>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><RefreshCw size={16} /> Sincronizar</button>
+                            </div>
+
+                            <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                                <div className="flex-1 w-full relative">
+                                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Pesquisar por nome, e-mail, CNPJ..." value={creditoAnaliseSearch} onChange={e => setCreditoAnaliseSearch(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                                </div>
+                                <div className="w-full md:w-48 relative">
+                                    <input type="text" placeholder="Data início" onFocus={e => e.target.type='date'} onBlur={e => { if(!e.target.value) e.target.type='text'; }} value={creditoAnaliseDateFrom} onChange={e => setCreditoAnaliseDateFrom(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                                </div>
+                                <div className="w-full md:w-48 relative">
+                                    <input type="text" placeholder="Data fim" onFocus={e => e.target.type='date'} onBlur={e => { if(!e.target.value) e.target.type='text'; }} value={creditoAnaliseDateTo} onChange={e => setCreditoAnaliseDateTo(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                                </div>
+                                <button onClick={() => { setCreditoAnaliseSearch(''); setCreditoAnaliseDateFrom(''); setCreditoAnaliseDateTo(''); }} className="text-slate-500 hover:text-[#137789] font-medium text-sm px-4 whitespace-nowrap transition-colors">Limpar</button>
+                            </div>
+
+                            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-white border-b border-slate-200">
+                                        <tr>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500">#</th>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500">Cliente</th>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500">CNPJ</th>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500">Chegada</th>
+                                            <th className="px-6 py-4 text-xs font-medium text-slate-500 text-center">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filtered.length > 0 ? filtered.map((p, idx) => (
+                                            <tr key={p.id || p.user_id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="px-6 py-5 text-slate-400 font-bold text-sm">{idx + 1}º</td>
+                                                <td className="px-6 py-5">
+                                                    <div className="text-[15px] font-medium text-[#05121b] mb-0.5">{p.razao_social || p.full_name || '—'}</div>
+                                                    <div className="text-[11px] text-slate-400">{p.email || '—'} · {p.phone || p.telefone || '—'}</div>
+                                                </td>
+                                                <td className="px-6 py-5 text-sm text-slate-600">{p.cnpj || '—'}</td>
+                                                <td className="px-6 py-5 text-sm text-slate-500">{p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '—'}</td>
+                                                <td className="px-6 py-5">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button onClick={() => updateCreditoStatus(p.id || p.user_id, 'aprovado')} disabled={updatingCreditoStatus === (p.id || p.user_id)}
+                                                            className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-emerald-100 transition-all disabled:opacity-50">
+                                                            {updatingCreditoStatus === (p.id || p.user_id) ? <RefreshCw size={11} className="animate-spin"/> : <CheckCircle size={11}/>} Aprovar
+                                                        </button>
+                                                        <button onClick={() => updateCreditoStatus(p.id || p.user_id, 'reprovado')} disabled={updatingCreditoStatus === (p.id || p.user_id)}
+                                                            className="flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-red-100 transition-all disabled:opacity-50">
+                                                            {updatingCreditoStatus === (p.id || p.user_id) ? <RefreshCw size={11} className="animate-spin"/> : <XCircle size={11}/>} Reprovar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr><td colSpan="5" className="p-16 text-center text-slate-400 text-sm">Nenhuma solicitação de análise aguardando.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* OPERAÇÕES – CRÉDITO */}
+                {view === 'credito_operacao' && (() => {
+                    const opSteps = OPERACAO_STEPS_ADMIN.map(s => s.id);
+                    let opProfiles = rawProfiles.filter(p => p.credito_cnpj_status === 'aprovado');
+                    if (creditoOpSearch.trim()) {
+                        const q = creditoOpSearch.toLowerCase();
+                        opProfiles = opProfiles.filter(p =>
+                            (p.full_name || '').toLowerCase().includes(q) ||
+                            (p.email || '').toLowerCase().includes(q) ||
+                            (p.cnpj || '').includes(q) ||
+                            (p.razao_social || '').toLowerCase().includes(q)
+                        );
+                    }
+                    return (
+                        <div className="max-w-6xl mx-auto w-full">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                                <header>
+                                    <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Operações</h1>
+                                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Gestão da linha do tempo de cada operação de crédito</p>
+                                </header>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><RefreshCw size={16} /> Sincronizar</button>
+                            </div>
+
+                            <div className="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                                <div className="flex-1 w-full relative">
+                                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Pesquisar por nome, e-mail, CNPJ..." value={creditoOpSearch} onChange={e => setCreditoOpSearch(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] transition-all"/>
+                                </div>
+                                <button onClick={() => setCreditoOpSearch('')} className="text-slate-500 hover:text-[#137789] font-medium text-sm px-4 whitespace-nowrap transition-colors">Limpar</button>
+                            </div>
+
+                            {opProfiles.length === 0 ? (
+                                <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center shadow-sm">
+                                    <p className="text-slate-400 text-sm">Nenhum cliente aprovado encontrado.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {opProfiles.map(p => {
+                                        const cur = p.credito_operacao_status ? opSteps.indexOf(p.credito_operacao_status) : -1;
+                                        const isFirst = cur <= 0;
+                                        const isLast = cur >= opSteps.length - 1;
+                                        const isUpdating = updatingOpStatus === (p.id || p.user_id);
+                                        return (
+                                            <div key={p.id || p.user_id} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
+                                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                                                    <div>
+                                                        <p className="text-base font-black text-[#05121b]">{p.razao_social || p.full_name || '—'}</p>
+                                                        <p className="text-[11px] text-slate-400 mt-0.5">{p.cnpj || '—'} · {p.email || '—'}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        <button onClick={() => handleConfirmEtapa(p, 'prev')} disabled={isFirst || isUpdating}
+                                                            className="flex items-center gap-1.5 bg-slate-50 text-slate-600 border border-slate-200 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-slate-100 transition-all disabled:opacity-40">
+                                                            <ChevronLeft size={12}/> Etapa Anterior
+                                                        </button>
+                                                        <button onClick={() => handleConfirmEtapa(p, 'next')} disabled={isLast || isUpdating}
+                                                            className="flex items-center gap-1.5 bg-[#05121b] text-white border border-[#05121b] px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-[#137789] hover:border-[#137789] transition-all disabled:opacity-40">
+                                                            {isUpdating ? <RefreshCw size={11} className="animate-spin"/> : <ChevronRight size={12}/>} Próxima Etapa
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-0">
+                                                    {OPERACAO_STEPS_ADMIN.map((step, idx) => {
+                                                        const done = idx <= cur;
+                                                        const current = idx === cur;
+                                                        const last = idx === OPERACAO_STEPS_ADMIN.length - 1;
+                                                        return (
+                                                            <div key={step.id} className="flex items-center flex-1">
+                                                                <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                                                                    <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-black transition-all
+                                                                        ${done ? 'bg-[#137789] border-[#137789] text-white' : 'bg-white border-slate-200 text-slate-300'}`}>
+                                                                        {done ? <CheckCircle size={14}/> : idx + 1}
+                                                                    </div>
+                                                                    <span className={`text-[8px] font-bold uppercase tracking-wide text-center whitespace-nowrap ${done ? 'text-[#137789]' : 'text-slate-300'}`}>{step.label}</span>
+                                                                    {current && <span className="text-[7px] bg-[#137789]/10 text-[#137789] px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider">Atual</span>}
+                                                                </div>
+                                                                {!last && <div className={`flex-1 h-0.5 mx-1 mb-5 transition-all ${done && idx < cur ? 'bg-[#137789]' : 'bg-slate-200'}`}/>}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Modal de Confirmação de Etapa */}
+                            {confirmEtapaModal && (
+                                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                                    <div className="bg-white rounded-2xl p-7 max-w-sm w-full shadow-2xl">
+                                        <h3 className="text-base font-black text-[#05121b] mb-2">
+                                            {confirmEtapaModal.direction === 'next' ? 'Avançar para próxima etapa?' : 'Voltar para etapa anterior?'}
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                                            {(() => {
+                                                const steps = OPERACAO_STEPS_ADMIN.map(s => s.id);
+                                                const cur = confirmEtapaModal.profile.credito_operacao_status ? steps.indexOf(confirmEtapaModal.profile.credito_operacao_status) : -1;
+                                                let next;
+                                                if (confirmEtapaModal.direction === 'next') next = OPERACAO_STEPS_ADMIN[Math.min(cur + 1, steps.length - 1)];
+                                                else next = OPERACAO_STEPS_ADMIN[Math.max(cur - 1, 0)];
+                                                const cur_label = cur >= 0 ? OPERACAO_STEPS_ADMIN[cur]?.label : 'Não iniciada';
+                                                return `Cliente: ${confirmEtapaModal.profile.razao_social || confirmEtapaModal.profile.full_name || '—'}. ${confirmEtapaModal.direction === 'next' ? `De "${cur_label}" para "${next?.label}".` : `De "${cur_label}" para "${next?.label}".`}`;
+                                            })()}
+                                        </p>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => setConfirmEtapaModal(null)} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition-colors">Cancelar</button>
+                                            <button onClick={executeEtapa} className="flex-1 py-3 bg-[#05121b] text-white rounded-xl text-sm font-black hover:bg-[#137789] transition-all">Confirmar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
+
+                {/* FICHA DE CADASTRO DO CLIENTE */}
+                {view === 'client_registration' && selectedClient && (
+                    <div className="max-w-6xl mx-auto w-full pb-20">
+                        <div className="flex items-center gap-4 mb-6">
+                            <button onClick={goCadastros} className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"><ArrowLeft size={18} /></button>
+                            <h1 className="text-xl font-medium text-slate-500">{selectedClient.razao || selectedClient.name}</h1>
+                        </div>
+                        <div className="flex items-center gap-8 border-b-2 border-slate-200 mb-6">
+                            <button onClick={() => setClientTab('cadastro')} className={`px-2 py-3 text-sm font-bold ${clientTab === 'cadastro' ? 'text-[#ff7b00] border-b-2 border-[#ff7b00]' : 'text-slate-400 hover:text-slate-600'} -mb-0.5 transition-colors`}>Cadastro</button>
+                            <button className="px-2 py-3 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors cursor-not-allowed" title="Em breve">Usuários</button>
+                            <button onClick={() => setClientTab('documentos')} className={`px-2 py-3 text-sm font-bold ${clientTab === 'documentos' ? 'text-[#ff7b00] border-b-2 border-[#ff7b00]' : 'text-slate-400 hover:text-slate-600'} -mb-0.5 transition-colors`}>Documentos</button>
+                        </div>
+                        {clientTab === 'cadastro' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                                <div className="lg:col-span-2 space-y-6">
+                                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                                        <h3 className="text-base font-bold text-[#05121b] mb-4">Resumo</h3>
+                                        <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                                            <div><p className="text-[10px] text-slate-400 mb-1">Razão social</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.razao || "-"}</p></div>
+                                            <div><p className="text-[10px] text-slate-400 mb-1">CNPJ</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.cnpj || "-"}</p></div>
+                                            <div className="col-span-2 border-t border-slate-100"></div>
+                                            <div><p className="text-[10px] text-slate-400 mb-1">Data de fundação</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.latestSubmission?.data?.v1_tempoOperacao || selectedClient.latestSubmission?.data?.g_tempoExistencia || "-"}</p></div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><p className="text-[10px] text-slate-400 mb-1">Data de cadastro</p><p className="text-sm font-medium text-[#05121b]">{new Date(selectedClient.firstDate).toLocaleDateString()}</p></div>
+                                                <div><p className="text-[10px] text-slate-400 mb-1">Faturamento informado</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.latestSubmission?.data?.v1_fatMedio || selectedClient.latestSubmission?.data?.g_faturamento || "-"}</p></div>
+                                            </div>
+                                            <div className="col-span-2 border-t border-slate-100"></div>
+                                            <div className="col-span-2"><p className="text-[10px] text-slate-400 mb-1">CNAE Principal</p><p className="text-sm font-medium text-[#05121b]">-</p></div>
+                                            <div className="col-span-2 border-t border-slate-100"></div>
+                                            <div>
+                                                <p className="text-[10px] text-slate-400 mb-1">Celular</p><p className="text-sm font-medium text-[#05121b]">{selectedClient.phone || "-"}</p>
+                                                <p className="text-[10px] text-slate-400 mt-2 mb-1">Celular</p><p className="text-sm font-medium text-[#05121b]">-</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><p className="text-[10px] text-slate-400 mb-1">E-mail</p><p className="text-sm font-medium text-[#05121b] break-all">{selectedClient.email || "-"}</p></div>
+                                                <div><p className="text-[10px] text-slate-400 mb-1">Nome do contato</p><p className="text-sm font-medium text-[#05121b] break-words">{selectedClient.name || "-"}</p></div>
+                                            </div>
+                                            <div className="col-span-2 border-t border-slate-100"></div>
+                                            <div><p className="text-[10px] text-slate-400 mb-1">Origem</p><p className="text-sm font-medium text-[#05121b]">Site</p></div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><p className="text-[10px] text-slate-400 mb-1">CEP</p><p className="text-sm font-medium text-[#05121b]">-</p><p className="text-[10px] text-slate-400 mt-2 mb-1">Bairro</p><p className="text-sm font-medium text-[#05121b]">-</p></div>
+                                                <div><p className="text-[10px] text-slate-400 mb-1">Endereço</p><p className="text-sm font-medium text-[#05121b]">-</p><p className="text-[10px] text-slate-400 mt-2 mb-1">Cidade/Estado</p><p className="text-sm font-medium text-[#05121b]">-</p></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                                        <h3 className="text-base font-bold text-[#05121b] mb-4">Contatos</h3>
+                                        <div className="grid grid-cols-3 gap-4 pb-2">
+                                            <p className="text-[10px] text-slate-400">Nome</p>
+                                            <p className="text-[10px] text-slate-400">Telefone</p>
+                                            <p className="text-[10px] text-slate-400">Email</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                                        <h3 className="text-base font-bold text-[#05121b] mb-4">Contas bancárias</h3>
+                                        <div className="grid grid-cols-4 gap-4 pb-2">
+                                            <p className="text-[10px] text-slate-400">Banco</p>
+                                            <p className="text-[10px] text-slate-400">Agencia</p>
+                                            <p className="text-[10px] text-slate-400">Conta</p>
+                                            <p className="text-[10px] text-slate-400">Pix</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-6">
+                                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col h-[400px]">
+                                        <h3 className="text-base font-bold text-[#05121b] mb-4">Comentarios:</h3>
+                                        <textarea value={generalClientNotes} onChange={(e) => setGeneralClientNotes(e.target.value)} className="w-full flex-1 bg-transparent border-none outline-none resize-none text-sm text-slate-600" placeholder="Adicione comentários sobre este cliente aqui..."></textarea>
+                                        <div className="mt-4 flex justify-end">
+                                            <button onClick={handleSaveClientNotes} className="text-[10px] font-bold uppercase text-[#ff7b00] hover:text-[#e66e00]">Salvar Comentário</button>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                                        <h3 className="text-base font-bold text-[#05121b] mb-4">Produtos optantes</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedClient.hasDiagnostico && <span className="bg-[#05121b] text-white px-4 py-1.5 rounded-full text-[11px] font-bold">Diagnóstico Financeiro</span>}
+                                            {selectedClient.hasCredito && <span className="bg-[#ff7b00] text-white px-4 py-1.5 rounded-full text-[11px] font-bold">Crédito</span>}
+                                            {selectedClient.hasERP && <span className="bg-[#137789] text-white px-4 py-1.5 rounded-full text-[11px] font-bold">ERP Financeiro</span>}
+                                            {selectedClient.hasConsultoria && <span className="bg-purple-600 text-white px-4 py-1.5 rounded-full text-[11px] font-bold">Consultoria</span>}
+                                        </div>
+                                        {!selectedClient.hasDiagnostico && !selectedClient.hasCredito && !selectedClient.hasERP && !selectedClient.hasConsultoria && (
+                                            <p className="text-xs text-slate-400 italic">Nenhum produto contratado ainda.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {clientTab === 'documentos' && (
+                            <div className="bg-white rounded-xl border border-slate-200 p-8 shadow-sm">
+                                <h2 className="text-lg font-bold text-[#05121b] mb-6">Documentos</h2>
+                                <div className="mb-8 bg-slate-50 border border-slate-100 rounded-2xl p-6">
+                                    <h3 className="text-sm font-bold text-slate-600 mb-4 flex items-center gap-2"><Upload size={16} className="text-[#137789]"/> Enviados pelo Cliente (Diagnóstico)</h3>
+                                    {selectedClient.latestSubmission ? (
+                                        <div className="flex flex-wrap gap-2 items-center">
+                                            {(() => {
+                                                const filesV1 = selectedClient.latestSubmission.data?.v1_nomesArquivos;
+                                                const filesG = selectedClient.latestSubmission.data?.g_nomesArquivos;
+                                                const files = filesV1 || filesG;
+                                                if (files) return files.split(', ').map((file, idx) => (
+                                                    <span key={idx} className="bg-[#137789]/10 text-[#137789] px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold shadow-sm"><FileBox size={14}/> {file}</span>
+                                                ));
+                                                return <span className="text-xs font-medium text-slate-400">Nenhum arquivo enviado no diagnóstico.</span>;
+                                            })()}
+                                        </div>
+                                    ) : <span className="text-xs font-medium text-slate-400">Nenhum diagnóstico encontrado para este cliente.</span>}
+                                </div>
+                                <div className="border-t border-slate-100 pt-6 mb-8">
+                                    <h3 className="text-sm font-bold text-slate-500 mb-4">Empresa</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <DocumentUploadCard label="Contrato social" />
+                                        <DocumentUploadCard label="Faturamento Contabil" />
+                                        <DocumentUploadCard label="Comprovante de endereço" />
+                                        <DocumentUploadCard label="Foto fachada da empresa" />
+                                    </div>
+                                </div>
+                                <div className="border-t border-slate-100 pt-6">
+                                    <h3 className="text-sm font-bold text-slate-500 mb-4">Sócios</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <DocumentUploadCard label="Documentos sócios (RG/CNH)" />
+                                        <DocumentUploadCard label="Comprovante de endereço" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* FILA DE ESPERA */}
+                {view === 'dashboard' && (
+                    <div className="max-w-6xl mx-auto w-full">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                                <div className="absolute -right-4 -bottom-4 opacity-5"><Users size={80}/></div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Clientes na Base</p>
+                                <p className="text-3xl font-black text-[#05121b]">{stats.clients}</p>
+                            </div>
+                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                                <div className="absolute -right-4 -bottom-4 opacity-5"><CheckCircle size={80}/></div>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Análises Concluídas</p>
+                                <p className="text-3xl font-black text-[#137789]">{stats.completed}</p>
+                            </div>
+                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Por Status</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-emerald-500 rounded-full"></span><span className="text-xs font-bold">{stats.healthy}</span></div>
+                                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-amber-400 rounded-full"></span><span className="text-xs font-bold">{stats.warning}</span></div>
+                                    <div className="flex items-center gap-1.5"><span className="w-2 h-2 bg-red-500 rounded-full"></span><span className="text-xs font-bold">{stats.critical}</span></div>
+                                </div>
+                            </div>
+                            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Por Tipo</p>
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center justify-between text-[11px] font-bold"><span className="text-slate-500">Estruturado</span> <span>{stats.structured}</span></div>
+                                    <div className="flex items-center justify-between text-[11px] font-bold"><span className="text-slate-500">Guiado</span> <span>{stats.guided}</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <header className="mb-8">
+                            <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Fila de Espera</h1>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Diagnósticos pendentes de análise</p>
+                        </header>
+                        <div className="flex flex-col md:flex-row gap-4 items-end bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                            <div className="flex-1 w-full space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Buscar (Nome, E-mail ou Fone)</label>
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Digite para buscar..." value={filterSearch} onChange={(e) => setFilterSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
+                                </div>
+                            </div>
+                            <div className="w-full md:w-40 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data Envio (De)</label>
+                                <input type="date" value={filterDateFrom} onChange={(e) => setFilterDateFrom(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
+                            </div>
+                            <div className="w-full md:w-40 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data Envio (Até)</label>
+                                <input type="date" value={filterDateTo} onChange={(e) => setFilterDateTo(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
+                            </div>
+                            <button onClick={clearFilters} title="Limpar Filtros" className="h-[42px] w-[42px] shrink-0 bg-slate-50 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"><X size={16} /></button>
+                        </div>
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 border-b border-slate-100">
+                                    <tr>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Empresa</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Tipo</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Data de Envio</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Status</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {filteredDiagnostics.length > 0 ? filteredDiagnostics.map(d => (
+                                        <tr key={d.id} className="hover:bg-slate-50/50 transition-colors group">
+                                            <td className="p-5">
+                                                <div className="font-black text-sm uppercase text-[#05121b] tracking-tight">{d.razao_social || d.client_name}</div>
+                                                <div className="text-[10px] text-slate-400 font-bold mt-0.5 tracking-widest">{d.cnpj}</div>
+                                            </td>
+                                            <td className="p-5 text-center"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-3 py-1 rounded-md">{d.form_type}</span></td>
+                                            <td className="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">{new Date(d.created_at).toLocaleDateString()}</td>
+                                            <td className="p-5 text-center"><span className="bg-orange-50 text-[#ff7b00] px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border border-orange-200">Analisar</span></td>
+                                            <td className="p-5 text-right">
+                                                <button onClick={() => handleAdminAnalyze(d)} className="bg-[#137789] text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] shadow-sm transition-all hover:scale-[1.05] flex items-center gap-2 ml-auto">Abrir <ChevronRight size={14} /></button>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr><td colSpan="5" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma análise pendente no momento.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* BASE DE CLIENTES DIAGNÓSTICO */}
+                {view === 'clients' && (
+                    <div className="max-w-6xl mx-auto w-full">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+                            <header>
+                                <h1 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter">Banco de Clientes</h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Clientes com diagnósticos concluídos</p>
+                            </header>
+                            <div className="flex items-center gap-3">
+                                <button onClick={downloadCSV} className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2 shadow-sm"><Download size={16} /> Baixar Planilha</button>
+                                <button onClick={fetchData} className="bg-blue-50 text-blue-600 border border-blue-200 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-100 transition-all flex items-center gap-2 shadow-sm"><RefreshCw size={16} /> Sincronizar</button>
+                            </div>
+                        </div>
+                        <div className="flex flex-col md:flex-row gap-4 items-end bg-white p-4 rounded-2xl border border-slate-100 shadow-sm mb-8">
+                            <div className="flex-1 w-full space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Buscar</label>
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input type="text" placeholder="Digite para buscar..." value={clientSearchTerm} onChange={(e) => setClientSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789] focus:bg-white transition-all"/>
+                                </div>
+                            </div>
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Diagnóstico</label>
+                                <select value={clientStatusFilter} onChange={(e) => setClientStatusFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] transition-all appearance-none cursor-pointer">
+                                    <option value="todos">Todos</option>
+                                    <option value="healthy">Saudável</option>
+                                    <option value="warning">Ajustar</option>
+                                    <option value="critical">Atenção</option>
+                                </select>
+                            </div>
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Tipo</label>
+                                <select value={clientTypeFilter} onChange={(e) => setClientTypeFilter(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 outline-none focus:border-[#137789] transition-all appearance-none cursor-pointer">
+                                    <option value="todos">Todos</option>
+                                    <option value="Estruturado">Estruturado</option>
+                                    <option value="Guiado">Guiado</option>
+                                </select>
+                            </div>
+                            <div className="w-full md:w-32 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (De)</label>
+                                <input type="date" value={clientDateFrom} onChange={(e) => setClientDateFrom(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] transition-all"/>
+                            </div>
+                            <div className="w-full md:w-40 space-y-1.5">
+                                <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 ml-1">Data (Até)</label>
+                                <input type="date" value={clientDateTo} onChange={(e) => setClientDateTo(e.target.value)} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] transition-all"/>
+                            </div>
+                            <button onClick={clearClientFilters} title="Limpar Filtros" className="h-[42px] w-[42px] shrink-0 bg-slate-50 hover:bg-slate-200 border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"><X size={16} /></button>
+                        </div>
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 border-b border-slate-100">
+                                    <tr>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Cliente</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400">Contato</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Histórico</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Data Cadastro</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Diagnóstico</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Tipo</th>
+                                        <th className="p-5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {currentClients.length > 0 ? currentClients.map(c => {
+                                        const lastSub = c.latestSubmission || c.history[0];
+                                        return (
+                                        <tr key={c.cnpj || c.email} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-5"><div className="font-black text-sm uppercase text-[#05121b] tracking-tight">{c.razao}</div><div className="text-[10px] text-slate-400 font-bold mt-0.5 tracking-widest">{c.cnpj}</div></td>
+                                            <td className="p-5"><div className="text-[10px] font-bold text-slate-500 mb-0.5">{c.email || "-"}</div><div className="text-[10px] font-bold text-slate-500">{c.phone || "-"}</div></td>
+                                            <td className="p-5 text-center"><span className="text-sm font-black text-[#137789]">{c.submissionCount}</span></td>
+                                            <td className="p-5 text-center text-[11px] font-bold text-slate-400 uppercase tracking-wider">{new Date(c.firstDate).toLocaleDateString()}</td>
+                                            <td className="p-5 text-center flex justify-center mt-2.5">{lastSub ? getDiagnosticoBadge(lastSub.health_status) : "-"}</td>
+                                            <td className="p-5 text-center"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-3 py-1 rounded-md">{lastSub ? lastSub.form_type : "-"}</span></td>
+                                            <td className="p-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button onClick={() => handleSendWhatsApp(c.phone)} className="bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 p-2.5 rounded-xl hover:bg-[#25D366]/20 transition-colors" title="Chamar no WhatsApp"><MessageCircle size={16} /></button>
+                                                    <button onClick={() => openClientProfile(c)} className="border-2 border-slate-200 text-slate-500 px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-[#137789] hover:text-[#137789] transition-all flex items-center gap-2">Ver <Eye size={14} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}) : (
+                                        <tr><td colSpan="7" className="p-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum cliente encontrado.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {totalPages > 1 && (
+                            <div className="flex justify-center items-center gap-2 pb-10">
+                                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronLeft size={16} /></button>
+                                {[...Array(totalPages)].map((_, i) => (
+                                    <button key={i} onClick={() => paginate(i + 1)} className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${currentPage === i + 1 ? 'bg-[#137789] text-white' : 'border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{i + 1}</button>
+                                ))}
+                                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 transition-colors"><ChevronRight size={16} /></button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* FICHA DO CLIENTE */}
+                {view === 'client_profile' && selectedClient && (
+                    <div className="max-w-5xl mx-auto pb-20 w-full">
+                        <div className="flex justify-between items-center mb-8">
+                            <button onClick={goClients} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors"><ArrowLeft size={16}/> Voltar para clientes</button>
+                            <span className="bg-slate-100 text-slate-500 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200">Ficha do Cliente</span>
+                        </div>
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-8 flex items-center gap-6">
+                            <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center text-[#ff7b00] shrink-0"><Building2 size={32} /></div>
+                            <div>
+                                <h2 className="text-2xl font-black italic uppercase text-[#05121b] tracking-tighter mb-3">{selectedClient.razao}</h2>
+                                <div className="flex flex-wrap gap-4 text-[11px] font-bold text-slate-400">
+                                    <span className="flex items-center gap-1.5"><FileText size={14}/> {selectedClient.cnpj}</span>
+                                    <span className="flex items-center gap-1.5"><Mail size={14}/> {selectedClient.email || "Sem e-mail"}</span>
+                                    <span className="flex items-center gap-1.5"><Phone size={14}/> {selectedClient.phone || "Sem telefone"}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-12">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-[#05121b] flex items-center gap-2 mb-4"><StickyNote size={16} className="text-[#137789]"/> Observações Gerais do Cliente (Admin)</label>
+                            <textarea value={generalClientNotes} onChange={(e) => setGeneralClientNotes(e.target.value)} className="w-full h-32 p-5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed mb-4"></textarea>
+                            <div className="flex justify-end items-center gap-4">
+                                {clientNotesSaveStatus && <span className="text-xs font-bold text-emerald-600">{clientNotesSaveStatus}</span>}
+                                <button onClick={handleSaveClientNotes} className="bg-[#05121b] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-all flex items-center gap-2 shadow-md"><Save size={14} /> Salvar Observação</button>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black italic uppercase text-[#05121b] tracking-tighter mb-6">Histórico de Diagnósticos ({selectedClient.history.length})</h3>
+                            <div className="space-y-4">
+                                {selectedClient.history.map(submission => (
+                                    <div key={submission.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 hover:shadow-md transition-shadow">
+                                        <div>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-widest">{submission.form_type}</span>
+                                                <span className="text-[10px] font-bold text-slate-400">{new Date(submission.created_at).toLocaleDateString()}</span>
+                                            </div>
+                                            <h4 className="font-black text-sm uppercase text-[#05121b]">{submission.razao_social || submission.client_name}</h4>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            {getDiagnosticoBadge(submission.health_status)}
+                                            <button onClick={() => handleAdminAnalyze(submission)} className="bg-[#137789] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#05121b] transition-all flex items-center gap-2 shadow-sm">Ver Análise <ChevronRight size={14} /></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODO DE EDIÇÃO E ANÁLISE */}
+                {view === 'review' && selectedSubmission && (
+                    <div className="max-w-5xl mx-auto pb-20 w-full print:max-w-none print:w-full print:p-0 print:m-0 print:pb-0">
+                        <div className="flex justify-between items-center mb-8 print-hidden">
+                            <button onClick={() => setView(selectedClient ? 'client_profile' : 'dashboard')} className="flex items-center gap-2 text-[#137789] font-black text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors"><ArrowLeft size={16}/> {selectedClient ? "Voltar para Ficha" : "Voltar para lista"}</button>
+                            <span className="bg-orange-50 text-[#ff7b00] px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">Modo de Edição & Análise</span>
+                        </div>
+                        <div className="bg-white p-8 md:p-12 rounded-[2rem] shadow-xl shadow-slate-200/50 border border-slate-100 print:shadow-none print:border-none print:rounded-none print:p-0 print:m-0">
+                            <div className="flex justify-between items-start mb-8 border-b border-slate-100 pb-6 print-hidden">
+                                <div>
+                                    <h2 className="text-3xl font-black italic uppercase text-[#05121b] tracking-tighter mb-2">{selectedSubmission.razao_social || selectedSubmission.client_name}</h2>
+                                    <p className="text-[#137789] text-[10px] font-black uppercase tracking-[0.15em]">{selectedSubmission.form_type} • Enviado em {new Date(selectedSubmission.created_at).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 p-6 rounded-3xl flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-12 border border-slate-100 print-hidden">
+                                <div><h3 className="font-black text-sm uppercase tracking-tight text-[#05121b]">Exportar Dados</h3><p className="text-[10px] text-slate-400 font-bold mt-1">Copie as respostas para usar em sua IA externa</p></div>
+                                <button onClick={handleCopyDataForAI} className="bg-white border border-slate-200 text-[#05121b] px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-[#137789] transition-all flex items-center gap-2 shadow-sm"><Copy size={14} /> Copiar Respostas</button>
+                            </div>
+                            <div className="mb-16 pointer-events-none">{renderClientForm()}</div>
+                            <div className="border-t-2 border-slate-100 pt-12 mb-12 break-avoid print:border-t-4 print:border-[#05121b] print:pt-6">
+                                <div className="flex items-center gap-2 mb-8 print-hidden"><Sparkles size={24} className="text-[#ff7b00]" /><h3 className="text-2xl font-black uppercase tracking-tighter italic text-[#05121b]">Resultado e Diagnóstico</h3></div>
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 print:block print:w-full">
+                                    <div className="space-y-4 xl:col-span-2 print:w-full">
+                                        <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2 print-hidden"><FileText size={16}/> Relatório em Texto</label>
+                                        <div className="hidden print-show text-lg font-black uppercase text-[#05121b] tracking-wider mb-4 border-b border-slate-200 pb-2"><FileText size={20} className="inline mr-2 text-[#ff7b00]"/> Análise do Especialista</div>
+                                        <textarea value={adminAnalysis} onChange={(e) => setAdminAnalysis(e.target.value)} className="w-full h-96 p-6 bg-white border-2 border-slate-100 rounded-[2rem] text-sm font-medium text-slate-600 outline-none focus:border-[#137789] resize-none leading-relaxed shadow-inner print-hidden" placeholder="Cole aqui o relatório detalhado gerado pela IA..."></textarea>
+                                        <div className="hidden print-show whitespace-pre-wrap text-sm leading-relaxed text-black">{adminAnalysis || "Análise não preenchida."}</div>
+                                    </div>
+                                    <div className="space-y-4 print-hidden">
+                                        <label className="text-[11px] font-black uppercase tracking-widest text-[#137789] flex items-center gap-2"><BarChart2 size={16}/> Dados para Gráficos</label>
+                                        <textarea value={chartDataInput} onChange={(e) => setChartDataInput(e.target.value)} className="w-full h-96 p-6 bg-[#05121b] text-emerald-400 font-mono border-2 border-[#05121b] rounded-[2rem] text-xs outline-none resize-none leading-relaxed shadow-inner" placeholder="Cole exatamente neste formato:&#10;&#10;Estrutura de Resultado&#10;Receita Bruta: R$ 100000&#10;Custos Diretos: R$ 40000&#10;..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mb-12 border-t border-slate-100 pt-8 print-hidden">
+                                <h4 className="text-[11px] font-black uppercase tracking-widest text-[#137789] mb-4 flex items-center gap-2"><Upload size={16} /> Relatório Final (PDF do Cliente)</h4>
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                        <label className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest cursor-pointer transition-colors flex items-center gap-2 shrink-0 border border-slate-200">
+                                            <Upload size={14} /> Fazer Upload de PDF
+                                            <input type="file" accept=".pdf" className="hidden" onChange={handlePdfUpload} />
+                                        </label>
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">OU COLE O LINK ABAIXO:</span>
+                                    </div>
+                                    <input type="text" value={adminResultPdf} onChange={(e) => setAdminResultPdf(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none focus:border-[#137789] focus:ring-1 focus:ring-[#137789]" placeholder="Cole o link do PDF (Google Drive, Dropbox, etc)..." />
+                                    <p className="text-[9px] text-slate-400 font-bold mt-1">Este arquivo ou link será o que o cliente irá baixar no botão "Baixar em PDF" do painel dele.</p>
+                                </div>
+                            </div>
+                            <div className="mb-12 print-hidden">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 mb-4"><Lock size={14}/> Observações Internas da Análise (Privado)</label>
+                                <textarea value={internalAnalysisNotes} onChange={(e) => setInternalAnalysisNotes(e.target.value)} className="w-full h-32 p-6 bg-yellow-50/50 border-2 border-yellow-100 rounded-3xl text-sm font-medium text-slate-600 outline-none focus:border-yellow-300 resize-none leading-relaxed" placeholder="Anotações internas sobre esta análise específica (não visível para o cliente)..."></textarea>
+                            </div>
+                            <div className="border-t-2 border-slate-100 pt-10 pb-10 print-hidden">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-4 text-center md:text-left">Classificação de Saúde Financeira</label>
+                                <div className="flex flex-col md:flex-row gap-4 mb-8">
+                                    <button onClick={() => setHealthStatus('healthy')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase border-2 transition-all tracking-widest ${healthStatus === 'healthy' ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/30' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}>Saudável</button>
+                                    <button onClick={() => setHealthStatus('warning')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase border-2 transition-all tracking-widest ${healthStatus === 'warning' ? 'bg-[#ffca28] text-[#05121b] border-[#ffca28] shadow-lg shadow-yellow-500/30' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}>Precisa Ajustar</button>
+                                    <button onClick={() => setHealthStatus('critical')} className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase border-2 transition-all tracking-widest ${healthStatus === 'critical' ? 'bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/30' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}>Atenção</button>
+                                </div>
+                                {saveStatus && <p className="text-center font-bold text-xs text-emerald-600 mb-4">{saveStatus}</p>}
+                                <button onClick={handleSaveAnalysis} className="w-full bg-[#05121b] text-white py-5 rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-[#137789] transition-all shadow-xl flex items-center justify-center gap-3"><Save size={18} /> Salvar Diagnóstico, Gráficos e PDF</button>
+                            </div>
+                            <div className="border-t-2 border-dashed border-slate-200 pt-10 mt-10 print-hidden bg-slate-50 -mx-8 md:-mx-12 -mb-8 md:-mb-12 p-8 md:p-12 rounded-b-[2rem]">
+                                <h3 className="text-sm font-black uppercase text-[#05121b] tracking-wider mb-6 flex items-center gap-2"><Send size={18} className="text-[#ff7b00]"/> Compartilhar / Exportar Resultado</h3>
+                                <div className="flex flex-col xl:flex-row gap-5 items-stretch xl:items-center">
+                                    <div className="flex-1 flex flex-col md:flex-row bg-white border border-slate-200 rounded-2xl overflow-hidden focus-within:border-[#25D366] focus-within:ring-1 focus-within:ring-[#25D366] shadow-sm">
+                                        <div className="px-5 py-4 bg-slate-100 border-r border-slate-200 text-slate-500 flex items-center justify-center shrink-0"><MessageCircle size={20} className="text-[#25D366]" /></div>
+                                        <input type="text" value={whatsAppNum} onChange={(e) => setWhatsAppNum(e.target.value)} placeholder="Celular do Cliente" className="px-5 py-4 bg-transparent outline-none text-sm font-bold text-[#05121b] w-full" />
+                                        <button onClick={() => handleSendWhatsApp(whatsAppNum)} className="px-8 py-4 bg-[#25D366] text-white font-black text-[10px] uppercase tracking-widest hover:bg-[#1da851] transition-colors shrink-0 whitespace-nowrap">Enviar Whats</button>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+                                        <button onClick={handleSendEmail} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-blue-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-colors shadow-sm whitespace-nowrap"><Mail size={16} /> Enviar E-mail</button>
+                                        <button onClick={handlePrintPDF} className="flex-1 xl:w-auto flex items-center justify-center gap-2 px-8 py-4 bg-[#05121b] text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-colors shadow-sm whitespace-nowrap"><Printer size={16} /> Imprimir Tela</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ACOMPANHAR CONSULTORIAS */}
+                {view === 'consultoria_acompanhar' && (
+                    <TelaAcompanharConsultorias consultorias={consultorias} />
+                )}
+
+                {/* NOVA CONSULTORIA */}
+                {view === 'consultoria_nova' && (
+                    <TelaNovaConsultoria 
+                        derivedClients={derivedClients}
+                        onSalvar={() => { fetchConsultorias(); goConsultoriaAcompanhar(); }}
+                    />
+                )}
+
+              </main>
+            </div>
+          );
+        };
+
+export default App
