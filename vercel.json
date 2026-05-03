@@ -1,0 +1,13 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/login",       "destination": "/login.html" },
+    { "source": "/cadastro",    "destination": "/cadastro.html" },
+    { "source": "/hub_cliente", "destination": "/hub_cliente.html" },
+    { "source": "/diagnostico", "destination": "/diagnostico.html" },
+    { "source": "/credito",     "destination": "/credito.html" },
+    { "source": "/admin",       "destination": "/admin.html" }
+  ]
+}
