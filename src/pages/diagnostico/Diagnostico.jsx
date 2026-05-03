@@ -15,7 +15,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts'
 import { supabase } from '../../lib/supabase'
-import { formatBRL, formatCurrency, maskCNPJ, isValidEmail, isValidCNPJ, FILE_EMOJI, parseChartData } from './utils'
+import { formatBRL, formatCurrency, maskCNPJ, maskPhone, isValidEmail, isValidCNPJ, FILE_EMOJI, parseChartData } from './utils'
 import { InputField, RadioGroup, TextAreaField, FileUploadField } from './components/FormComponents'
 import { StepBar, StatusBadge, SemaforoCard, ScoreRing, IndicadorCard } from './components/UIComponents'
 import { STEPS_V1, FormStepV1, STEPS_G, FormStepG, EMPTY_FORM, SCENARIOS } from './forms/steps'

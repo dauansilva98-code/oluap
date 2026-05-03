@@ -38,7 +38,7 @@ const HubCliente = () => {
         .single()
 
       if (profile) {
-        setAccess({ diagnostico: profile.has_diagnostico === true, erp: false, consultoria: profile.has_consultoria === true, credito: profile.has_credito === true })
+        setAccess({ diagnostico: profile.has_diagnostico === true, erp: profile.has_erp === true, consultoria: profile.has_consultoria === true, credito: profile.has_credito === true })
       }
     } catch (err) {
       console.error('Erro ao buscar acesso:', err)
@@ -70,7 +70,7 @@ const HubCliente = () => {
       setAccess(prev => ({ ...prev, [prod.id]: true }))
       window.location.href = prod.url
     } else {
-      window.location.href = `pagamento_${prod.id}.html`
+      window.location.href = `produto-${prod.id}.html`
     }
   }
 

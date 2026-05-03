@@ -32,13 +32,13 @@ export const calcMetrics = (diag) => {
   const margContrib   = receita > 0 ? ((receita - custVar) / receita) * 100 : 0
   const margLiq       = receita > 0 ? (lucro / receita) * 100 : 0
   const pontoEq       = margContrib > 0 ? custFix / (margContrib / 100) : 0
-  const burnRate      = totalCust
+  const burnRate      = lucro < 0 ? Math.abs(lucro) : totalCust
   const runwayMeses   = burnRate > 0 && saldo > 0 ? saldo / burnRate : 0
   const folegoDias    = Math.round(runwayMeses * 30)
   const ticketMedio   = numVendas > 0 ? receita / numVendas : 0
   let score = 50
-  if (margLiq >= 15) score += 20; else if (margLiq >= 5) score += 10; else if (margLiq < 0) score -= 25
-  if (folegoDias >= 90) score += 15; else if (folegoDias >= 45) score += 5; else if (folegoDias > 0 && folegoDias < 20) score -= 15
+  if (margLiq >= 15) score += 20; else if (margLiq >= 5) score += 10; else if (margLiq >= 0) score -= 5; else score -= 25
+  if (folegoDias >= 90) score += 15; else if (folegoDias >= 45) score += 5; else if (folegoDias >= 20) score -= 5; else if (folegoDias > 0) score -= 15
   if (receita > 0 && pontoEq <= receita) score += 10; else if (receita > 0) score -= 10
   if (margemBruta >= 40) score += 5; else if (margemBruta < 15) score -= 5
   score = Math.max(10, Math.min(100, Math.round(score)))
