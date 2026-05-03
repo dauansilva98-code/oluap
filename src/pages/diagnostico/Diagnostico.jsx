@@ -15,6 +15,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts'
 import { supabase } from '../../lib/supabase'
+import * as XLSX from 'xlsx'
 import { formatBRL, formatCurrency, maskCNPJ, maskPhone, isValidEmail, isValidCNPJ, FILE_EMOJI, parseChartData } from './utils'
 import { InputField, RadioGroup, TextAreaField, FileUploadField } from './components/FormComponents'
 import { StepBar, StatusBadge, SemaforoCard, ScoreRing, IndicadorCard } from './components/UIComponents'
@@ -202,6 +203,7 @@ const App = () => {
   const [modalBanco, setModalBanco] = useState(null);
   const [modalReceita, setModalReceita] = useState(null);
   const [modalDespesa, setModalDespesa] = useState(null);
+  const [modalImportDespesas, setModalImportDespesas] = useState(null);
   const [modalCP, setModalCP] = useState(null);
   const [modalSolicitarAnalise, setModalSolicitarAnalise] = useState(false);
   const [modalCR, setModalCR] = useState(null);
@@ -296,6 +298,57 @@ const App = () => {
     if(!confirm('Confirmar exclusão?'))return;
     await supabase.from(table).delete().eq('id',id);
     await resetList();
+  };
+
+  const handleImportFile=(file)=>{
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(evt)=>{
+      try{
+        const wb=XLSX.read(evt.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''});
+        if(!rows.length){alert('Arquivo vazio ou sem dados.');return;}
+        const headers=rows[0].map(h=>String(h||''));
+        const detectCol=(h)=>{
+          const l=h.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+          if(/data|date|\bdt\b/.test(l))return'data';
+          if(/descri|histor|memo|lancam|narr|movimento/.test(l))return'descricao';
+          if(/valor|value|amount|debito|debit|\bvl\b|r\$|saida|credito/.test(l))return'valor';
+          if(/categ|tipo|type|class/.test(l))return'categoria';
+          return'';
+        };
+        const mappings={data:'',descricao:'',valor:'',categoria:''};
+        headers.forEach((h,i)=>{const f=detectCol(h);if(f&&mappings[f]==='')mappings[f]=String(i);});
+        setModalImportDespesas({stage:'map',headers,rows:rows.slice(1),mappings});
+      }catch(e){alert('Erro ao ler o arquivo. Use .csv ou .xlsx');}
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const confirmarImport=async()=>{
+    if(!modalImportDespesas?.rows)return;
+    const{rows,mappings}=modalImportDespesas;
+    const today2=new Date().toISOString().split('T')[0];
+    const records=rows.filter(r=>r&&r.some(c=>c!=='')).map(r=>{
+      const g=(k)=>mappings[k]!==''&&mappings[k]!==undefined?String(r[parseInt(mappings[k])]||'').trim():'';
+      const rawValor=g('valor').replace(/[^\d,\.]/g,'');
+      const valor=parseFloat(rawValor.includes(',')?rawValor.replace(',','.'):rawValor)||0;
+      if(!valor)return null;
+      let data=today2;
+      const rd=g('data');
+      if(rd){const pts=rd.split(/[\/\-\.]/);if(pts.length===3){if(pts[2]?.length===4)data=`${pts[2]}-${pts[1].padStart(2,'0')}-${pts[0].padStart(2,'0')}`;else if(pts[0]?.length===4)data=rd.slice(0,10);}}
+      return{descricao:g('descricao')||'Importado',valor,data,categoria:g('categoria')||'Outros',tipo:'despesa',user_id:user.id,banco_id:null,meio_pagamento:''};
+    }).filter(Boolean);
+    if(!records.length){alert('Nenhuma despesa válida encontrada. Verifique o mapeamento das colunas.');return;}
+    setSavingItem(true);
+    try{
+      await supabase.from('lancamentos').insert(records);
+      await fetchFinanceiro(user.id);
+      setModalImportDespesas(null);
+      alert(`${records.length} despesa(s) importada(s) com sucesso!`);
+    }catch(e){console.error(e);alert('Erro ao importar. Verifique os dados e tente novamente.');}
+    setSavingItem(false);
   };
 
   const fmtDate=d=>d?new Date(d+'T00:00:00').toLocaleDateString('pt-BR'):'—';
@@ -1330,7 +1383,10 @@ const App = () => {
             <div className="max-w-4xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Saídas</p><h1 className="text-2xl font-black text-[#05121b] italic">Despesas</h1></div>
-                <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="bg-red-500 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-red-600 transition-colors shadow-md"><Plus size={13}/>Nova Despesa</button>
+                <div className="flex gap-2">
+                  <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="bg-white text-slate-600 border border-slate-200 px-5 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm"><Upload size={13}/>Importar</button>
+                  <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="bg-red-500 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-red-600 transition-colors shadow-md"><Plus size={13}/>Nova Despesa</button>
+                </div>
               </header>
               <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
                 <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Despesas Registradas</p>
@@ -1695,9 +1751,10 @@ const App = () => {
                     <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalDespesa.data} onChange={e=>setModalDespesa({...modalDespesa,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Fornecedor','Folha de Pagamento','Aluguel','Marketing','Serviços/Software','Estorno','Impostos','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value,categoria_custom:''})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Fornecedor','Folha de Pagamento','Aluguel','Água/Saneamento','Luz/Energia','Internet/Telefone','Marketing','Serviços/Software','Impostos','Estorno','Outros','Personalizado'].map(c=><option key={c}>{c}</option>)}</select></div>
                     <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalDespesa.meio_pagamento||''} onChange={e=>setModalDespesa({...modalDespesa,meio_pagamento:e.target.value,taxa_cartao:'',banco_id:e.target.value==='Dinheiro'?'':modalDespesa.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Boleto Bancário','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                   </div>
+                  {modalDespesa.categoria==='Personalizado'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Nome da despesa específica</label><input type="text" placeholder="Ex: Manutenção, Seguro, Licença..." value={modalDespesa.categoria_custom||''} onChange={e=>setModalDespesa({...modalDespesa,categoria_custom:e.target.value})} className="w-full bg-white border border-red-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>}
                   {isCard&&(
                     <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
                       <div className="flex items-center justify-between">
@@ -1716,7 +1773,7 @@ const App = () => {
               })()}
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalDespesa(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor} onClick={()=>{const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;const isCard=modalDespesa.meio_pagamento==='Cartão de Crédito'||modalDespesa.meio_pagamento==='Cartão de Débito';const taxa=parseFloat(modalDespesa.taxa_cartao)||0;const valorFinal=isCard&&taxa>0?valorBruto*(1+taxa/100):valorBruto;saveItem('lancamentos',{...modalDespesa,valor:valorFinal,tipo:'despesa',user_id:user.id},setModalDespesa,()=>fetchFinanceiro(user.id));}} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor||(modalDespesa.categoria==='Personalizado'&&!modalDespesa.categoria_custom)} onClick={()=>{const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;const isCard=modalDespesa.meio_pagamento==='Cartão de Crédito'||modalDespesa.meio_pagamento==='Cartão de Débito';const taxa=parseFloat(modalDespesa.taxa_cartao)||0;const valorFinal=isCard&&taxa>0?valorBruto*(1+taxa/100):valorBruto;const catFinal=modalDespesa.categoria==='Personalizado'?(modalDespesa.categoria_custom||'Outros'):modalDespesa.categoria;const{categoria_custom:_cc,...restDesp}=modalDespesa;saveItem('lancamentos',{...restDesp,valor:valorFinal,categoria:catFinal,tipo:'despesa',user_id:user.id,banco_id:modalDespesa.banco_id||null},setModalDespesa,()=>fetchFinanceiro(user.id));}} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
           </div>
@@ -2209,6 +2266,72 @@ const App = () => {
                   <button onClick={handleDownloadAdminPDF} className="flex-1 bg-[#05121b] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 flex items-center justify-center gap-2 shadow-md transition-colors"><Printer size={14}/> Baixar PDF</button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Importar Despesas */}
+        {modalImportDespesas&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalImportDespesas(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-black text-[#05121b]">Importar Despesas</h3>
+                <button onClick={()=>setModalImportDespesas(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
+              </div>
+              {modalImportDespesas.stage==='upload'?(
+                <div className="space-y-5">
+                  <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center">
+                    <FileSpreadsheet size={32} className="text-slate-300 mx-auto mb-3"/>
+                    <p className="text-sm font-bold text-[#05121b] mb-1">Selecione sua planilha ou arquivo CSV</p>
+                    <p className="text-[10px] text-slate-400 mb-4">Formatos aceitos: .xlsx, .xls, .csv</p>
+                    <label className="cursor-pointer bg-red-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-600 transition-colors inline-flex items-center gap-2">
+                      <Upload size={13}/>Escolher arquivo
+                      <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={e=>{if(e.target.files[0])handleImportFile(e.target.files[0]);}}/>
+                    </label>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">Dica de formatação</p>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">Sua planilha deve ter colunas como <strong>Data</strong>, <strong>Descrição</strong>, <strong>Valor</strong> e opcionalmente <strong>Categoria</strong>. O sistema detecta automaticamente as colunas pelo nome do cabeçalho.</p>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
+                    <p className="text-[10px] font-black text-orange-700 uppercase tracking-widest mb-1">PDF não suportado diretamente</p>
+                    <p className="text-[11px] text-orange-700">Para arquivos PDF (extratos bancários etc.), exporte primeiro para CSV/Excel no seu banco ou use uma ferramenta de conversão.</p>
+                  </div>
+                </div>
+              ):(
+                <div className="space-y-5">
+                  <p className="text-[11px] text-slate-500 font-medium">{modalImportDespesas.rows?.length||0} linha(s) encontrada(s). Mapeie as colunas abaixo:</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[{key:'data',label:'Coluna de Data'},{key:'descricao',label:'Coluna de Descrição'},{key:'valor',label:'Coluna de Valor'},{key:'categoria',label:'Coluna de Categoria (opcional)'}].map(({key,label})=>(
+                      <div key={key} className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">{label}</label>
+                        <select value={modalImportDespesas.mappings[key]} onChange={e=>setModalImportDespesas({...modalImportDespesas,mappings:{...modalImportDespesas.mappings,[key]:e.target.value}})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500">
+                          <option value="">— Não mapear —</option>
+                          {modalImportDespesas.headers.map((h,i)=><option key={i} value={String(i)}>{h||`Coluna ${i+1}`}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  {modalImportDespesas.rows?.slice(0,3).filter(r=>r&&r.some(c=>c!=='')).length>0&&(
+                    <div className="bg-slate-50 rounded-2xl p-4">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Prévia (primeiras linhas)</p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[10px]">
+                          <thead><tr className="border-b border-slate-200">{['Data','Descrição','Valor','Categoria'].map(h=><th key={h} className="px-2 py-1.5 text-left font-black text-slate-400 uppercase tracking-wider">{h}</th>)}</tr></thead>
+                          <tbody>{modalImportDespesas.rows.slice(0,3).filter(r=>r&&r.some(c=>c!=='')).map((r,i)=>{
+                            const g=(k)=>modalImportDespesas.mappings[k]!==''&&modalImportDespesas.mappings[k]!==undefined?String(r[parseInt(modalImportDespesas.mappings[k])]||''):'—';
+                            return(<tr key={i} className="border-b border-slate-100"><td className="px-2 py-1.5 text-slate-500">{g('data')}</td><td className="px-2 py-1.5 font-medium text-[#05121b] max-w-[150px] truncate">{g('descricao')}</td><td className="px-2 py-1.5 text-red-600 font-bold">{g('valor')}</td><td className="px-2 py-1.5 text-slate-500">{g('categoria')}</td></tr>);
+                          })}</tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex gap-3">
+                    <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Voltar</button>
+                    <button disabled={savingItem||!modalImportDespesas.mappings.valor} onClick={confirmarImport} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Importar {modalImportDespesas.rows?.length||0} registros</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
