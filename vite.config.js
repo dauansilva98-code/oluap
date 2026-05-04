@@ -23,6 +23,7 @@ export default defineConfig({
         'produto-erp':         resolve(__dirname, 'produto-erp.html'),
         'produto-diagnostico': resolve(__dirname, 'produto-diagnostico.html'),
         'produto-credito':     resolve(__dirname, 'produto-credito.html'),
+        receitas:              resolve(__dirname, 'receitas.html'),
       },
     },
   },
