@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react'
 import {
   LayoutDashboard, LogOut, ShieldCheck, AlertTriangle, Plus,
-  FileText, Sparkles, Clock, Building2, Landmark, Target, ChevronRight,
+  FileText, Sparkles, Clock, Building2, Landmark, Target, ChevronRight, ChevronDown,
   Upload, Info, ArrowLeft, CheckCircle, Printer, MessageCircle, Mail, Phone,
   FileSearch, User, ChevronLeft, Loader2, BarChart2, Bell, Lightbulb,
   AlertCircle, Save, TrendingUp, Zap, Activity, Database,
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area
+  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
 } from 'recharts'
 import { supabase } from '../../lib/supabase'
 import * as XLSX from 'xlsx'
@@ -210,6 +210,8 @@ const App = () => {
   const [modalDivida, setModalDivida] = useState(null);
   const [investimentos, setInvestimentos] = useState([]);
   const [modalInvestimento, setModalInvestimento] = useState(null);
+  const [periodoReceitas, setPeriodoReceitas] = useState(null);
+  const [filtroReceitas, setFiltroReceitas] = useState('todos');
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -1339,36 +1341,189 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── RECEITAS ──────────────────────────────────────────────── */}
         {view==='receitas'&&(()=>{
-          const cats=['Venda de Produto','Venda de Serviço','Mensalidade','Comissão','Juros','Outros'];
-          const total=lancamentos.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+          const receitasAll=lancamentos.filter(l=>l.tipo==='receita');
+          // Period options from real data + current month
+          const periodoOpts=(()=>{
+            const meses=new Set();
+            receitasAll.forEach(l=>{if(l.data)meses.add(l.data.substring(0,7));});
+            meses.add(today.substring(0,7));
+            return[...meses].sort((a,b)=>b.localeCompare(a)).slice(0,12).map(m=>{
+              const[y,mo]=m.split('-');
+              const nome=new Date(parseInt(y),parseInt(mo)-1).toLocaleString('pt-BR',{month:'long',year:'numeric'});
+              return{key:m,nome:nome.charAt(0).toUpperCase()+nome.slice(1)};
+            });
+          })();
+          const periodoKey=periodoReceitas||(periodoOpts[0]?.key||today.substring(0,7));
+          const receitasMes=receitasAll.filter(l=>l.data?.startsWith(periodoKey));
+          // Metrics
+          const totalMes=receitasMes.reduce((a,l)=>a+Number(l.valor),0);
+          const mensalidades=receitasMes.filter(l=>l.categoria==='Mensalidade').reduce((a,l)=>a+Number(l.valor),0);
+          const avulsas=receitasMes.filter(l=>l.categoria!=='Mensalidade').reduce((a,l)=>a+Number(l.valor),0);
+          const prevKey=(()=>{const[y,m]=periodoKey.split('-');const d=new Date(parseInt(y),parseInt(m)-2);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+          const receitasPrev=receitasAll.filter(l=>l.data?.startsWith(prevKey));
+          const totalPrev=receitasPrev.reduce((a,l)=>a+Number(l.valor),0);
+          const mensalidadesPrev=receitasPrev.filter(l=>l.categoria==='Mensalidade').reduce((a,l)=>a+Number(l.valor),0);
+          const avulsasPrev=receitasPrev.filter(l=>l.categoria!=='Mensalidade').reduce((a,l)=>a+Number(l.valor),0);
+          const inadimplencia=contasReceber.filter(cr=>cr.vencimento<today&&cr.status!=='recebido').reduce((a,cr)=>a+Number(cr.valor),0);
+          const deltaStr=(curr,prev)=>{if(prev===0)return null;const p=((curr-prev)/prev*100);return{txt:`${p>=0?'↑':'↓'} ${Math.abs(p).toFixed(1)}% vs anterior`,pos:p>=0};};
+          // Donut
+          const catMap={};
+          receitasMes.forEach(l=>{const c=l.categoria||'Outros';catMap[c]=(catMap[c]||0)+Number(l.valor);});
+          const donutColors=['#137789','#34d399','#ff7b00','#a78bfa','#f87171','#fbbf24','#60a5fa'];
+          const donutData=Object.entries(catMap).map(([label,value],i)=>({label,value,color:donutColors[i%donutColors.length]}));
+          // Line — last 6 months
+          const lineData=(()=>{
+            const result=[];
+            const[py,pm]=periodoKey.split('-');
+            for(let i=5;i>=0;i--){
+              const d=new Date(parseInt(py),parseInt(pm)-1-i);
+              const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+              result.push({
+                month:d.toLocaleString('pt-BR',{month:'short'}).replace('.',''),
+                total:receitasAll.filter(l=>l.data?.startsWith(k)).reduce((a,l)=>a+Number(l.valor),0),
+                recorrente:receitasAll.filter(l=>l.data?.startsWith(k)&&l.categoria==='Mensalidade').reduce((a,l)=>a+Number(l.valor),0),
+              });
+            }
+            return result;
+          })();
+          // Table filter
+          const filtroFn={
+            todos:()=>true,
+            mensalidade:l=>l.categoria==='Mensalidade',
+            servico:l=>l.categoria==='Venda de Serviço',
+            avulso:l=>l.categoria!=='Mensalidade'&&l.categoria!=='Venda de Serviço',
+          };
+          const filtrados=receitasMes.filter(filtroFn[filtroReceitas]||filtroFn.todos);
+          const DonutTip=({active,payload})=>{if(!active||!payload?.length)return null;return(<div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-lg"><p className="text-xs font-semibold text-[#05121b]">{payload[0].name}</p><p className="text-xs text-slate-500 mt-0.5">{formatBRL(payload[0].value)}</p></div>);};
+          const LineTip=({active,payload,label})=>{if(!active||!payload?.length)return null;return(<div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-lg"><p className="text-xs font-semibold text-[#05121b] mb-1">{label}</p>{payload.map(p=><p key={p.dataKey} className="text-xs" style={{color:p.color}}>{p.dataKey==='total'?'Total':'Mensalidades'}: {formatBRL(p.value)}</p>)}</div>);};
+          const metricCards=[
+            {label:'Total do mês',       value:formatBRL(totalMes),     delta:deltaStr(totalMes,totalPrev)},
+            {label:'Receita recorrente',  value:formatBRL(mensalidades),  delta:deltaStr(mensalidades,mensalidadesPrev)},
+            {label:'Receita avulsa',      value:formatBRL(avulsas),       delta:deltaStr(avulsas,avulsasPrev)},
+            {label:'Inadimplência',       value:formatBRL(inadimplencia), delta:inadimplencia>0?{txt:'Contas vencidas',pos:false}:null},
+          ];
           return(
-            <div className="max-w-4xl mx-auto fade-in">
-              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas</p><h1 className="text-2xl font-black text-[#05121b] italic">Receitas</h1></div>
-                <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="bg-emerald-600 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-md"><Plus size={13}/>Nova Receita</button>
-              </header>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
-                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Total de Receitas Registradas</p>
-                <p className="text-2xl font-black text-emerald-800">{formatBRL(total)}</p>
+            <div className="max-w-5xl mx-auto fade-in space-y-5">
+              {/* Header */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Gestão Financeira</p>
+                  <h1 className="text-xl font-medium text-[#05121b] mt-0.5">Receitas</h1>
+                </div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="relative">
+                    <select value={periodoKey} onChange={e=>setPeriodoReceitas(e.target.value)} className="appearance-none border border-slate-200 bg-white rounded-xl px-4 py-2 pr-8 text-sm font-medium text-[#05121b] outline-none focus:border-[#137789] cursor-pointer transition-colors">
+                      {periodoOpts.map(p=><option key={p.key} value={p.key}>{p.nome}</option>)}
+                    </select>
+                    <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+                  </div>
+                  <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
+                    <Plus size={14}/>Lançar receita
+                  </button>
+                </div>
               </div>
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                {lancamentos.filter(l=>l.tipo==='receita').length===0?<div className="py-16 text-center"><TrendingUp size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma receita registrada</p></div>:(
-                  <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Data','Descrição','Categoria','Banco','Valor',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {lancamentos.filter(l=>l.tipo==='receita').map(l=>(
-                        <tr key={l.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-5 py-3 text-[10px] text-slate-400 font-medium whitespace-nowrap">{fmtDate(l.data)}</td>
-                          <td className="px-5 py-3 text-xs font-bold text-[#05121b]">{l.descricao}</td>
-                          <td className="px-5 py-3 text-[10px] text-slate-400">{l.categoria||'—'}</td>
-                          <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===l.banco_id)?.nome||'—'}</td>
-                          <td className="px-5 py-3 text-sm font-black text-emerald-700 whitespace-nowrap">+{formatBRL(l.valor)}</td>
-                          <td className="px-5 py-3"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
+              {/* Metric Cards */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))',gap:'12px'}}>
+                {metricCards.map((m,i)=>(
+                  <div key={i} className="bg-white border border-slate-100 rounded-2xl p-4">
+                    <p className="text-xs text-slate-500 font-medium mb-2">{m.label}</p>
+                    <p className="text-[20px] font-medium text-[#05121b] leading-tight">{m.value}</p>
+                    {m.delta&&<p className="text-xs font-semibold mt-1.5" style={{color:m.delta.pos?'#34d399':'#f87171'}}>{m.delta.txt}</p>}
+                  </div>
+                ))}
+              </div>
+              {/* Charts */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))',gap:'16px'}}>
+                {/* Donut */}
+                <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <h3 className="text-sm font-semibold text-[#05121b] mb-3">Receita por categoria</h3>
+                  {donutData.length>0?(
+                    <>
+                      <ResponsiveContainer width="100%" height={150}>
+                        <PieChart>
+                          <Pie data={donutData} dataKey="value" nameKey="label" cx="50%" cy="50%" innerRadius="58%" outerRadius="82%" strokeWidth={0} paddingAngle={0}>
+                            {donutData.map((d,i)=><Cell key={i} fill={d.color}/>)}
+                          </Pie>
+                          <RTooltip content={<DonutTip/>}/>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="mt-3 space-y-1.5">
+                        {donutData.map((d,i)=>(
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{background:d.color}}/><span className="text-slate-600">{d.label}</span></div>
+                            <span className="font-medium text-[#05121b]">{formatBRL(d.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ):(
+                    <div className="h-40 flex items-center justify-center"><p className="text-slate-300 text-xs font-bold uppercase tracking-widest">Sem dados no período</p></div>
+                  )}
+                </div>
+                {/* Line */}
+                <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-[#05121b]">Evolução mensal</h3>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5 rounded" style={{background:'#137789'}}/>Total</span>
+                      <span className="flex items-center gap-1.5"><svg width="20" height="4" viewBox="0 0 20 4"><line x1="0" y1="2" x2="20" y2="2" stroke="#34d399" strokeWidth="2" strokeDasharray="4 2"/></svg>Mensalidades</span>
+                    </div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={190}>
+                    <LineChart data={lineData} margin={{top:4,right:4,bottom:0,left:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
+                      <XAxis dataKey="month" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={52}/>
+                      <RTooltip content={<LineTip/>}/>
+                      <Line type="monotone" dataKey="total" stroke="#137789" strokeWidth={2} dot={{r:3,fill:'#137789',strokeWidth:0}} activeDot={{r:5}}/>
+                      <Line type="monotone" dataKey="recorrente" stroke="#34d399" strokeWidth={2} strokeDasharray="5 3" dot={{r:3,fill:'#34d399',strokeWidth:0}} activeDot={{r:5}}/>
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              {/* Table */}
+              <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
+                  <h3 className="text-sm font-semibold text-[#05121b]">Lançamentos</h3>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[{key:'todos',label:'Todos'},{key:'mensalidade',label:'Mensalidade'},{key:'servico',label:'Serviço'},{key:'avulso',label:'Avulso'}].map(f=>(
+                      <button key={f.key} onClick={()=>setFiltroReceitas(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${filtroReceitas===f.key?'bg-[#05121b] text-white border-[#05121b]':'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{f.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  {filtrados.length===0?(
+                    <div className="py-14 text-center"><TrendingUp size={26} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">{receitasMes.length===0?'Nenhuma receita no período':'Nenhum resultado para o filtro'}</p></div>
+                  ):(
+                    <table className="w-full text-sm min-w-[520px]">
+                      <thead>
+                        <tr className="border-b border-slate-100">
+                          {['Descrição','Categoria','Tipo','Data','Banco','Valor',''].map(h=><th key={h} className={`px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest ${h==='Valor'?'text-right':'text-left'}`}>{h}</th>)}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                      </thead>
+                      <tbody>
+                        {filtrados.map((l,idx)=>{
+                          const tipoInfo=l.categoria==='Mensalidade'
+                            ?{cls:'bg-cyan-50 text-cyan-700 border-cyan-200',lbl:'Recorrente'}
+                            :l.categoria==='Venda de Serviço'
+                            ?{cls:'bg-emerald-50 text-emerald-700 border-emerald-200',lbl:'Serviço'}
+                            :{cls:'bg-amber-50 text-amber-700 border-amber-200',lbl:'Avulso'};
+                          return(
+                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtrados.length-1?'border-b border-slate-100':''}`}>
+                              <td className="px-4 py-3.5 font-medium text-[#05121b] text-sm">{l.descricao}</td>
+                              <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
+                              <td className="px-4 py-3.5"><span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${tipoInfo.cls}`}>{tipoInfo.lbl}</span></td>
+                              <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{fmtDate(l.data)}</td>
+                              <td className="px-4 py-3.5 text-slate-500 text-xs">{bancos.find(b=>b.id===l.banco_id)?.nome||'—'}</td>
+                              <td className="px-4 py-3.5 text-right font-medium text-emerald-700 whitespace-nowrap">+{formatBRL(l.valor)}</td>
+                              <td className="px-4 py-3.5"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
             </div>
           );
