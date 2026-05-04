@@ -212,6 +212,8 @@ const App = () => {
   const [modalInvestimento, setModalInvestimento] = useState(null);
   const [periodoReceitas, setPeriodoReceitas] = useState(null);
   const [filtroReceitas, setFiltroReceitas] = useState('todos');
+  const [periodoDespesas, setPeriodoDespesas] = useState(null);
+  const [filtroDespesas, setFiltroDespesas] = useState('todos');
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -1532,39 +1534,214 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── DESPESAS ──────────────────────────────────────────────── */}
         {view==='despesas'&&(()=>{
-          const cats=['Cartão de Crédito','Boleto','Fornecedor','Folha de Pagamento','Aluguel','Marketing','Serviços/Software','Estorno','Impostos','Outros'];
-          const total=lancamentos.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          const despesasAll=lancamentos.filter(l=>l.tipo==='despesa');
+          // Period options
+          const periodoOpts=(()=>{
+            const meses=new Set();
+            despesasAll.forEach(l=>{if(l.data)meses.add(l.data.substring(0,7));});
+            meses.add(today.substring(0,7));
+            return[...meses].sort((a,b)=>b.localeCompare(a)).slice(0,12).map(m=>{
+              const[y,mo]=m.split('-');
+              const nome=new Date(parseInt(y),parseInt(mo)-1).toLocaleString('pt-BR',{month:'long',year:'numeric'});
+              return{key:m,nome:nome.charAt(0).toUpperCase()+nome.slice(1)};
+            });
+          })();
+          const periodoKey=periodoDespesas||(periodoOpts[0]?.key||today.substring(0,7));
+          const despesasMes=despesasAll.filter(l=>l.data?.startsWith(periodoKey));
+          const prevKey=(()=>{const[y,m]=periodoKey.split('-');const d=new Date(parseInt(y),parseInt(m)-2);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+          const despesasPrev=despesasAll.filter(l=>l.data?.startsWith(prevKey));
+          // Type from categoria
+          const tipoFromCat=cat=>{
+            if(['Folha de Pagamento','Aluguel','Serviços/Software','Boleto Bancário'].includes(cat))return'fixa';
+            if(['Impostos','Impostos e taxas','Imposto / DAS'].includes(cat))return'imposto';
+            return'variavel';
+          };
+          // Metrics
+          const totalMes=despesasMes.reduce((a,l)=>a+Number(l.valor),0);
+          const totalPrev=despesasPrev.reduce((a,l)=>a+Number(l.valor),0);
+          const fixas=despesasMes.filter(l=>tipoFromCat(l.categoria)==='fixa').reduce((a,l)=>a+Number(l.valor),0);
+          const variaveis=despesasMes.filter(l=>tipoFromCat(l.categoria)==='variavel').reduce((a,l)=>a+Number(l.valor),0);
+          const variavelsPrev=despesasPrev.filter(l=>tipoFromCat(l.categoria)==='variavel').reduce((a,l)=>a+Number(l.valor),0);
+          const aPagar=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento?.startsWith(periodoKey)).reduce((a,cp)=>a+Number(cp.valor),0);
+          const aPagarCount=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento?.startsWith(periodoKey)).length;
+          // Delta: expense rising = bad (red), falling = good (green)
+          const deltaStr=(curr,prev)=>{if(prev===0)return null;const p=((curr-prev)/prev*100);return{txt:`${p>=0?'↑':'↓'} ${Math.abs(p).toFixed(1)}% vs anterior`,pos:p<0};};
+          // Budget
+          const ORCAMENTO=75000;
+          const pctUsado=(totalMes/ORCAMENTO)*100;
+          const budgeBadgeCls=pctUsado>=100?'bg-red-50 text-red-600 border-red-200':pctUsado>=75?'bg-amber-50 text-amber-700 border-amber-200':'bg-emerald-50 text-emerald-700 border-emerald-200';
+          // Donut
+          const catMap={};
+          despesasMes.forEach(l=>{const c=l.categoria||'Outros';catMap[c]=(catMap[c]||0)+Number(l.valor);});
+          const catColors={'Folha de Pagamento':'#137789','Fornecedor':'#a78bfa','Fornecedores':'#a78bfa','Infraestrutura':'#ff7b00','Impostos':'#f87171','Impostos e taxas':'#f87171','Marketing':'#34d399','Aluguel':'#fbbf24','Serviços/Software':'#60a5fa'};
+          const fallback=['#137789','#a78bfa','#ff7b00','#f87171','#34d399','#fbbf24','#60a5fa','#94a3b8'];
+          const donutData=Object.entries(catMap).map(([label,value],i)=>({label,value,color:catColors[label]||fallback[i%fallback.length]}));
+          // Bar: top 5 categories, prev vs current
+          const topCats=[...new Set([...Object.keys(catMap),...despesasPrev.map(l=>l.categoria||'Outros')])].slice(0,5);
+          const barData=topCats.map(cat=>({
+            cat:cat.length>9?cat.substring(0,9)+'..':cat,
+            anterior:despesasPrev.filter(l=>(l.categoria||'Outros')===cat).reduce((a,l)=>a+Number(l.valor),0),
+            atual:despesasMes.filter(l=>(l.categoria||'Outros')===cat).reduce((a,l)=>a+Number(l.valor),0),
+          }));
+          // Table
+          const filtroFnD={todos:()=>true,fixa:l=>tipoFromCat(l.categoria)==='fixa',variavel:l=>tipoFromCat(l.categoria)==='variavel',imposto:l=>tipoFromCat(l.categoria)==='imposto'};
+          const filtradosD=despesasMes.filter(filtroFnD[filtroDespesas]||filtroFnD.todos);
+          const TIPO_STYLE={fixa:'bg-cyan-50 text-cyan-700 border-cyan-200',variavel:'bg-violet-50 text-violet-700 border-violet-200',imposto:'bg-amber-50 text-amber-700 border-amber-200'};
+          const TIPO_LABEL={fixa:'Fixa',variavel:'Variável',imposto:'Imposto'};
+          const DonutTip=({active,payload})=>{if(!active||!payload?.length)return null;return(<div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-lg"><p className="text-xs font-semibold text-[#05121b]">{payload[0].name}</p><p className="text-xs text-slate-500 mt-0.5">{formatBRL(payload[0].value)}</p></div>);};
+          const BarTip=({active,payload,label})=>{if(!active||!payload?.length)return null;return(<div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-lg"><p className="text-xs font-semibold text-[#05121b] mb-1">{label}</p>{payload.map(p=><p key={p.name} className="text-xs" style={{color:p.color}}>{p.name}: {formatBRL(p.value)}</p>)}</div>);};
+          const metricCards=[
+            {label:'Total do mês',       value:formatBRL(totalMes),  delta:deltaStr(totalMes,totalPrev)},
+            {label:'Despesas fixas',     value:formatBRL(fixas),     delta:totalMes>0?{txt:`${(fixas/totalMes*100).toFixed(1)}% do total`,pos:null}:null},
+            {label:'Despesas variáveis', value:formatBRL(variaveis), delta:deltaStr(variaveis,variavelsPrev)},
+            {label:'A pagar ainda',      value:formatBRL(aPagar),    delta:aPagarCount>0?{txt:`${aPagarCount} vencimento${aPagarCount>1?'s':''}`,pos:null}:null},
+          ];
           return(
-            <div className="max-w-4xl mx-auto fade-in">
-              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-xs text-slate-500 font-medium">Saídas</p><h1 className="text-xl font-medium text-[#05121b]">Despesas</h1></div>
-                <div className="flex gap-2">
-                  <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="bg-white text-slate-600 border border-slate-200 px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-50 transition-colors shadow-sm"><Upload size={13}/>Importar</button>
-                  <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="bg-red-500 text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-red-600 transition-colors shadow-md"><Plus size={13}/>Nova Despesa</button>
+            <div className="max-w-5xl mx-auto fade-in space-y-5">
+              {/* Header */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Gestão Financeira</p>
+                  <h1 className="text-xl font-medium text-[#05121b] mt-0.5">Despesas</h1>
                 </div>
-              </header>
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
-                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Despesas Registradas</p>
-                <p className="text-xl font-medium text-red-800">{formatBRL(total)}</p>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <div className="relative">
+                    <select value={periodoKey} onChange={e=>setPeriodoDespesas(e.target.value)} className="appearance-none border border-slate-200 bg-white rounded-xl px-4 py-2 pr-8 text-sm font-medium text-[#05121b] outline-none focus:border-[#137789] cursor-pointer transition-colors">
+                      {periodoOpts.map(p=><option key={p.key} value={p.key}>{p.nome}</option>)}
+                    </select>
+                    <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
+                  </div>
+                  <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="border border-slate-200 bg-white text-slate-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+                    <Upload size={14}/>Exportar
+                  </button>
+                  <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
+                    <Plus size={14}/>Lançar despesa
+                  </button>
+                </div>
               </div>
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                {lancamentos.filter(l=>l.tipo==='despesa').length===0?<div className="py-16 text-center"><TrendingDown size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma despesa registrada</p></div>:(
-                  <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Data','Descrição','Categoria','Banco','Valor',''].map(h=><th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {lancamentos.filter(l=>l.tipo==='despesa').map(l=>(
-                        <tr key={l.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-5 py-3 text-[10px] text-slate-400 font-medium whitespace-nowrap">{fmtDate(l.data)}</td>
-                          <td className="px-5 py-3 text-xs font-bold text-[#05121b]">{l.descricao}</td>
-                          <td className="px-5 py-3 text-[10px] text-slate-400">{l.categoria||'—'}</td>
-                          <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===l.banco_id)?.nome||'—'}</td>
-                          <td className="px-5 py-3 text-sm font-black text-red-600 whitespace-nowrap">-{formatBRL(l.valor)}</td>
-                          <td className="px-5 py-3"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
+              {/* Metric Cards */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))',gap:'12px'}}>
+                {metricCards.map((m,i)=>(
+                  <div key={i} className="bg-white border border-slate-100 rounded-2xl p-4">
+                    <p className="text-xs text-slate-500 font-medium mb-2">{m.label}</p>
+                    <p className="text-[20px] font-medium text-[#05121b] leading-tight">{m.value}</p>
+                    {m.delta&&<p className="text-xs font-semibold mt-1.5" style={{color:m.delta.pos===null?'#94a3b8':m.delta.pos?'#34d399':'#f87171'}}>{m.delta.txt}</p>}
+                  </div>
+                ))}
+              </div>
+              {/* Budget Bar */}
+              <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h3 className="text-sm font-semibold text-[#05121b]">Orçamento mensal</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-[#05121b]">{formatBRL(totalMes)}</span>
+                    <span className="text-xs text-slate-400">de {formatBRL(ORCAMENTO)}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${budgeBadgeCls}`}>{pctUsado.toFixed(1)}% usado</span>
+                  </div>
+                </div>
+                <div className="relative h-2.5 bg-slate-100 rounded-full mb-3">
+                  <div className="h-full rounded-full transition-all duration-500" style={{width:`${Math.min(pctUsado,100)}%`,background:'linear-gradient(90deg,#137789,#34d399)'}}/>
+                  <div className="absolute top-1/2 right-0 -translate-y-1/2 w-0.5 h-5 bg-[#f87171] rounded-full"/>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#137789] flex-shrink-0"/>Fixas — {formatBRL(fixas)}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"/>Variáveis — {formatBRL(variaveis)}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0"/>Disponível — {formatBRL(Math.max(ORCAMENTO-totalMes,0))}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#f87171] flex-shrink-0"/>Limite — {formatBRL(ORCAMENTO)}</span>
+                </div>
+              </div>
+              {/* Charts */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))',gap:'16px'}}>
+                {/* Donut */}
+                <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <h3 className="text-sm font-semibold text-[#05121b] mb-3">Despesas por categoria</h3>
+                  {donutData.length>0?(
+                    <>
+                      <ResponsiveContainer width="100%" height={150}>
+                        <PieChart>
+                          <Pie data={donutData} dataKey="value" nameKey="label" cx="50%" cy="50%" innerRadius="58%" outerRadius="82%" strokeWidth={0} paddingAngle={0}>
+                            {donutData.map((d,i)=><Cell key={i} fill={d.color}/>)}
+                          </Pie>
+                          <RTooltip content={<DonutTip/>}/>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="mt-3 space-y-1.5">
+                        {donutData.map((d,i)=>(
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{background:d.color}}/><span className="text-slate-600">{d.label}</span></div>
+                            <span className="font-medium text-[#05121b]">{formatBRL(d.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ):(
+                    <div className="h-40 flex items-center justify-center"><p className="text-slate-300 text-xs font-semibold">Sem dados no período</p></div>
+                  )}
+                </div>
+                {/* Bar */}
+                <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-[#05121b]">Mês anterior vs atual</h3>
+                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                      <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-2.5 rounded-sm bg-slate-200"/>Anterior</span>
+                      <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-2.5 rounded-sm" style={{background:'#137789'}}/>Atual</span>
+                    </div>
+                  </div>
+                  {barData.length>0?(
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={barData} margin={{top:4,right:4,bottom:0,left:0}} barCategoryGap="35%">
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
+                        <XAxis dataKey="cat" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={48}/>
+                        <RTooltip content={<BarTip/>}/>
+                        <Bar dataKey="anterior" name="Anterior" fill="#e2e8f0" radius={[3,3,0,0]}/>
+                        <Bar dataKey="atual" name="Atual" fill="#137789" radius={[3,3,0,0]}/>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ):(
+                    <div className="h-40 flex items-center justify-center"><p className="text-slate-300 text-xs font-semibold">Sem dados suficientes</p></div>
+                  )}
+                </div>
+              </div>
+              {/* Table */}
+              <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
+                  <h3 className="text-sm font-semibold text-[#05121b]">Lançamentos</h3>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[{key:'todos',label:'Todos'},{key:'fixa',label:'Fixas'},{key:'variavel',label:'Variáveis'},{key:'imposto',label:'Impostos'}].map(f=>(
+                      <button key={f.key} onClick={()=>setFiltroDespesas(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${filtroDespesas===f.key?'bg-[#05121b] text-white border-[#05121b]':'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{f.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  {filtradosD.length===0?(
+                    <div className="py-14 text-center"><TrendingDown size={26} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 text-xs font-semibold">{despesasMes.length===0?'Nenhuma despesa no período':'Nenhum resultado para o filtro'}</p></div>
+                  ):(
+                    <table className="w-full text-sm min-w-[560px]">
+                      <thead>
+                        <tr className="border-b border-slate-100">
+                          {['Descrição','Categoria','Data','Tipo','Status','Valor',''].map(h=><th key={h} className={`px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide ${h==='Valor'?'text-right':'text-left'}`}>{h}</th>)}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                      </thead>
+                      <tbody>
+                        {filtradosD.map((l,idx)=>{
+                          const tipo=tipoFromCat(l.categoria);
+                          return(
+                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtradosD.length-1?'border-b border-slate-100':''}`}>
+                              <td className="px-4 py-3.5 font-medium text-[#05121b] text-sm">{l.descricao}</td>
+                              <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
+                              <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{fmtDate(l.data)}</td>
+                              <td className="px-4 py-3.5"><span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${TIPO_STYLE[tipo]}`}>{TIPO_LABEL[tipo]}</span></td>
+                              <td className="px-4 py-3.5"><span className="px-2.5 py-1 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">Pago</span></td>
+                              <td className="px-4 py-3.5 text-right font-medium text-red-600 whitespace-nowrap">-{formatBRL(l.valor)}</td>
+                              <td className="px-4 py-3.5"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
             </div>
           );
