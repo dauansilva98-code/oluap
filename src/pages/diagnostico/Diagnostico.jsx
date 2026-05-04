@@ -288,13 +288,15 @@ const App = () => {
     try{
       if(payload.id){
         const{id,...rest}=payload;
-        await supabase.from(table).update(rest).eq('id',id);
+        const{error}=await supabase.from(table).update(rest).eq('id',id);
+        if(error)throw error;
       }else{
-        await supabase.from(table).insert(payload);
+        const{error}=await supabase.from(table).insert(payload);
+        if(error)throw error;
       }
       await resetList();
       setModal(null);
-    }catch(e){console.error(e);}
+    }catch(e){console.error(e);alert(`Erro ao salvar: ${e.message||'Tente novamente'}`);}
     setSavingItem(false);
   };
 
@@ -2105,7 +2107,7 @@ const App = () => {
               })()}
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalDespesa(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor||(modalDespesa.categoria==='Personalizado'&&!modalDespesa.categoria_custom)} onClick={()=>{const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;const isCard=modalDespesa.meio_pagamento==='Cartão de Crédito'||modalDespesa.meio_pagamento==='Cartão de Débito';const taxa=parseFloat(modalDespesa.taxa_cartao)||0;const valorFinal=isCard&&taxa>0?valorBruto*(1+taxa/100):valorBruto;const catFinal=modalDespesa.categoria==='Personalizado'?(modalDespesa.categoria_custom||'Outros'):modalDespesa.categoria;const{categoria_custom:_cc,...restDesp}=modalDespesa;saveItem('lancamentos',{...restDesp,valor:valorFinal,categoria:catFinal,tipo:'despesa',user_id:user.id,banco_id:modalDespesa.banco_id||null},setModalDespesa,()=>fetchFinanceiro(user.id));}} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor||(modalDespesa.categoria==='Personalizado'&&!modalDespesa.categoria_custom)} onClick={()=>{const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;const isCard=modalDespesa.meio_pagamento==='Cartão de Crédito'||modalDespesa.meio_pagamento==='Cartão de Débito';const taxa=parseFloat(modalDespesa.taxa_cartao)||0;const valorFinal=isCard&&taxa>0?valorBruto*(1+taxa/100):valorBruto;const catFinal=modalDespesa.categoria==='Personalizado'?(modalDespesa.categoria_custom||'Outros'):modalDespesa.categoria;const{categoria_custom:_cc,...restDesp}=modalDespesa;saveItem('lancamentos',{...restDesp,valor:valorFinal,categoria:catFinal,tipo:'despesa',user_id:user.id,banco_id:modalDespesa.banco_id||null,taxa_cartao:parseFloat(modalDespesa.taxa_cartao)||null,meio_pagamento:modalDespesa.meio_pagamento||null},setModalDespesa,()=>fetchFinanceiro(user.id));}} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
           </div>
