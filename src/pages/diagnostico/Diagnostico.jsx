@@ -29,7 +29,7 @@ const SimComparativo = ({label, before, after, formato, lowerIsBetter=false}) =>
   const fmt = v => formato==='brl' ? formatBRL(v) : formato==='meses' ? `${Math.max(0,v).toFixed(1)}m` : `${v.toFixed(1)}%`;
   return (
     <div className="bg-slate-50 rounded-2xl p-4 flex flex-col gap-2">
-      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-slate-400 text-sm font-bold line-through">{fmt(before)}</span>
         <span className="text-slate-300 text-xs">→</span>
@@ -65,7 +65,7 @@ const MultiFileDropzone = () => {
       {files.length>0&&(
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{files.length} arquivo{files.length>1?'s':''} na fila</p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{files.length} arquivo{files.length>1?'s':''} na fila</p>
             <button onClick={()=>setFiles([])} className="text-[9px] text-red-400 font-bold hover:text-red-600 transition-colors">Remover todos</button>
           </div>
           {files.map((f,i)=>(
@@ -626,8 +626,8 @@ const App = () => {
         {view==='dashboard'&&(
           <div className="max-w-7xl mx-auto fade-in">
             <header className="mb-8">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Visão Geral · {new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</p>
-              <h1 className="text-2xl font-black text-[#05121b] italic">Painel Financeiro</h1>
+              <p className="text-xs text-slate-500 font-medium">Visão Geral · {new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</p>
+              <h1 className="text-xl font-medium text-[#05121b]">Painel Financeiro</h1>
             </header>
             {newlyCompleted&&(
               <div className="slide-down mb-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -655,7 +655,7 @@ const App = () => {
               return(
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Disponível</p>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Total Disponível</p>
                     <p className={`text-xl font-black ${(totalBancos+dinheiroCaixa)>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(totalBancos+dinheiroCaixa)}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <span className="text-[9px] text-slate-400">Banco: <span className="font-bold text-[#05121b]">{formatBRL(totalBancos)}</span></span>
@@ -664,17 +664,17 @@ const App = () => {
                     </div>
                   </div>
                   <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Entradas · {new Date().toLocaleDateString('pt-BR',{month:'short'})}</p>
+                    <p className="text-xs text-emerald-600 font-medium">Entradas · {new Date().toLocaleDateString('pt-BR',{month:'short'})}</p>
                     <p className="text-xl font-black text-emerald-800">{formatBRL(entradasMes)}</p>
                     <p className="text-[9px] text-emerald-600 font-medium">Receitas do mês</p>
                   </div>
                   <div className="bg-red-50 border border-red-100 rounded-2xl p-5 flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-red-500 uppercase tracking-widest">Saídas · {new Date().toLocaleDateString('pt-BR',{month:'short'})}</p>
+                    <p className="text-xs text-red-500 font-medium">Saídas · {new Date().toLocaleDateString('pt-BR',{month:'short'})}</p>
                     <p className="text-xl font-black text-red-700">{formatBRL(saidasMes)}</p>
                     <p className="text-[9px] text-red-500 font-medium">Despesas do mês</p>
                   </div>
                   <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex flex-col gap-1">
-                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Investimentos</p>
+                    <p className="text-xs text-blue-600 font-medium">Investimentos</p>
                     <p className="text-xl font-black text-blue-800">{formatBRL(totalInvestido)}</p>
                     <p className="text-[9px] text-blue-500 font-medium">Carteira ativa</p>
                   </div>
@@ -695,7 +695,7 @@ const App = () => {
                 <div className="xl:col-span-2 space-y-6">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col items-center gap-2">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Saúde Geral</p>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Saúde Geral</p>
                       <ScoreRing score={metrics.score}/>
                       <div className="flex items-center gap-1.5">
                         <div className={`w-2 h-2 rounded-full pulse-dot ${metrics.score>=70?'bg-emerald-500':metrics.score>=40?'bg-amber-500':'bg-red-500'}`}></div>
@@ -762,7 +762,7 @@ const App = () => {
                   <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide flex items-center gap-2"><Landmark size={14} className="text-[#137789]"/> Posição em Bancos</h3>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-black text-[#05121b]">Total: <span className={bancos.reduce((a,b)=>a+saldoBanco(b.id),0)>=0?'text-[#05121b]':'text-red-600'}>{formatBRL(bancos.reduce((a,b)=>a+saldoBanco(b.id),0))}</span></span>
-                    <button onClick={()=>setView('bancos')} className="text-[9px] font-black uppercase tracking-widest text-[#137789] hover:text-[#ff7b00] transition-colors">Ver todos →</button>
+                    <button onClick={()=>setView('bancos')} className="text-xs font-semibold text-[#137789] hover:text-[#ff7b00] transition-colors">Ver todos →</button>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -837,7 +837,7 @@ const App = () => {
                       </div>
                     )}
                     <div className="p-3 border-t border-slate-50">
-                      <button onClick={()=>setView('contas_pagar')} className="w-full text-[9px] font-black uppercase tracking-widest text-[#137789] hover:text-[#ff7b00] transition-colors py-1">Ver todas →</button>
+                      <button onClick={()=>setView('contas_pagar')} className="w-full text-xs font-semibold text-[#137789] hover:text-[#ff7b00] transition-colors py-1">Ver todas →</button>
                     </div>
                   </div>
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -868,7 +868,7 @@ const App = () => {
                       </div>
                     )}
                     <div className="p-3 border-t border-slate-50">
-                      <button onClick={()=>setView('contas_receber')} className="w-full text-[9px] font-black uppercase tracking-widest text-[#137789] hover:text-[#ff7b00] transition-colors py-1">Ver todas →</button>
+                      <button onClick={()=>setView('contas_receber')} className="w-full text-xs font-semibold text-[#137789] hover:text-[#ff7b00] transition-colors py-1">Ver todas →</button>
                     </div>
                   </div>
                 </div>
@@ -900,7 +900,7 @@ const App = () => {
                         <p className="text-sm font-black text-[#05121b] mt-0.5">{ativas.length}</p>
                       </div>
                     </div>
-                    <button onClick={()=>setView('dividas')} className="w-full text-[9px] font-black uppercase tracking-widest text-red-500 hover:text-red-700 transition-colors py-1">Gerenciar dívidas →</button>
+                    <button onClick={()=>setView('dividas')} className="w-full text-xs font-semibold text-red-500 hover:text-red-700 transition-colors py-1">Gerenciar dívidas →</button>
                   </div>
                 </div>
               );
@@ -912,8 +912,8 @@ const App = () => {
         {view==='alertas'&&(
           <div className="max-w-6xl mx-auto fade-in">
             <header className="mb-8">
-              <p className="text-[10px] font-bold text-[#ff7b00] uppercase tracking-widest mb-1">CFO Digital · Análise Completa</p>
-              <h1 className="text-2xl font-black text-[#05121b] italic">Diagnóstico & Alertas</h1>
+              <p className="text-xs font-medium text-[#ff7b00] mb-1">CFO Digital · Análise Completa</p>
+              <h1 className="text-xl font-medium text-[#05121b]">Diagnóstico & Alertas</h1>
               <p className="text-slate-400 text-sm font-medium mt-1">Todos os indicadores financeiros da sua empresa em um único lugar.</p>
             </header>
 
@@ -923,8 +923,8 @@ const App = () => {
                 <h2 className="text-lg font-black text-[#05121b] mb-2">Nenhum dado financeiro ainda</h2>
                 <p className="text-slate-400 text-sm font-medium mb-4 max-w-sm mx-auto leading-relaxed">Registre receitas e despesas no <strong>Fluxo de Caixa</strong> para que o CFO Digital calcule todos os indicadores automaticamente.</p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <button onClick={()=>setView('fluxo')} className="bg-[#137789] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-[#0e5f6b] transition-colors inline-flex items-center gap-2"><Plus size={13}/> Registrar Lançamentos</button>
-                  <button onClick={()=>setView('receitas')} className="bg-slate-50 border border-slate-200 text-slate-500 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-[#137789] hover:text-[#137789] transition-colors inline-flex items-center gap-2"><TrendingUp size={13}/> Receitas & Despesas</button>
+                  <button onClick={()=>setView('fluxo')} className="bg-[#137789] text-white px-4 py-2 rounded-xl font-semibold text-sm hover:bg-[#0e5f6b] transition-colors inline-flex items-center gap-2"><Plus size={13}/> Registrar Lançamentos</button>
+                  <button onClick={()=>setView('receitas')} className="bg-slate-50 border border-slate-200 text-slate-500 px-4 py-2 rounded-xl font-semibold text-sm hover:border-[#137789] hover:text-[#137789] transition-colors inline-flex items-center gap-2"><TrendingUp size={13}/> Receitas & Despesas</button>
                 </div>
               </div>
             ) : (
@@ -932,7 +932,7 @@ const App = () => {
                 {/* ── SCORE + SEMÁFOROS ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                   <div className="bg-[#05121b] rounded-3xl p-8 text-white flex flex-col items-center gap-4">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Score de Saúde</p>
+                    <p className="text-xs text-slate-500 font-medium">Score de Saúde</p>
                     <ScoreRing score={metrics.score}/>
                     <div className="text-center">
                       <p className={`font-black text-sm ${metrics.score>=70?'text-emerald-400':metrics.score>=40?'text-amber-400':'text-red-400'}`}>{metrics.score>=70?'Financeiramente Saudável':metrics.score>=40?'Requer Atenção':'Situação Crítica'}</p>
@@ -1036,7 +1036,7 @@ const App = () => {
                     <span className="text-[8px] bg-[#05121b] text-white px-2.5 py-1 rounded-full font-black uppercase tracking-widest">Completo</span>
                   </div>
 
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><TrendingUp size={10}/> Rentabilidade</p>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><TrendingUp size={10}/> Rentabilidade</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="(Receita − Custos Diretos) ÷ Receita" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
                     <IndicadorCard titulo="Margem de Contribuição" valor={`${metrics.margContrib.toFixed(1)}%`} formula="(Receita − Custos Variáveis) ÷ Receita" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'} destaque/>
@@ -1044,7 +1044,7 @@ const App = () => {
                     <IndicadorCard titulo="Ponto de Equilíbrio" valor={formatBRL(metrics.pontoEq)} formula="Custo Fixo ÷ Margem de Contribuição" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.85?'yellow':'red'}/>
                   </div>
 
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Total de custos por mês" status="neutral"/>
                     <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
@@ -1052,7 +1052,7 @@ const App = () => {
                     <IndicadorCard titulo="Prazo Médio Recebimento" valor={metrics.pmr>0?`${metrics.pmr} dias`:'—'} formula="Média de dias até o cliente pagar" status={metrics.pmr>0?(metrics.pmr<=30?'green':metrics.pmr<=60?'yellow':'red'):'neutral'}/>
                   </div>
 
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Shield size={10}/> Estrutura de Custos</p>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Shield size={10}/> Estrutura de Custos</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Custos Variáveis" valor={formatBRL(metrics.custVar)} formula="CMV + Taxas + Comissões" status="neutral"/>
                     <IndicadorCard titulo="Custos Fixos" valor={formatBRL(metrics.custFix)} formula="Folha + Aluguel + Fixos" status="neutral"/>
@@ -1060,7 +1060,7 @@ const App = () => {
                     <IndicadorCard titulo="Resultado Mensal" valor={formatBRL(metrics.lucro)} formula="Receita − Total de Custos" status={metrics.lucro>0?'green':metrics.lucro===0?'neutral':'red'}/>
                   </div>
 
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <IndicadorCard titulo="EBITDA (simplificado)" valor={formatBRL(metrics.lucro+metrics.custFix*0.1)} formula="Resultado + estimativa D&A" status={metrics.lucro>=0?'green':'red'}/>
                     <IndicadorCard titulo="EBITDA Margin" valor={metrics.receita>0?`${((metrics.lucro+metrics.custFix*0.1)/metrics.receita*100).toFixed(1)}%`:'—'} formula="EBITDA ÷ Receita" status={metrics.receita>0?((metrics.lucro+metrics.custFix*0.1)/metrics.receita>=0.15?'green':(metrics.lucro+metrics.custFix*0.1)/metrics.receita>=0.05?'yellow':'red'):'neutral'} destaque/>
@@ -1082,8 +1082,8 @@ const App = () => {
           return(
           <div className="max-w-4xl mx-auto fade-in">
             <header className="mb-8">
-              <p className="text-[10px] font-bold text-[#137789] uppercase tracking-widest mb-1">IA · Simulador</p>
-              <h1 className="text-2xl font-black text-[#05121b] italic">Simulador de Cenários</h1>
+              <p className="text-xs font-medium text-[#137789] mb-1">IA · Simulador</p>
+              <h1 className="text-xl font-medium text-[#05121b]">Simulador de Cenários</h1>
               <p className="text-slate-400 text-sm font-medium mt-1">Teste decisões antes de executar. Veja o impacto real nos seus indicadores financeiros.</p>
             </header>
 
@@ -1098,7 +1098,7 @@ const App = () => {
               {/* Grupo filter */}
               <div className="flex items-center gap-2 mb-5 flex-wrap">
                 {grupos.map(g=>(
-                  <button key={g} onClick={()=>{setSimGroup(g);setSimResult(null);}} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${simGroup===g?'bg-[#05121b] text-white border-[#05121b]':'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>{g}</button>
+                  <button key={g} onClick={()=>{setSimGroup(g);setSimResult(null);}} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${simGroup===g?'bg-[#05121b] text-white border-[#05121b]':'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>{g}</button>
                 ))}
               </div>
 
@@ -1119,7 +1119,7 @@ const App = () => {
                   <div className="w-8 h-8 bg-[#05121b] rounded-xl flex items-center justify-center"><span className="text-base">{sc.emoji}</span></div>
                   <div><p className="font-black text-[#05121b] text-sm">{sc.label}</p><p className="text-[10px] text-slate-400">{sc.desc}</p></div>
                 </div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">{sc.inputLabel}</label>
+                <label className="text-xs text-slate-500 font-medium block mb-2">{sc.inputLabel}</label>
                 {sc.tipo==='pct'
                   ?<div className="relative"><input type="number" min="0" max="100" step="0.5" value={simPct} onChange={e=>{setSimPct(e.target.value);setSimResult(null);}} placeholder="0" className="w-full bg-white border border-slate-200 focus:border-[#ff7b00] focus:ring-1 focus:ring-[#ff7b00] px-4 py-3 pr-10 rounded-xl font-bold text-[#05121b] outline-none text-sm transition-all"/><span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">%</span></div>
                   :<input type="text" value={simValue} onChange={e=>{setSimValue(formatCurrency(e.target.value));setSimResult(null);}} placeholder="R$ 0,00" className="w-full bg-white border border-slate-200 focus:border-[#ff7b00] focus:ring-1 focus:ring-[#ff7b00] px-4 py-3 rounded-xl font-bold text-[#05121b] outline-none text-sm transition-all"/>
@@ -1175,7 +1175,7 @@ const App = () => {
         {/* ── FONTES DE DADOS ───────────────────────────────────────────── */}
         {view==='fontes'&&(
           <div className="max-w-4xl mx-auto fade-in">
-            <header className="mb-8"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Configuração</p><h1 className="text-2xl font-black text-[#05121b] italic">Fontes de Dados</h1><p className="text-slate-400 text-sm font-medium mt-1">Escolha como quer trazer os dados da sua empresa.</p></header>
+            <header className="mb-8"><p className="text-xs text-slate-500 font-medium">Configuração</p><h1 className="text-xl font-medium text-[#05121b]">Fontes de Dados</h1><p className="text-slate-400 text-sm font-medium mt-1">Escolha como quer trazer os dados da sua empresa.</p></header>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
               <button onClick={()=>setSelectedSource('planilha')} className={`bg-white rounded-2xl border-2 p-7 text-left flex flex-col gap-4 transition-all hover:shadow-md ${selectedSource==='planilha'?'border-[#137789] ring-2 ring-[#137789]/20 shadow-md':'border-slate-100 hover:border-slate-200'}`}>
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${selectedSource==='planilha'?'bg-[#137789]':'bg-slate-100'}`}><FileSpreadsheet size={22} className={selectedSource==='planilha'?'text-white':'text-slate-400'}/></div>
@@ -1190,7 +1190,7 @@ const App = () => {
               <button onClick={()=>{setSelectedSource('manual');setView('form');setFormMode(null);setFormStep(0);}} className="bg-white rounded-2xl border-2 border-slate-100 p-7 text-left flex flex-col gap-4 hover:border-slate-200 hover:shadow-md transition-all">
                 <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center"><PenLine size={22} className="text-slate-400"/></div>
                 <div><h3 className="font-black text-[#05121b] text-sm uppercase tracking-tight mb-1.5">Preencher Manualmente</h3><p className="text-slate-400 text-xs leading-relaxed">Responda o formulário guiado com informações da sua empresa.</p></div>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><ArrowRight size={11}/> Abrir formulário</span>
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1"><ArrowRight size={11}/> Abrir formulário</span>
               </button>
             </div>
             {selectedSource==='planilha'&&(
@@ -1222,7 +1222,7 @@ const App = () => {
         {view==='analises'&&(
           <div className="max-w-5xl mx-auto fade-in">
             <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-              <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Central de</p><h1 className="text-2xl font-black text-[#05121b] italic">Minhas Análises</h1></div>
+              <div><p className="text-xs text-slate-500 font-medium">Central de</p><h1 className="text-xl font-medium text-[#05121b]">Minhas Análises</h1></div>
               <button onClick={()=>setModalSolicitarAnalise(true)} className="bg-[#ff7b00] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md hover:scale-[1.02] transition-transform self-start sm:self-auto flex items-center gap-2"><Plus size={13}/> Solicitar Nova Análise</button>
             </header>
             {newlyCompleted&&(<div className="slide-down mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0"><Bell size={16} className="text-white"/></div><div><h4 className="font-black text-emerald-800 text-sm">Diagnóstico concluído! 🎉</h4><p className="text-[10px] text-emerald-600 mt-0.5"><strong>{newlyCompleted.client_name}</strong> — resultado disponível</p></div></div><button onClick={()=>handleViewResult(newlyCompleted)} className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2">Ver Resultado <ChevronRight size={12}/></button></div>)}
@@ -1236,7 +1236,7 @@ const App = () => {
                 <div className="py-16 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
                   <div className="w-12 h-12 bg-slate-50 rounded-2xl mx-auto mb-4 flex items-center justify-center text-slate-300"><Info size={22}/></div>
                   <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-4">Nenhuma análise ainda.</p>
-                  <button onClick={()=>setModalSolicitarAnalise(true)} className="bg-[#ff7b00] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-transform">Solicitar Agora</button>
+                  <button onClick={()=>setModalSolicitarAnalise(true)} className="bg-[#ff7b00] text-white px-4 py-2 rounded-xl font-semibold text-sm hover:scale-[1.02] transition-transform">Solicitar Agora</button>
                 </div>
               )}
             </div>
@@ -1274,16 +1274,16 @@ const App = () => {
           return(
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Visão financeira</p><h1 className="text-2xl font-black text-[#05121b] italic">Fluxo de Caixa</h1></div>
+                <div><p className="text-xs text-slate-500 font-medium">Visão financeira</p><h1 className="text-xl font-medium text-[#05121b]">Fluxo de Caixa</h1></div>
                 <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
                   {filtros.map(f=><button key={f.id} onClick={()=>setFluxoFiltro(f.id)} className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${fluxoFiltro===f.id?'bg-white shadow text-[#05121b]':'text-slate-400 hover:text-[#05121b]'}`}>{f.l}</button>)}
                 </div>
               </header>
               {/* KPI row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5"><p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total Entradas</p><p className="text-2xl font-black text-emerald-800">{formatBRL(totalEnt)}</p></div>
-                <div className="bg-red-50 border border-red-200 rounded-2xl p-5"><p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Total Saídas</p><p className="text-2xl font-black text-red-800">{formatBRL(totalSai)}</p></div>
-                <div className={`${totalEnt-totalSai>=0?'bg-blue-50 border-blue-200':'bg-amber-50 border-amber-200'} border rounded-2xl p-5`}><p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${totalEnt-totalSai>=0?'text-blue-600':'text-amber-600'}`}>Saldo Período</p><p className={`text-2xl font-black ${totalEnt-totalSai>=0?'text-blue-800':'text-amber-800'}`}>{formatBRL(totalEnt-totalSai)}</p></div>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5"><p className="text-xs text-emerald-600 font-medium mb-1">Total Entradas</p><p className="text-xl font-medium text-emerald-800">{formatBRL(totalEnt)}</p></div>
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-5"><p className="text-xs text-red-600 font-medium mb-1">Total Saídas</p><p className="text-xl font-medium text-red-800">{formatBRL(totalSai)}</p></div>
+                <div className={`${totalEnt-totalSai>=0?'bg-blue-50 border-blue-200':'bg-amber-50 border-amber-200'} border rounded-2xl p-5`}><p className={`text-xs font-medium mb-1 ${totalEnt-totalSai>=0?'text-blue-600':'text-amber-600'}`}>Saldo Período</p><p className={`text-xl font-medium ${totalEnt-totalSai>=0?'text-blue-800':'text-amber-800'}`}>{formatBRL(totalEnt-totalSai)}</p></div>
               </div>
               {/* Chart */}
               {chartData.length>0&&(
@@ -1498,7 +1498,7 @@ const App = () => {
                     <table className="w-full text-sm min-w-[520px]">
                       <thead>
                         <tr className="border-b border-slate-100">
-                          {['Descrição','Categoria','Tipo','Data','Banco','Valor',''].map(h=><th key={h} className={`px-4 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest ${h==='Valor'?'text-right':'text-left'}`}>{h}</th>)}
+                          {['Descrição','Categoria','Tipo','Data','Banco','Valor',''].map(h=><th key={h} className={`px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide ${h==='Valor'?'text-right':'text-left'}`}>{h}</th>)}
                         </tr>
                       </thead>
                       <tbody>
@@ -1537,20 +1537,20 @@ const App = () => {
           return(
             <div className="max-w-4xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Saídas</p><h1 className="text-2xl font-black text-[#05121b] italic">Despesas</h1></div>
+                <div><p className="text-xs text-slate-500 font-medium">Saídas</p><h1 className="text-xl font-medium text-[#05121b]">Despesas</h1></div>
                 <div className="flex gap-2">
-                  <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="bg-white text-slate-600 border border-slate-200 px-5 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-colors shadow-sm"><Upload size={13}/>Importar</button>
-                  <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="bg-red-500 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-red-600 transition-colors shadow-md"><Plus size={13}/>Nova Despesa</button>
+                  <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="bg-white text-slate-600 border border-slate-200 px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-50 transition-colors shadow-sm"><Upload size={13}/>Importar</button>
+                  <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="bg-red-500 text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-red-600 transition-colors shadow-md"><Plus size={13}/>Nova Despesa</button>
                 </div>
               </header>
               <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
                 <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Despesas Registradas</p>
-                <p className="text-2xl font-black text-red-800">{formatBRL(total)}</p>
+                <p className="text-xl font-medium text-red-800">{formatBRL(total)}</p>
               </div>
               <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
                 {lancamentos.filter(l=>l.tipo==='despesa').length===0?<div className="py-16 text-center"><TrendingDown size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma despesa registrada</p></div>:(
                   <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Data','Descrição','Categoria','Banco','Valor',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <thead><tr className="border-b border-slate-100">{['Data','Descrição','Categoria','Banco','Valor',''].map(h=><th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
                     <tbody className="divide-y divide-slate-50">
                       {lancamentos.filter(l=>l.tipo==='despesa').map(l=>(
                         <tr key={l.id} className="hover:bg-slate-50 transition-colors">
@@ -1581,20 +1581,20 @@ const App = () => {
           return(
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gestão</p><h1 className="text-2xl font-black text-[#05121b] italic">Contas a Pagar</h1></div>
-                <button onClick={()=>setModalCP({descricao:'',categoria:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30',meio_pagamento:''})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
+                <div><p className="text-xs text-slate-500 font-medium">Gestão</p><h1 className="text-xl font-medium text-[#05121b]">Contas a Pagar</h1></div>
+                <button onClick={()=>setModalCP({descricao:'',categoria:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30',meio_pagamento:''})} className="bg-[#05121b] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
               </header>
               {/* KPIs */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total a Pagar</p><p className="text-2xl font-black text-[#05121b]">{formatBRL(totPendente)}</p></div>
-                <div className="bg-red-50 border border-red-200 rounded-2xl p-5"><p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Em Atraso</p><p className="text-2xl font-black text-red-800">{formatBRL(totAtrasado)}</p></div>
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total de Contas</p><p className="text-2xl font-black text-[#05121b]">{contasPagar.length}</p></div>
+                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><p className="text-xs text-slate-500 font-medium mb-1">Total a Pagar</p><p className="text-xl font-medium text-[#05121b]">{formatBRL(totPendente)}</p></div>
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-5"><p className="text-xs text-red-600 font-medium mb-1">Em Atraso</p><p className="text-xl font-medium text-red-800">{formatBRL(totAtrasado)}</p></div>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5"><p className="text-xs text-slate-500 font-medium mb-1">Total de Contas</p><p className="text-xl font-medium text-[#05121b]">{contasPagar.length}</p></div>
               </div>
               {/* Table */}
               <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
                 {contasPagar.length===0?<div className="py-16 text-center"><Receipt size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma conta a pagar</p></div>:(
                   <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Vencimento','Descrição','Categoria','Banco','Valor','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <thead><tr className="border-b border-slate-100">{['Vencimento','Descrição','Categoria','Banco','Valor','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
                     <tbody className="divide-y divide-slate-50">
                       {contasPagar.map(cp=>{
                         const st=getStatus(cp);
@@ -1640,17 +1640,17 @@ const App = () => {
           return(
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Entradas futuras</p><h1 className="text-2xl font-black text-[#05121b] italic">Contas a Receber</h1></div>
-                <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30',meio_pagamento:''})} className="bg-[#137789] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
+                <div><p className="text-xs text-slate-500 font-medium">Entradas futuras</p><h1 className="text-xl font-medium text-[#05121b]">Contas a Receber</h1></div>
+                <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30',meio_pagamento:''})} className="bg-[#137789] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
               </header>
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A receber (pendente)</p>
-                <p className="text-2xl font-black text-emerald-800">{formatBRL(totPendente)}</p>
+                <p className="text-xl font-medium text-emerald-800">{formatBRL(totPendente)}</p>
               </div>
               <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
                 {contasReceber.length===0?<div className="py-16 text-center"><Wallet size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma conta a receber</p></div>:(
                   <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Vencimento','Cliente','Descrição','Banco','Valor','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <thead><tr className="border-b border-slate-100">{['Vencimento','Cliente','Descrição','Banco','Valor','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
                     <tbody className="divide-y divide-slate-50">
                       {contasReceber.map(cr=>{
                         const st=getStatus(cr);
@@ -1693,18 +1693,18 @@ const App = () => {
           return(
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Patrimônio</p><h1 className="text-2xl font-black text-[#05121b] italic">Investimentos</h1></div>
-                <button onClick={()=>setModalInvestimento({nome:'',tipo:'CDB',instituicao:'',valor_aplicado:'',valor_atual:'',rentabilidade_pct:'',data_aplicacao:'',data_vencimento:'',liquidez:'30 dias',status:'ativo'})} className="bg-blue-600 text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-md"><Plus size={13}/>Novo Investimento</button>
+                <div><p className="text-xs text-slate-500 font-medium">Patrimônio</p><h1 className="text-xl font-medium text-[#05121b]">Investimentos</h1></div>
+                <button onClick={()=>setModalInvestimento({nome:'',tipo:'CDB',instituicao:'',valor_aplicado:'',valor_atual:'',rentabilidade_pct:'',data_aplicacao:'',data_vencimento:'',liquidez:'30 dias',status:'ativo'})} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-blue-700 transition-colors shadow-md"><Plus size={13}/>Novo Investimento</button>
               </header>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5"><p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Total Aplicado</p><p className="text-2xl font-black text-blue-800">{formatBRL(totalAplicado)}</p></div>
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Valor Atual</p><p className="text-2xl font-black text-[#05121b]">{formatBRL(totalAtual)}</p></div>
-                <div className={`${rentTotal>=0?'bg-emerald-50 border-emerald-200':'bg-red-50 border-red-200'} border rounded-2xl p-5`}><p className="text-[9px] font-black uppercase tracking-widest mb-1 ${rentTotal>=0?'text-emerald-600':'text-red-500'}">Rentabilidade</p><p className={`text-2xl font-black ${rentTotal>=0?'text-emerald-800':'text-red-700'}`}>{rentTotal>=0?'+':''}{rentTotal.toFixed(2)}%</p></div>
+                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5"><p className="text-xs text-blue-600 font-medium mb-1">Total Aplicado</p><p className="text-xl font-medium text-blue-800">{formatBRL(totalAplicado)}</p></div>
+                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><p className="text-xs text-slate-500 font-medium mb-1">Valor Atual</p><p className="text-xl font-medium text-[#05121b]">{formatBRL(totalAtual)}</p></div>
+                <div className={`${rentTotal>=0?'bg-emerald-50 border-emerald-200':'bg-red-50 border-red-200'} border rounded-2xl p-5`}><p className={`text-xs font-medium mb-1 ${rentTotal>=0?'text-emerald-600':'text-red-500'}`}>Rentabilidade</p><p className={`text-xl font-medium ${rentTotal>=0?'text-emerald-800':'text-red-700'}`}>{rentTotal>=0?'+':''}{rentTotal.toFixed(2)}%</p></div>
               </div>
               <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
                 {investimentos.length===0?<div className="py-16 text-center"><DollarSign size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum investimento registrado</p></div>:(
                   <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Nome','Tipo','Instituição','Aplicado','Valor Atual','Vencimento','Status',''].map(h=><th key={h} className="px-4 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <thead><tr className="border-b border-slate-100">{['Nome','Tipo','Instituição','Aplicado','Valor Atual','Vencimento','Status',''].map(h=><th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
                     <tbody className="divide-y divide-slate-50">
                       {investimentos.map(inv=>{
                         const S=statusMapInv[inv.status]||statusMapInv.ativo;
@@ -1741,14 +1741,14 @@ const App = () => {
           return(
             <div className="max-w-5xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Passivos</p><h1 className="text-2xl font-black text-[#05121b] italic">Dívidas</h1></div>
-                <button onClick={()=>setModalDivida({credor:'',descricao:'',valor_total:'',valor_parcela:'',parcelas_total:'',parcelas_pagas:0,proximo_vencimento:'',status:'ativa'})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Dívida</button>
+                <div><p className="text-xs text-slate-500 font-medium">Passivos</p><h1 className="text-xl font-medium text-[#05121b]">Dívidas</h1></div>
+                <button onClick={()=>setModalDivida({credor:'',descricao:'',valor_total:'',valor_parcela:'',parcelas_total:'',parcelas_pagas:0,proximo_vencimento:'',status:'ativa'})} className="bg-[#05121b] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Dívida</button>
               </header>
-              {totalAtivas>0&&<div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between"><p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Dívidas Ativas</p><p className="text-2xl font-black text-red-800">{formatBRL(totalAtivas)}</p></div>}
+              {totalAtivas>0&&<div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between"><p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Dívidas Ativas</p><p className="text-xl font-medium text-red-800">{formatBRL(totalAtivas)}</p></div>}
               <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
                 {dividas.length===0?<div className="py-16 text-center"><AlertOctagon size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma dívida registrada</p></div>:(
                   <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Credor','Descrição','Valor Total','Parcela','Progresso','Próx. Venc.','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">{h}</th>)}</tr></thead>
+                    <thead><tr className="border-b border-slate-100">{['Credor','Descrição','Valor Total','Parcela','Progresso','Próx. Venc.','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
                     <tbody className="divide-y divide-slate-50">
                       {dividas.map(d=>{
                         const S=statusMap[d.status]||statusMap.ativa;
@@ -1795,8 +1795,8 @@ const App = () => {
           return(
             <div className="max-w-4xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gestão</p><h1 className="text-2xl font-black text-[#05121b] italic">Bancos e Contas</h1></div>
-                <button onClick={()=>setModalBanco({nome:'',tipo:'Conta Corrente',saldo_inicial:'',color:'#137789'})} className="bg-[#05121b] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Adicionar Banco</button>
+                <div><p className="text-xs text-slate-500 font-medium">Gestão</p><h1 className="text-xl font-medium text-[#05121b]">Bancos e Contas</h1></div>
+                <button onClick={()=>setModalBanco({nome:'',tipo:'Conta Corrente',saldo_inicial:'',color:'#137789'})} className="bg-[#05121b] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Adicionar Banco</button>
               </header>
               {/* Saldo total */}
               <div className="bg-[#05121b] rounded-2xl p-6 mb-6 flex items-center justify-between">
@@ -1822,7 +1822,7 @@ const App = () => {
                             <button onClick={()=>deleteItem('bancos',b.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
                           </div>
                         </div>
-                        <p className={`text-2xl font-black mb-4 ${saldo>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(saldo)}</p>
+                        <p className={`text-xl font-medium mb-4 ${saldo>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(saldo)}</p>
                         <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
                           <div><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Entradas</p><p className="text-sm font-black text-emerald-600">+{formatBRL(ent)}</p></div>
                           <div><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Saídas</p><p className="text-sm font-black text-red-500">-{formatBRL(sai)}</p></div>
@@ -1840,7 +1840,7 @@ const App = () => {
             ── RELATÓRIOS (download) ─────────────────────────────────── */}
         {view==='relatorios'&&(
           <div className="max-w-4xl mx-auto fade-in">
-            <header className="mb-8"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Documentos</p><h1 className="text-2xl font-black text-[#05121b] italic">Relatórios</h1></header>
+            <header className="mb-8"><p className="text-xs text-slate-500 font-medium">Documentos</p><h1 className="text-xl font-medium text-[#05121b]">Relatórios</h1></header>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 {title:'DRE — Demonstrativo de Resultado',desc:'Receitas, custos, despesas e lucro líquido do período.',icon:FileSpreadsheet,color:'text-[#137789]',bg:'bg-[#137789]/5',border:'border-[#137789]/20',status:'em breve'},
@@ -1991,7 +1991,7 @@ const App = () => {
                     </div>
                     {isParcelado&&modalCP.valor&&modalCP.vencimento&&(
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                        <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest mb-1">Prévia do parcelamento</p>
+                        <p className="text-xs text-amber-700 font-medium mb-1">Prévia do parcelamento</p>
                         <p className="text-[10px] text-amber-800 font-medium">{qtdParc}× de {formatBRL((parseFloat((modalCP.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0)/qtdParc)} — iniciando em {fmtDate(modalCP.vencimento)}</p>
                       </div>
                     )}
@@ -2072,7 +2072,7 @@ const App = () => {
                     </div>
                     {isParcelado&&modalCR.valor&&modalCR.vencimento&&(
                       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                        <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-1">Prévia do parcelamento</p>
+                        <p className="text-xs text-emerald-700 font-medium mb-1">Prévia do parcelamento</p>
                         <p className="text-[10px] text-emerald-800 font-medium">{qtdParc}× de {formatBRL((parseFloat((modalCR.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0)/qtdParc)} — iniciando em {fmtDate(modalCR.vencimento)}</p>
                       </div>
                     )}
@@ -2220,7 +2220,7 @@ const App = () => {
         {/* ── PERFIL ────────────────────────────────────────────────────── */}
         {view==='profile'&&(
           <div className="max-w-3xl mx-auto fade-in">
-            <header className="mb-8"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Configurações</p><h1 className="text-2xl font-black text-[#05121b] italic">Meu Perfil</h1></header>
+            <header className="mb-8"><p className="text-xs text-slate-500 font-medium">Configurações</p><h1 className="text-xl font-medium text-[#05121b]">Meu Perfil</h1></header>
 
             {/* Avatar upload */}
             <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm mb-5 flex flex-col items-center gap-3">
@@ -2281,7 +2281,7 @@ const App = () => {
           <div className="max-w-4xl mx-auto fade-in">
             {!formMode?(
               <div className="space-y-10 py-6">
-                <header className="text-center"><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Nova Análise</p><h2 className="text-2xl font-black text-[#05121b] italic mb-2">Como você quer trazer seus dados?</h2><p className="text-slate-400 text-sm">Escolha o método que melhor se adapta à sua realidade</p></header>
+                <header className="text-center"><p className="text-xs text-slate-500 font-medium mb-2">Nova Análise</p><h2 className="text-xl font-medium text-[#05121b] mb-2">Como você quer trazer seus dados?</h2><p className="text-slate-400 text-sm">Escolha o método que melhor se adapta à sua realidade</p></header>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <button onClick={()=>{setView('fontes');setSelectedSource('planilha');}} className="bg-white p-8 rounded-3xl border border-slate-100 hover:border-[#137789]/40 text-left shadow-lg group hover:shadow-xl hover:-translate-y-1 transition-all">
                     <div className="w-14 h-14 bg-[#137789] rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform"><FileSpreadsheet size={24} className="text-white"/></div>
@@ -2313,7 +2313,7 @@ const App = () => {
                         <p className="text-slate-400 text-[10px] mt-0.5 leading-relaxed">Relatório completo do seu último diagnóstico concluído, pronto para imprimir ou apresentar.</p>
                       </div>
                     </div>
-                    <button onClick={()=>{const last=diagnostics.find(d=>d.internal_status==='completed');if(last?.admin_result_pdf)window.open(last.admin_result_pdf,'_blank');else alert("PDF ainda não disponível para este diagnóstico.");}} className="shrink-0 bg-[#ff7b00] hover:bg-[#e66e00] text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-lg transition-all hover:scale-[1.02]"><Printer size={13}/> Baixar PDF</button>
+                    <button onClick={()=>{const last=diagnostics.find(d=>d.internal_status==='completed');if(last?.admin_result_pdf)window.open(last.admin_result_pdf,'_blank');else alert("PDF ainda não disponível para este diagnóstico.");}} className="shrink-0 bg-[#ff7b00] hover:bg-[#e66e00] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-2 shadow-lg transition-all hover:scale-[1.02]"><Printer size={13}/> Baixar PDF</button>
                   </div>
                 )}
               </div>
@@ -2349,7 +2349,7 @@ const App = () => {
         {view==='success'&&(
           <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[70vh] text-center px-4 fade-in">
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6 mx-auto"><CheckCircle size={38} className="text-emerald-500"/></div>
-            <h1 className="text-2xl font-black text-[#05121b] italic mb-3">Diagnóstico Recebido!</h1>
+            <h1 className="text-xl font-medium text-[#05121b] mb-3">Diagnóstico Recebido!</h1>
             <p className="text-slate-500 text-sm font-medium mb-2 max-w-md leading-relaxed">Recebemos todas as informações com sucesso. Nossa equipe já está analisando.</p>
             <p className="text-[#137789] font-black text-[10px] uppercase tracking-widest mb-8">⏱ Prazo: até 2 dias úteis</p>
             <div className="w-full bg-white border border-slate-100 rounded-3xl p-6 shadow-sm mb-8 text-left">
@@ -2469,7 +2469,7 @@ const App = () => {
                   </div>
                   {modalImportDespesas.rows?.slice(0,3).filter(r=>r&&r.some(c=>c!=='')).length>0&&(
                     <div className="bg-slate-50 rounded-2xl p-4">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Prévia (primeiras linhas)</p>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Prévia (primeiras linhas)</p>
                       <div className="overflow-x-auto">
                         <table className="w-full text-[10px]">
                           <thead><tr className="border-b border-slate-200">{['Data','Descrição','Valor','Categoria'].map(h=><th key={h} className="px-2 py-1.5 text-left font-black text-slate-400 uppercase tracking-wider">{h}</th>)}</tr></thead>
