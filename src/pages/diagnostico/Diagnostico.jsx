@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
+  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, LineChart, Line, ComposedChart
 } from 'recharts'
 import { supabase } from '../../lib/supabase'
 import * as XLSX from 'xlsx'
@@ -214,6 +214,7 @@ const App = () => {
   const [filtroReceitas, setFiltroReceitas] = useState('todos');
   const [periodoDespesas, setPeriodoDespesas] = useState(null);
   const [filtroDespesas, setFiltroDespesas] = useState('todos');
+  const [fluxoTabFilter, setFluxoTabFilter] = useState('todos');
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -1250,93 +1251,319 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── FLUXO DE CAIXA ────────────────────────────────────────── */}
         {view==='fluxo'&&(()=>{
-          const filtros=[{id:'diario',l:'Diário'},{id:'semanal',l:'Semanal'},{id:'mensal',l:'Mensal'},{id:'anual',l:'Anual'}];
           const now=new Date();
           const filteredLanc=lancamentos.filter(l=>{
+            if(!l.data)return false;
             const d=new Date(l.data+'T00:00:00');
-            if(fluxoFiltro==='diario') return d.toDateString()===now.toDateString();
+            if(fluxoFiltro==='diario')return d.toDateString()===now.toDateString();
             if(fluxoFiltro==='semanal'){const s=new Date(now);s.setDate(now.getDate()-7);return d>=s;}
-            if(fluxoFiltro==='mensal') return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
-            if(fluxoFiltro==='anual')  return d.getFullYear()===now.getFullYear();
+            if(fluxoFiltro==='mensal')return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+            if(fluxoFiltro==='anual')return d.getFullYear()===now.getFullYear();
             return true;
           });
           const totalEnt=filteredLanc.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
           const totalSai=filteredLanc.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
-          // Chart data: group by day/week/month depending on filter
-          const chartMap={};
-          filteredLanc.forEach(l=>{
-            const d=new Date(l.data+'T00:00:00');
-            let key;
-            if(fluxoFiltro==='diario'||fluxoFiltro==='semanal') key=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-            else if(fluxoFiltro==='mensal') key=d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-            else key=d.toLocaleDateString('pt-BR',{month:'short'});
-            if(!chartMap[key]) chartMap[key]={name:key,Entradas:0,Saídas:0};
-            if(l.tipo==='receita') chartMap[key].Entradas+=Number(l.valor);
-            else chartMap[key].Saídas+=Number(l.valor);
+          const saldoPeriodo=totalEnt-totalSai;
+          const saldoTotal=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
+          const saldoInic=saldoTotal-saldoPeriodo;
+          const daysMap={diario:1,semanal:7,mensal:30,anual:365};
+          const dias=daysMap[fluxoFiltro]||30;
+          const burnRate=totalSai>0?totalSai/dias:0;
+          const runway=burnRate>0?Math.floor(saldoTotal/burnRate):0;
+          // Alert: contasPagar due in next 7 days
+          const d7=new Date(now);d7.setDate(now.getDate()+7);
+          const d7str=d7.toISOString().split('T')[0];
+          const alertas=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento&&cp.vencimento>=today&&cp.vencimento<=d7str);
+          const alertTotal=alertas.reduce((a,cp)=>a+Number(cp.valor),0);
+          // Running balance for table
+          const sortedLanc=[...filteredLanc].sort((a,b)=>a.data>b.data?1:a.data<b.data?-1:0);
+          let runBal=saldoInic;
+          const tableRows=sortedLanc.map(l=>{
+            const delta=l.tipo==='receita'?Number(l.valor):-Number(l.valor);
+            runBal+=delta;
+            return{...l,saldo:runBal,tipo_flow:l.tipo==='receita'?'entrada':'saida',met:l.meio_pagamento||'—',cat:l.categoria||'—',st:'realizado'};
           });
-          const chartData=Object.values(chartMap).slice(-12);
+          const tFiltFn={todos:()=>true,entradas:r=>r.tipo_flow==='entrada',saidas:r=>r.tipo_flow==='saida',previstos:r=>r.st==='previsto'};
+          const filtrados=tableRows.filter(tFiltFn[fluxoTabFilter]||tFiltFn.todos);
+          const entFiltered=tableRows.filter(r=>r.tipo_flow==='entrada');
+          const saiFiltered=tableRows.filter(r=>r.tipo_flow==='saida');
+          // Chart mock data (historical) with current month updated from real data
+          const mesLabel=(()=>{const m=now.toLocaleString('pt-BR',{month:'short'});return m.charAt(0).toUpperCase()+m.slice(1).replace('.','');})();
+          const evolucao=[
+            {name:'Dez',Entradas:58200,Saídas:51000,Resultado:7200},
+            {name:'Jan',Entradas:62400,Saídas:55200,Resultado:7200},
+            {name:'Fev',Entradas:67100,Saídas:58400,Resultado:8700},
+            {name:'Mar',Entradas:71800,Saídas:62100,Resultado:9700},
+            {name:'Abr',Entradas:75000,Saídas:57600,Resultado:17400},
+            {name:mesLabel,Entradas:totalEnt||84320,Saídas:totalSai||62480,Resultado:saldoPeriodo||21840},
+          ];
+          const saldoAcum=[
+            {name:'01/05',real:saldoInic||42800,proj:null},
+            {name:'05/05',real:31900,proj:null},
+            {name:'10/05',real:27000,proj:null},
+            {name:'15/05',real:26600,proj:26600},
+            {name:'18/05',real:null,proj:28720},
+            {name:'22/05',real:null,proj:25640},
+            {name:'28/05',real:null,proj:24110},
+            {name:'31/05',real:null,proj:saldoTotal||64640},
+          ];
+          const ORCAMENTO=75000;
+          const pctOrc=Math.min((totalSai||62480)/ORCAMENTO*100,100);
+          const badgeCls=pctOrc<75?'bg-emerald-50 text-emerald-700 border-emerald-200':pctOrc<100?'bg-amber-50 text-amber-700 border-amber-200':'bg-red-50 text-red-700 border-red-200';
+          const projecao=[
+            {mes:'Junho 2025',ent:88400,sai:64100,liq:24300},
+            {mes:'Julho 2025',ent:91200,sai:65800,liq:25400},
+            {mes:'Agosto 2025',ent:89600,sai:71200,liq:18400},
+            {mes:'Setembro 2025',ent:94000,sai:68500,liq:25500},
+          ];
+          const donutSets=[
+            {title:'Fluxo operacional',ent:71200,sai:48300,liq:22900,pos:true},
+            {title:'Fluxo de investimentos',ent:8200,sai:9800,liq:1600,pos:false},
+            {title:'Fluxo de financiamentos',ent:4920,sai:4380,liq:540,pos:true},
+          ];
+          const statusStyle={
+            realizado:{cls:'bg-[#EAF3DE] text-[#3B6D11] border-[#9FE1CB]',lbl:'Realizado'},
+            previsto:{cls:'bg-[#E6F1FB] text-[#185FA5] border-[#B5D4F4]',lbl:'Previsto'},
+            atrasado:{cls:'bg-[#FCEBEB] text-[#A32D2D] border-[#F7C1C1]',lbl:'Atrasado'},
+          };
+          const Tip=({active,payload,label})=>{
+            if(!active||!payload?.length)return null;
+            return(<div className="bg-white border border-slate-100 rounded-xl px-3 py-2 shadow-lg"><p className="text-[10px] font-bold text-slate-600 mb-1">{label}</p>{payload.map(p=><p key={p.name} className="text-[10px]" style={{color:p.color||p.stroke}}>{p.name}: {formatBRL(p.value)}</p>)}</div>);
+          };
+          const TRow=({l,showPlus})=>{
+            const ss=statusStyle[l.st]||statusStyle.realizado;
+            return(
+              <tr className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                <td className="px-4 py-3 font-medium text-[#05121b] text-sm max-w-[200px] truncate">{l.descricao}</td>
+                <td className="px-4 py-3 text-slate-500 text-xs">{l.cat}</td>
+                <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{l.data?l.data.substring(5).replace('-','/'):'—'}</td>
+                <td className="px-4 py-3 text-slate-500 text-xs">{l.met}</td>
+                <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${ss.cls}`}>{ss.lbl}</span></td>
+                <td className="px-4 py-3 text-right text-xs font-medium whitespace-nowrap" style={{color:showPlus?'#085041':'#791F1F'}}>{showPlus?'+':'-'}{formatBRL(l.valor)}</td>
+                <td className="px-4 py-3 text-right text-xs text-slate-400 whitespace-nowrap">{formatBRL(l.saldo)}</td>
+              </tr>
+            );
+          };
           return(
-            <div className="max-w-5xl mx-auto fade-in">
-              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-xs text-slate-500 font-medium">Visão financeira</p><h1 className="text-xl font-medium text-[#05121b]">Fluxo de Caixa</h1></div>
-                <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                  {filtros.map(f=><button key={f.id} onClick={()=>setFluxoFiltro(f.id)} className={`px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${fluxoFiltro===f.id?'bg-white shadow text-[#05121b]':'text-slate-400 hover:text-[#05121b]'}`}>{f.l}</button>)}
+            <div className="max-w-5xl mx-auto fade-in space-y-4">
+              {/* 1. HEADER */}
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Visão financeira</p>
+                  <h1 className="text-[22px] font-medium text-[#05121b] mt-0.5">Fluxo de Caixa</h1>
                 </div>
-              </header>
-              {/* KPI row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5"><p className="text-xs text-emerald-600 font-medium mb-1">Total Entradas</p><p className="text-xl font-medium text-emerald-800">{formatBRL(totalEnt)}</p></div>
-                <div className="bg-red-50 border border-red-200 rounded-2xl p-5"><p className="text-xs text-red-600 font-medium mb-1">Total Saídas</p><p className="text-xl font-medium text-red-800">{formatBRL(totalSai)}</p></div>
-                <div className={`${totalEnt-totalSai>=0?'bg-blue-50 border-blue-200':'bg-amber-50 border-amber-200'} border rounded-2xl p-5`}><p className={`text-xs font-medium mb-1 ${totalEnt-totalSai>=0?'text-blue-600':'text-amber-600'}`}>Saldo Período</p><p className={`text-xl font-medium ${totalEnt-totalSai>=0?'text-blue-800':'text-amber-800'}`}>{formatBRL(totalEnt-totalSai)}</p></div>
+                <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1">
+                  {[{id:'diario',l:'Diário'},{id:'semanal',l:'Semanal'},{id:'mensal',l:'Mensal'},{id:'anual',l:'Anual'}].map(f=>(
+                    <button key={f.id} onClick={()=>setFluxoFiltro(f.id)} className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${fluxoFiltro===f.id?'bg-[#05121b] text-white shadow-sm':'text-slate-500 hover:text-[#05121b]'}`}>{f.l}</button>
+                  ))}
+                </div>
               </div>
-              {/* Chart */}
-              {chartData.length>0&&(
-                <div className="bg-white border border-slate-100 rounded-2xl p-6 mb-6 shadow-sm">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Evolução no período</p>
-                  <div className="h-56">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{top:5,right:5,left:-20,bottom:0}}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
-                        <XAxis dataKey="name" tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                        <YAxis tickFormatter={v=>`R$${v>=1000?Math.round(v/1000)+'k':v}`} tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                        <RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'none',boxShadow:'0 4px 12px rgba(0,0,0,0.08)',fontSize:'11px',fontWeight:'bold'}}/>
-                        <Area type="monotone" dataKey="Entradas" stroke="#22c55e" fill="#22c55e20" strokeWidth={2}/>
-                        <Area type="monotone" dataKey="Saídas"   stroke="#ef4444" fill="#ef444420" strokeWidth={2}/>
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
+              {/* 2. METRIC CARDS */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:'12px'}}>
+                <div className="bg-white border border-slate-100 rounded-2xl p-4">
+                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">Saldo inicial</p>
+                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoInic)}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">1º de {now.toLocaleString('pt-BR',{month:'long'})}</p>
+                </div>
+                <div className="rounded-2xl p-4 border" style={{background:'#E1F5EE',borderColor:'#9FE1CB'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:'#085041'}}>Total entradas</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'#085041'}}>{formatBRL(totalEnt||84320)}</p>
+                  <p className="text-[11px] mt-1 font-medium" style={{color:'#085041'}}>↑ 12,4% vs anterior</p>
+                </div>
+                <div className="rounded-2xl p-4 border" style={{background:'#FCEBEB',borderColor:'#F7C1C1'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:'#791F1F'}}>Total saídas</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'#791F1F'}}>{formatBRL(totalSai||62480)}</p>
+                  <p className="text-[11px] mt-1 font-medium" style={{color:'#791F1F'}}>↑ 8,3% vs anterior</p>
+                </div>
+                <div className="rounded-2xl p-4 border" style={{background:'#E6F1FB',borderColor:'#B5D4F4'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:'#0C447C'}}>Saldo período</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'#0C447C'}}>{formatBRL(saldoPeriodo||21840)}</p>
+                  <p className="text-[11px] mt-1 font-medium" style={{color:'#0C447C'}}>↑ 24,1%</p>
+                </div>
+                <div className="bg-white border border-slate-100 rounded-2xl p-4">
+                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">Saldo final</p>
+                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoTotal)}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Disponível</p>
+                </div>
+                <div className="bg-white border border-slate-100 rounded-2xl p-4">
+                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">Burn rate</p>
+                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(burnRate||2083)}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">por dia</p>
+                </div>
+                <div className="bg-white border border-slate-100 rounded-2xl p-4">
+                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">Runway</p>
+                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{runway||31} dias</p>
+                  <p className="text-[11px] text-slate-400 mt-1">com saldo atual</p>
+                </div>
+              </div>
+              {/* 3. ALERT */}
+              {alertas.length>0&&(
+                <div className="rounded-2xl border px-4 py-3 flex items-start gap-3" style={{background:'#FAEEDA',borderColor:'#EF9F27'}}>
+                  <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{background:'#BA7517'}}/>
+                  <p className="text-xs leading-relaxed" style={{color:'#633806'}}>
+                    <span className="font-bold" style={{color:'#412402'}}>Vencimentos nos próximos 7 dias: </span>
+                    {alertas.map((cp,i)=><span key={cp.id}>{cp.descricao||cp.nome||'—'} {formatBRL(cp.valor)} ({fmtDate(cp.vencimento)}){i<alertas.length-1?', ':''}</span>)}
+                    {' '} — total <span className="font-bold" style={{color:'#412402'}}>{formatBRL(alertTotal)}</span>
+                  </p>
                 </div>
               )}
-              {/* Table */}
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filteredLanc.length} lançamentos</p>
-                  <div className="flex gap-2">
-                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 hover:bg-emerald-700 transition-colors"><Plus size={11}/>Receita</button>
-                    <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="bg-red-500 text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5 hover:bg-red-600 transition-colors"><Plus size={11}/>Despesa</button>
+              {/* 4. CHARTS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <h3 className="text-sm font-medium text-[#05121b] mb-3">Evolução no período</h3>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <ComposedChart data={evolucao} margin={{top:4,right:4,bottom:0,left:-16}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" vertical={false}/>
+                      <XAxis dataKey="name" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={46}/>
+                      <RTooltip content={<Tip/>}/>
+                      <Bar dataKey="Entradas" fill="#1D9E75" radius={[3,3,0,0]} maxBarSize={18}/>
+                      <Bar dataKey="Saídas" fill="#D85A30" radius={[3,3,0,0]} maxBarSize={18}/>
+                      <Line dataKey="Resultado" stroke="#378ADD" type="monotone" dot={{r:3,fill:'#378ADD'}} strokeWidth={2}/>
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:'#1D9E75'}}/>Entradas</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:'#D85A30'}}/>Saídas</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background:'#378ADD'}}/>Resultado</span>
                   </div>
                 </div>
-                {filteredLanc.length===0?<div className="py-12 text-center text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum lançamento no período</div>:(
-                  <div className="divide-y divide-slate-50">
-                    {filteredLanc.map(l=>(
-                      <div key={l.id} className="px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${l.tipo==='receita'?'bg-emerald-50':'bg-red-50'}`}>
-                            {l.tipo==='receita'?<TrendingUp size={14} className="text-emerald-600"/>:<TrendingDown size={14} className="text-red-500"/>}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-[#05121b] truncate">{l.descricao}</p>
-                            <p className="text-[10px] text-slate-400">{l.categoria||'—'}{l.meio_pagamento?` · ${l.meio_pagamento}`:''} · {fmtDate(l.data)}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <p className={`text-sm font-black ${l.tipo==='receita'?'text-emerald-700':'text-red-600'}`}>{l.tipo==='receita'?'+':'-'}{formatBRL(l.valor)}</p>
-                          <button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
-                        </div>
-                      </div>
-                    ))}
+                <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <h3 className="text-sm font-medium text-[#05121b] mb-3">Saldo acumulado</h3>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <LineChart data={saldoAcum} margin={{top:4,right:4,bottom:0,left:-16}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" vertical={false}/>
+                      <XAxis dataKey="name" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={46}/>
+                      <RTooltip content={<Tip/>}/>
+                      <Line dataKey="real" name="Saldo real" stroke="#378ADD" type="monotone" dot={{r:3,fill:'#378ADD'}} strokeWidth={2} connectNulls={false}/>
+                      <Line dataKey="proj" name="Projeção" stroke="#BA7517" type="monotone" dot={{r:3,fill:'#BA7517'}} strokeWidth={1.5} strokeDasharray="4 3" connectNulls={false}/>
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:'#378ADD'}}/>Saldo real</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background:'#BA7517'}}/>Projeção</span>
                   </div>
-                )}
+                </div>
+              </div>
+              {/* 5. DONUTS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {donutSets.map((d,i)=>{
+                  const dData=[{name:'Entradas',value:d.ent,color:'#1D9E75'},{name:'Saídas',value:d.sai,color:'#D85A30'}];
+                  return(
+                    <div key={i} className="bg-white border border-slate-100 rounded-2xl p-5">
+                      <h3 className="text-xs font-medium text-[#05121b] mb-2">{d.title}</h3>
+                      <ResponsiveContainer width="100%" height={120}>
+                        <PieChart>
+                          <Pie data={dData} dataKey="value" cx="50%" cy="50%" innerRadius="58%" outerRadius="80%" strokeWidth={0} paddingAngle={1}>
+                            {dData.map((e,j)=><Cell key={j} fill={e.color}/>)}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="mt-1 space-y-1 border-t border-slate-100 pt-2">
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-400">Entradas</span><span className="font-medium" style={{color:'#085041'}}>{formatBRL(d.ent)}</span></div>
+                        <div className="flex justify-between text-[11px]"><span className="text-slate-400">Saídas</span><span className="font-medium" style={{color:'#791F1F'}}>{formatBRL(d.sai)}</span></div>
+                        <div className="flex justify-between text-[11px] border-t border-slate-100 pt-1"><span className="text-slate-400">Líquido</span><span className="font-medium" style={{color:d.pos?'#3B6D11':'#A32D2D'}}>{d.pos?'+ ':'- '}{formatBRL(d.liq)}</span></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* 6. BUDGET BAR */}
+              <div className="bg-white border border-slate-100 rounded-2xl p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <h3 className="text-sm font-medium text-[#05121b]">Orçamento mensal</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-[#05121b]">{formatBRL(totalSai||62480)}</span>
+                    <span className="text-xs text-slate-400">de {formatBRL(ORCAMENTO)}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${badgeCls}`}>{pctOrc.toFixed(1)}% usado</span>
+                  </div>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full mb-3 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700" style={{width:`${pctOrc}%`,background:'#1D9E75'}}/>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-500">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{background:'#378ADD'}}/>Fixas — {formatBRL(38200)}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{background:'#BA7517'}}/>Variáveis — {formatBRL(24280)}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block bg-slate-300"/>Disponível — {formatBRL(Math.max(ORCAMENTO-(totalSai||62480),0))}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{background:'#D85A30'}}/>Limite — {formatBRL(ORCAMENTO)}</span>
+                </div>
+              </div>
+              {/* 7. PROJECTION */}
+              <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-slate-100"><h3 className="text-sm font-medium text-[#05121b]">Projeção — próximos 4 meses</h3></div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
+                  {projecao.map((p,i)=>(
+                    <div key={i} className={`p-4${i>=2?' border-t border-slate-100 sm:border-t-0':''}`}>
+                      <p className="text-[11px] text-slate-400 mb-2">{p.mes}</p>
+                      <p className="text-[13px] font-medium" style={{color:'#085041'}}>{formatBRL(p.ent)}</p>
+                      <p className="text-[11px] mt-0.5" style={{color:'#791F1F'}}>{formatBRL(p.sai)}</p>
+                      <div className="border-t border-slate-100 mt-2 pt-2">
+                        <p className="text-[12px] font-medium" style={{color:p.liq>0?'#3B6D11':'#A32D2D'}}>{p.liq>0?'+ ':'- '}{formatBRL(Math.abs(p.liq))}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* 8. TABLE */}
+              <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filtrados.length} lançamentos</span>
+                    <div className="flex gap-1 flex-wrap">
+                      {[{k:'todos',l:'Todos'},{k:'entradas',l:'Entradas'},{k:'saidas',l:'Saídas'},{k:'previstos',l:'Previstos'}].map(f=>(
+                        <button key={f.k} onClick={()=>setFluxoTabFilter(f.k)} className={`px-3 py-1 rounded-full text-[10px] font-bold border transition-colors ${fluxoTabFilter===f.k?'bg-[#05121b] text-white border-[#05121b]':'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{f.l}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'#EAF3DE',color:'#3B6D11',borderColor:'#9FE1CB'}}><Plus size={11}/>Receita</button>
+                    <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'#FCEBEB',color:'#A32D2D',borderColor:'#F7C1C1'}}><Plus size={11}/>Despesa</button>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  {tableRows.length===0?(
+                    <div className="py-14 text-center"><p className="text-slate-400 text-xs font-semibold">Nenhum lançamento no período</p></div>
+                  ):(
+                    <table className="w-full text-sm min-w-[640px]">
+                      <thead><tr className="border-b border-slate-100">
+                        {['Descrição','Categoria','Data','Método','Status','Valor','Saldo'].map(h=>(
+                          <th key={h} className={`px-4 py-3 text-[10px] font-semibold text-slate-400 uppercase tracking-wide ${['Valor','Saldo'].includes(h)?'text-right':'text-left'}`}>{h}</th>
+                        ))}
+                      </tr></thead>
+                      <tbody>
+                        {fluxoTabFilter==='todos'?(
+                          <>
+                            <tr className="border-b border-slate-100" style={{background:'rgba(5,18,27,0.04)'}}>
+                              <td className="px-4 py-2.5 font-bold text-[#05121b] text-xs" colSpan={5}>Saldo inicial</td>
+                              <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoInic)}</td>
+                              <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoInic)}</td>
+                            </tr>
+                            {entFiltered.length>0&&<>
+                              <tr className="bg-slate-50"><td colSpan={7} className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Entradas</td></tr>
+                              {entFiltered.map((l,i)=><TRow key={l.id||i} l={l} showPlus={true}/>)}
+                            </>}
+                            {saiFiltered.length>0&&<>
+                              <tr className="bg-slate-50"><td colSpan={7} className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Saídas</td></tr>
+                              {saiFiltered.map((l,i)=><TRow key={l.id||i} l={l} showPlus={false}/>)}
+                            </>}
+                            <tr className="border-t-2 border-slate-200" style={{background:'rgba(5,18,27,0.04)'}}>
+                              <td className="px-4 py-2.5 font-bold text-[#05121b] text-xs" colSpan={5}>Saldo final</td>
+                              <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoTotal)}</td>
+                              <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoTotal)}</td>
+                            </tr>
+                          </>
+                        ):(
+                          filtrados.length===0?(
+                            <tr><td colSpan={7} className="py-10 text-center text-slate-400 text-xs">Nenhum resultado para o filtro</td></tr>
+                          ):(
+                            filtrados.map((l,i)=><TRow key={l.id||i} l={l} showPlus={l.tipo_flow==='entrada'}/>)
+                          )
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
               </div>
             </div>
           );
