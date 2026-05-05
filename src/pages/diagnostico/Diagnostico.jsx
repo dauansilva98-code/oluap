@@ -23,6 +23,7 @@ import { STEPS_V1, FormStepV1, STEPS_G, FormStepG, EMPTY_FORM, SCENARIOS } from 
 import { calcMetrics, calcLiveMetrics, genCashFlowData, genLiveCashFlowData, genAlerts, genLiveAlerts } from './logic/metrics'
 import { DRAFT_KEY, CHART_COLORS } from './config'
 import ContasReceberView from './ContasReceberView'
+import BancosContas from './BancosContas'
 // ── SimComparativo ────────────────────────────────────────────────────────────
 const SimComparativo = ({label, before, after, formato, lowerIsBetter=false}) => {
   const melhorou = lowerIsBetter ? after <= before : after >= before;
@@ -2373,53 +2374,11 @@ const App = () => {
 
         {/* ══════════════════════════════════════════════════════════════
             ── BANCOS ────────────────────────────────────────────────── */}
-        {view==='bancos'&&(()=>{
-          const tipos=['Conta Corrente','Conta Poupança','Conta Digital','Caixa Físico','Outros'];
-          const CORES=['#137789','#ff7b00','#22c55e','#8b5cf6','#f59e0b','#ef4444','#0ea5e9','#ec4899'];
-          const saldoTotal=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
-          return(
-            <div className="max-w-7xl mx-auto fade-in">
-              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-xs text-slate-500 font-medium">Gestão</p><h1 className="text-xl font-medium text-[#05121b]">Bancos e Contas</h1></div>
-                <button onClick={()=>setModalBanco({nome:'',tipo:'Conta Corrente',saldo_inicial:'',color:'#137789'})} className="bg-[#05121b] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Adicionar Banco</button>
-              </header>
-              {/* Saldo total */}
-              <div className="bg-[#05121b] rounded-2xl p-6 mb-6 flex items-center justify-between">
-                <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Total</p><p className="text-3xl font-black text-white">{formatBRL(saldoTotal)}</p></div>
-                <Landmark size={32} className="text-white/20"/>
-              </div>
-              {/* Bank cards */}
-              {bancos.length===0?<div className="bg-white border border-slate-100 rounded-2xl py-16 text-center shadow-sm"><Landmark size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum banco cadastrado</p></div>:(
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {bancos.map(b=>{
-                    const saldo=saldoBanco(b.id);
-                    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
-                    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
-                    return(
-                      <div key={b.id} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between mb-5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md" style={{background:b.cor||'#137789'}}>{b.nome.charAt(0).toUpperCase()}</div>
-                            <div><p className="font-black text-sm text-[#05121b]">{b.nome}</p><p className="text-[10px] text-slate-400">{b.tipo}</p></div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button onClick={()=>setModalBanco({...b})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={14}/></button>
-                            <button onClick={()=>deleteItem('bancos',b.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
-                          </div>
-                        </div>
-                        <p className={`text-xl font-medium mb-4 ${saldo>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(saldo)}</p>
-                        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-50">
-                          <div><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Entradas</p><p className="text-sm font-black text-emerald-600">+{formatBRL(ent)}</p></div>
-                          <div><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Saídas</p><p className="text-sm font-black text-red-500">-{formatBRL(sai)}</p></div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        {view==='bancos'&&(
+          <div className="fade-in">
+            <BancosContas />
+          </div>
+        )}
 
         {/* ══════════════════════════════════════════════════════════════
             ── RELATÓRIOS (download) ─────────────────────────────────── */}
