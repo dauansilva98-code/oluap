@@ -938,7 +938,7 @@ const App = () => {
 
         {/* ── CFO DIGITAL · DIAGNÓSTICO & ALERTAS ───────────────────────── */}
         {view==='alertas'&&(
-          <div className="max-w-6xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             <header className="mb-8">
               <p className="text-xs font-medium text-[#ff7b00] mb-1">CFO Digital · Análise Completa</p>
               <h1 className="text-xl font-medium text-[#05121b]">Diagnóstico & Alertas</h1>
@@ -1108,7 +1108,7 @@ const App = () => {
           const scFiltrados=simGroup==='Todos'?SCENARIOS:SCENARIOS.filter(s=>s.group===simGroup);
           const canCalc=sc.tipo==='pct'?!!simPct:!!simValue;
           return(
-          <div className="max-w-4xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             <header className="mb-8">
               <p className="text-xs font-medium text-[#137789] mb-1">IA · Simulador</p>
               <h1 className="text-xl font-medium text-[#05121b]">Simulador de Cenários</h1>
@@ -1202,7 +1202,7 @@ const App = () => {
 
         {/* ── FONTES DE DADOS ───────────────────────────────────────────── */}
         {view==='fontes'&&(
-          <div className="max-w-4xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             <header className="mb-8"><p className="text-xs text-slate-500 font-medium">Configuração</p><h1 className="text-xl font-medium text-[#05121b]">Fontes de Dados</h1><p className="text-slate-400 text-sm font-medium mt-1">Escolha como quer trazer os dados da sua empresa.</p></header>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
               <button onClick={()=>setSelectedSource('planilha')} className={`bg-white rounded-2xl border-2 p-7 text-left flex flex-col gap-4 transition-all hover:shadow-md ${selectedSource==='planilha'?'border-[#137789] ring-2 ring-[#137789]/20 shadow-md':'border-slate-100 hover:border-slate-200'}`}>
@@ -1248,7 +1248,7 @@ const App = () => {
 
         {/* ── MEUS RELATÓRIOS ──────────────────────────────────────────── */}
         {view==='analises'&&(
-          <div className="max-w-5xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
               <div><p className="text-xs text-slate-500 font-medium">Central de</p><h1 className="text-xl font-medium text-[#05121b]">Minhas Análises</h1></div>
               <button onClick={()=>setModalSolicitarAnalise(true)} className="bg-[#ff7b00] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md hover:scale-[1.02] transition-transform self-start sm:self-auto flex items-center gap-2"><Plus size={13}/> Solicitar Nova Análise</button>
@@ -1657,7 +1657,7 @@ const App = () => {
             {label:'Inadimplência',       value:formatBRL(inadimplencia), delta:inadimplencia>0?{txt:'Contas vencidas',pos:false}:null},
           ];
           return(
-            <div className="max-w-5xl mx-auto fade-in space-y-5">
+            <div className="max-w-7xl mx-auto fade-in space-y-5">
               {/* Header */}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -1849,7 +1849,7 @@ const App = () => {
             {label:'A pagar ainda',      value:formatBRL(aPagar),    delta:aPagarCount>0?{txt:`${aPagarCount} vencimento${aPagarCount>1?'s':''}`,pos:null}:null},
           ];
           return(
-            <div className="max-w-5xl mx-auto fade-in space-y-5">
+            <div className="max-w-7xl mx-auto fade-in space-y-5">
               {/* Header */}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -2267,7 +2267,7 @@ const App = () => {
           const getStatus=(cr)=>{if(cr.status==='recebido')return 'recebido';if(cr.vencimento<today&&cr.status!=='recebido')return 'vencido';return cr.status||'pendente';};
           const totPendente=contasReceber.filter(c=>getStatus(c)==='pendente').reduce((a,c)=>a+Number(c.valor),0);
           return(
-            <div className="max-w-5xl mx-auto fade-in">
+            <div className="max-w-7xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-xs text-slate-500 font-medium">Entradas futuras</p><h1 className="text-xl font-medium text-[#05121b]">Contas a Receber</h1></div>
                 <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30',meio_pagamento:''})} className="bg-[#137789] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
@@ -2320,7 +2320,7 @@ const App = () => {
           const totalAtual=ativos.reduce((a,i)=>a+Number(i.valor_atual||i.valor_aplicado||0),0);
           const rentTotal=totalAplicado>0?((totalAtual-totalAplicado)/totalAplicado*100):0;
           return(
-            <div className="max-w-5xl mx-auto fade-in">
+            <div className="max-w-7xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-xs text-slate-500 font-medium">Patrimônio</p><h1 className="text-xl font-medium text-[#05121b]">Investimentos</h1></div>
                 <button onClick={()=>setModalInvestimento({nome:'',tipo:'CDB',instituicao:'',valor_aplicado:'',valor_atual:'',rentabilidade_pct:'',data_aplicacao:'',data_vencimento:'',liquidez:'30 dias',status:'ativo'})} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-blue-700 transition-colors shadow-md"><Plus size={13}/>Novo Investimento</button>
@@ -2368,7 +2368,7 @@ const App = () => {
           const statusMap={ativa:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',lbl:'Ativa'},quitada:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',lbl:'Quitada'},em_negociacao:{bg:'bg-blue-50',border:'border-blue-200',txt:'text-blue-700',lbl:'Em Negociação'}};
           const totalAtivas=dividas.filter(d=>d.status==='ativa').reduce((a,d)=>a+Number(d.valor_total),0);
           return(
-            <div className="max-w-5xl mx-auto fade-in">
+            <div className="max-w-7xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-xs text-slate-500 font-medium">Passivos</p><h1 className="text-xl font-medium text-[#05121b]">Dívidas</h1></div>
                 <button onClick={()=>setModalDivida({credor:'',descricao:'',valor_total:'',valor_parcela:'',parcelas_total:'',parcelas_pagas:0,proximo_vencimento:'',status:'ativa'})} className="bg-[#05121b] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Dívida</button>
@@ -2422,7 +2422,7 @@ const App = () => {
           const CORES=['#137789','#ff7b00','#22c55e','#8b5cf6','#f59e0b','#ef4444','#0ea5e9','#ec4899'];
           const saldoTotal=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
           return(
-            <div className="max-w-4xl mx-auto fade-in">
+            <div className="max-w-7xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-xs text-slate-500 font-medium">Gestão</p><h1 className="text-xl font-medium text-[#05121b]">Bancos e Contas</h1></div>
                 <button onClick={()=>setModalBanco({nome:'',tipo:'Conta Corrente',saldo_inicial:'',color:'#137789'})} className="bg-[#05121b] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Adicionar Banco</button>
@@ -2468,7 +2468,7 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── RELATÓRIOS (download) ─────────────────────────────────── */}
         {view==='relatorios'&&(
-          <div className="max-w-4xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             <header className="mb-8"><p className="text-xs text-slate-500 font-medium">Documentos</p><h1 className="text-xl font-medium text-[#05121b]">Relatórios</h1></header>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
@@ -2848,7 +2848,7 @@ const App = () => {
 
         {/* ── PERFIL ────────────────────────────────────────────────────── */}
         {view==='profile'&&(
-          <div className="max-w-3xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             <header className="mb-8"><p className="text-xs text-slate-500 font-medium">Configurações</p><h1 className="text-xl font-medium text-[#05121b]">Meu Perfil</h1></header>
 
             {/* Avatar upload */}
@@ -2907,7 +2907,7 @@ const App = () => {
 
         {/* ── FORMULÁRIO ───────────────────────────────────────────────── */}
         {view==='form'&&(
-          <div className="max-w-4xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             {!formMode?(
               <div className="space-y-10 py-6">
                 <header className="text-center"><p className="text-xs text-slate-500 font-medium mb-2">Nova Análise</p><h2 className="text-xl font-medium text-[#05121b] mb-2">Como você quer trazer seus dados?</h2><p className="text-slate-400 text-sm">Escolha o método que melhor se adapta à sua realidade</p></header>
@@ -3001,7 +3001,7 @@ const App = () => {
 
         {/* ── VER DADOS ─────────────────────────────────────────────────── */}
         {view==='view_data'&&selectedSubmission&&(
-          <div className="max-w-5xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             <div className="mb-6 flex items-center justify-between"><button onClick={()=>setView('relatorios')} className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors"><ArrowLeft size={13}/> Voltar</button><div className="px-3 py-1 bg-slate-50 text-slate-500 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-200 flex items-center gap-1.5"><FileSearch size={11}/> Dados Enviados</div></div>
             <div className="bg-white p-7 md:p-10 rounded-3xl border border-slate-100 shadow-xl mb-12 pointer-events-none opacity-90">
               <header className="mb-8 border-b border-slate-50 pb-6"><h2 className="text-xl font-black text-[#05121b] italic uppercase mb-1">{selectedSubmission.client_name}</h2><p className="text-[#137789] font-bold uppercase text-[10px] tracking-widest">{selectedSubmission.form_type} · {new Date(selectedSubmission.submittedAt).toLocaleDateString('pt-BR')}</p></header>
@@ -3012,7 +3012,7 @@ const App = () => {
 
         {/* ── RESULTADO ─────────────────────────────────────────────────── */}
         {view==='result'&&selectedSubmission&&(
-          <div className="max-w-5xl mx-auto fade-in">
+          <div className="max-w-7xl mx-auto fade-in">
             <button onClick={()=>setView('analises')} className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors mb-6"><ArrowLeft size={13}/> Voltar para Análises</button>
             <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden mb-10">
               <div className={`p-6 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${selectedSubmission.health_status==='healthy'?'bg-emerald-50 border-emerald-100':selectedSubmission.health_status==='warning'?'bg-amber-50 border-amber-100':'bg-red-50 border-red-100'}`}>
