@@ -3120,6 +3120,96 @@ const App = () => {
           </div>
         )}
 
+        {/* ── MODAL NOVA CONTA A PAGAR ──────────────────────────────────── */}
+        {cpModalOpen&&(
+          <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.4)',padding:16}} onClick={()=>setCpModalOpen(false)}>
+            <div style={{background:'#fff',borderRadius:20,width:'100%',maxWidth:420,padding:32,maxHeight:'90vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
+                <h3 style={{fontSize:18,fontWeight:700,color:'#05121b',margin:0}}>Nova conta a pagar</h3>
+                <button onClick={()=>setCpModalOpen(false)} style={{color:'#cbd5e1',background:'none',border:'none',cursor:'pointer',display:'flex'}}><X size={20}/></button>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:14}}>
+                <div>
+                  <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Fornecedor / descrição</label>
+                  <input value={cpModalForm.desc} onChange={e=>setCpModalForm({...cpModalForm,desc:e.target.value})} placeholder="Ex: Aluguel escritório maio" style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none',boxSizing:'border-box'}}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div>
+                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Categoria</label>
+                    <select value={cpModalForm.cat} onChange={e=>setCpModalForm({...cpModalForm,cat:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
+                      <option value="">Selecione...</option>
+                      {['Folha de pagamento','Fornecedores','Impostos e taxas','Infraestrutura','Marketing','Aluguel','Utilities','Outros'].map(c=><option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Centro de custo</label>
+                    <select value={cpModalForm.cc} onChange={e=>setCpModalForm({...cpModalForm,cc:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
+                      <option value="">Selecione...</option>
+                      {['Administrativo','Comercial','Tecnologia','RH','Operações'].map(c=><option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div>
+                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Valor (R$)</label>
+                    <input type="number" value={cpModalForm.valor} onChange={e=>setCpModalForm({...cpModalForm,valor:e.target.value})} placeholder="0,00" style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none',boxSizing:'border-box'}}/>
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Vencimento</label>
+                    <input type="date" value={cpModalForm.venc} onChange={e=>setCpModalForm({...cpModalForm,venc:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none',boxSizing:'border-box'}}/>
+                  </div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div>
+                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Tipo</label>
+                    <select value={cpModalForm.tipo} onChange={e=>setCpModalForm({...cpModalForm,tipo:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
+                      <option value="fixa">Fixa</option>
+                      <option value="variavel">Variável</option>
+                      <option value="imposto">Imposto</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Recorrência</label>
+                    <select value={cpModalForm.recorrencia} onChange={e=>setCpModalForm({...cpModalForm,recorrencia:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
+                      <option value="unica">Única</option>
+                      <option value="mensal">Mensal</option>
+                      <option value="trimestral">Trimestral</option>
+                      <option value="anual">Anual</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div>
+                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Método de pagamento</label>
+                    <select value={cpModalForm.metodo} onChange={e=>setCpModalForm({...cpModalForm,metodo:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
+                      <option value="">Selecione...</option>
+                      {['PIX','Boleto','TED','Cartão'].map(c=><option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Status</label>
+                    <select value={cpModalForm.status} onChange={e=>setCpModalForm({...cpModalForm,status:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
+                      <option value="aberto">Em aberto</option>
+                      <option value="agendado">Agendado</option>
+                      <option value="pago">Pago</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div style={{display:'flex',gap:10,marginTop:24}}>
+                <button onClick={()=>{setCpModalOpen(false);setCpModalForm({desc:'',cat:'',cc:'',valor:'',venc:'',tipo:'variavel',recorrencia:'unica',metodo:'',status:'aberto'});}} style={{flex:1,padding:'12px',borderRadius:12,border:'1px solid #e2e8f0',background:'transparent',fontSize:12,fontWeight:600,color:'#94a3b8',cursor:'pointer'}}>Cancelar</button>
+                <button onClick={()=>{
+                  if(!cpModalForm.desc||!cpModalForm.valor)return;
+                  setCpData(prev=>[...prev,{id:Date.now(),desc:cpModalForm.desc,cat:cpModalForm.cat||'Outros',cc:cpModalForm.cc||'Administrativo',venc:cpModalForm.venc||today,tipo:cpModalForm.tipo,status:cpModalForm.status,valor:parseFloat(cpModalForm.valor)||0}]);
+                  setCpFiltro('todos');
+                  setCpModalOpen(false);
+                  setCpModalForm({desc:'',cat:'',cc:'',valor:'',venc:'',tipo:'variavel',recorrencia:'unica',metodo:'',status:'aberto'});
+                }} style={{flex:1,padding:'12px',borderRadius:12,border:'none',background:'#05121b',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
       </div>
     </div>
