@@ -91,24 +91,6 @@ const MultiFileDropzone = () => {
 // §7  APP PRINCIPAL
 //     Estado · Effects · Handlers · Render (Sidebar + todas as Views + Modals)
 // ─────────────────────────────────────────────────────────────────────────────
-const CP_MOCK_DATA = [
-  {id:1, desc:'Manutenção equipamentos', cat:'Outros',         cc:'Operações',    venc:'2025-04-28', tipo:'variavel', status:'atrasado', valor:980},
-  {id:2, desc:'Fornecedor Beta',         cat:'Fornecedores',   cc:'Operações',    venc:'2025-04-30', tipo:'variavel', status:'atrasado', valor:3600},
-  {id:3, desc:'Folha de pagamento',      cat:'Folha',          cc:'RH',           venc:'2025-05-05', tipo:'fixa',     status:'pago',     valor:18400},
-  {id:4, desc:'INSS + FGTS',            cat:'Impostos',       cc:'Administrativo',venc:'2025-05-07', tipo:'imposto',  status:'pago',     valor:4200},
-  {id:5, desc:'Aluguel escritório',      cat:'Infraestrutura', cc:'Administrativo',venc:'2025-05-10', tipo:'fixa',     status:'pago',     valor:6800},
-  {id:6, desc:'AWS / cloud',             cat:'Infraestrutura', cc:'Tecnologia',   venc:'2025-05-12', tipo:'variavel', status:'pago',     valor:3100},
-  {id:7, desc:'Fornecedor logística',    cat:'Fornecedores',   cc:'Operações',    venc:'2025-05-15', tipo:'variavel', status:'pago',     valor:5400},
-  {id:8, desc:'Google Ads',             cat:'Marketing',      cc:'Comercial',    venc:'2025-05-18', tipo:'variavel', status:'aberto',   valor:2800},
-  {id:9, desc:'Pró-labore sócios',       cat:'Folha',          cc:'Administrativo',venc:'2025-05-20', tipo:'fixa',     status:'aberto',   valor:8500},
-  {id:10,desc:'ISS mensal',             cat:'Impostos',       cc:'Administrativo',venc:'2025-05-22', tipo:'imposto',  status:'aberto',   valor:1380},
-  {id:11,desc:'Contabilidade',          cat:'Fornecedores',   cc:'Administrativo',venc:'2025-05-25', tipo:'fixa',     status:'agendado', valor:1900},
-  {id:12,desc:'Seguro empresarial',     cat:'Outros',         cc:'Administrativo',venc:'2025-05-25', tipo:'fixa',     status:'agendado', valor:1200},
-  {id:13,desc:'Licença Microsoft 365',  cat:'Infraestrutura', cc:'Tecnologia',   venc:'2025-05-28', tipo:'fixa',     status:'agendado', valor:890},
-  {id:14,desc:'Energia elétrica',       cat:'Utilities',      cc:'Administrativo',venc:'2025-05-28', tipo:'variavel', status:'agendado', valor:1340},
-  {id:15,desc:'Parcela empréstimo',     cat:'Financeiro',     cc:'Administrativo',venc:'2025-05-31', tipo:'fixa',     status:'agendado', valor:4380},
-  {id:16,desc:'Bônus equipe vendas',    cat:'Folha',          cc:'Comercial',    venc:'2025-05-31', tipo:'variavel', status:'aberto',   valor:3600},
-];
 const App = () => {
   const [view, setView] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -235,11 +217,7 @@ const App = () => {
   const [periodoDespesas, setPeriodoDespesas] = useState(null);
   const [filtroDespesas, setFiltroDespesas] = useState('todos');
   const [fluxoTabFilter, setFluxoTabFilter] = useState('todos');
-  const [cpData, setCpData] = useState(CP_MOCK_DATA);
   const [cpFiltro, setCpFiltro] = useState('todos');
-  const [cpPeriodo, setCpPeriodo] = useState('Maio 2025');
-  const [cpModalOpen, setCpModalOpen] = useState(false);
-  const [cpModalForm, setCpModalForm] = useState({desc:'',cat:'',cc:'',valor:'',venc:'',tipo:'variavel',recorrencia:'unica',metodo:'',status:'aberto'});
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -393,6 +371,27 @@ const App = () => {
     const ent=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
     const sai=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
     return Number(b.saldo_inicial)+ent-sai;
+  };
+
+  // Handlers chamados pelo BancosContas
+  const handleSaveBancoFromBancosContas = async (payload) => {
+    setSavingItem(true);
+    try {
+      const { error } = await supabase.from('bancos').insert({ ...payload, user_id: user.id });
+      if (error) throw error;
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); alert(`Erro ao salvar banco: ${e.message}`); }
+    setSavingItem(false);
+  };
+
+  const handleSaveLancamentoEspecie = async (payload) => {
+    setSavingItem(true);
+    try {
+      const { error } = await supabase.from('lancamentos').insert({ ...payload, user_id: user.id });
+      if (error) throw error;
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); alert(`Erro ao salvar movimentação: ${e.message}`); }
+    setSavingItem(false);
   };
 
   const markAsSeen=id=>{
@@ -2004,51 +2003,43 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── CONTAS A PAGAR ────────────────────────────────────────── */}
         {view==='contas_pagar'&&(()=>{
-          const vencidas=cpData.filter(c=>c.status==='atrasado');
-          const emAberto=cpData.filter(c=>c.status==='aberto');
+          // Normaliza contasPagar (Supabase) para formato interno da view
+          const CP_STATUS_MAP={'pendente':'aberto','pending':'aberto','vencido':'atrasado','overdue':'atrasado'};
+          const cpData=contasPagar.map(cp=>({
+            id:cp.id,
+            desc:cp.descricao||'—',
+            cat:cp.categoria||'Outros',
+            cc:cp.centro_custo||'—',
+            venc:cp.vencimento||'',
+            tipo:cp.tipo||'variavel',
+            status:CP_STATUS_MAP[cp.status]||cp.status||'aberto',
+            valor:Number(cp.valor)||0,
+          }));
+          const mesAtualCP=new Date().toISOString().slice(0,7);
+          const vencidas=cpData.filter(c=>c.status==='atrasado'||(c.status!=='pago'&&c.venc<today));
+          const emAberto=cpData.filter(c=>c.status==='aberto'&&c.venc>=today);
           const pagas=cpData.filter(c=>c.status==='pago');
           const totalEmAberto=[...vencidas,...emAberto].reduce((a,c)=>a+c.valor,0);
           const totalVencidas=vencidas.reduce((a,c)=>a+c.valor,0);
           const totalVencendo=emAberto.reduce((a,c)=>a+c.valor,0);
           const totalPagas=pagas.reduce((a,c)=>a+c.valor,0);
-          const totalMes=cpData.reduce((a,c)=>a+c.valor,0);
-          const mediaPorConta=cpData.length>0?totalMes/cpData.length:0;
+          const totalMes=cpData.filter(c=>c.venc.startsWith(mesAtualCP)).reduce((a,c)=>a+c.valor,0);
+          const mediaPorConta=cpData.length>0?cpData.reduce((a,c)=>a+c.valor,0)/cpData.length:0;
           const filtrados=cpFiltro==='todos'?cpData:cpData.filter(c=>
             cpFiltro==='aberto'?c.status==='aberto':
             cpFiltro==='atrasado'?c.status==='atrasado':
             cpFiltro==='pago'?c.status==='pago':
             c.status==='agendado');
-          const handlePagar=id=>setCpData(prev=>prev.map(c=>c.id===id?{...c,status:'pago'}:c));
-          const donutData=[
-            {name:'Folha',value:28000,color:'#378ADD'},
-            {name:'Fornecedores',value:14500,color:'#7F77DD'},
-            {name:'Impostos',value:12000,color:'#D85A30'},
-            {name:'Infraestrutura',value:8000,color:'#BA7517'},
-            {name:'Marketing',value:4000,color:'#1D9E75'},
-            {name:'Outros',value:2660,color:'#888780'},
-          ];
-          const barData=[
-            {mes:'Dez',Previsto:58000,Pago:56200},
-            {mes:'Jan',Previsto:60000,Pago:59100},
-            {mes:'Fev',Previsto:62000,Pago:61400},
-            {mes:'Mar',Previsto:64000,Pago:62800},
-            {mes:'Abr',Previsto:61000,Pago:59300},
-            {mes:'Mai',Previsto:66460,Pago:38300},
-          ];
-          const calCells=[
-            {dia:'05',dow:'Seg',status:'pago'},
-            {dia:'07',dow:'Qua',status:'pago'},
-            {dia:'10',dow:'Sáb',status:'pago'},
-            {dia:'12',dow:'Seg',status:'pago'},
-            {dia:'15',dow:'Qui',status:'pago'},
-            {dia:'17',dow:'Sáb',status:'hoje'},
-            {dia:'18',dow:'Dom',status:'vencendo',valor:2800},
-            {dia:'20',dow:'Ter',status:'vencendo',valor:8500},
-            {dia:'22',dow:'Qui',status:'vencendo',valor:1380},
-            {dia:'25',dow:'Dom',status:'previsto'},
-            {dia:'28',dow:'Qua',status:'previsto'},
-            {dia:'31',dow:'Sáb',status:'previsto'},
-          ];
+          const handlePagar=id=>{
+            supabase.from('contas_pagar').update({status:'pago'}).eq('id',id).then(()=>fetchFinanceiro(user.id));
+          };
+          const CAT_COLORS={'Folha':'#378ADD','Fornecedores':'#7F77DD','Impostos':'#D85A30','Infraestrutura':'#BA7517','Marketing':'#1D9E75','Utilities':'#137789','Financeiro':'#E8734A','Outros':'#888780'};
+          const catMap=cpData.reduce((acc,c)=>{const cat=c.cat||'Outros';acc[cat]=(acc[cat]||0)+c.valor;return acc},{});
+          const donutData=Object.entries(catMap).map(([name,value])=>({name,value,color:CAT_COLORS[name]||'#888780'}));
+          const barData=[];
+          for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const mes=d.toISOString().slice(0,7);const label=d.toLocaleDateString('pt-BR',{month:'short'});const prev=cpData.filter(c=>c.venc.startsWith(mes)).reduce((a,c)=>a+c.valor,0);const pago=cpData.filter(c=>c.venc.startsWith(mes)&&c.status==='pago').reduce((a,c)=>a+c.valor,0);barData.push({mes:label.charAt(0).toUpperCase()+label.slice(1),Previsto:prev,Pago:pago});}
+          const dows=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+          const calCells=cpData.filter(c=>c.venc.startsWith(mesAtualCP)).sort((a,b)=>a.venc.localeCompare(b.venc)).map(c=>{const dt=new Date(c.venc+'T00:00:00');return{dia:c.venc.slice(8,10),dow:dows[dt.getDay()],status:c.status==='pago'?'pago':(c.venc<today?'vencendo':'previsto'),valor:c.valor};});
           const calStyle={
             pago:    {bg:'#EAF3DE',border:'#C0DD97',tagBg:'#C0DD97',tagTxt:'#27500A',lbl:'pago'},
             vencendo:{bg:'#FCEBEB',border:'#F09595',tagBg:'#F7C1C1',tagTxt:'#791F1F',lbl:''},
@@ -2082,11 +2073,9 @@ const App = () => {
                   <h1 style={{fontSize:20,fontWeight:500,color:'#05121b',marginTop:2}}>Contas a pagar</h1>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                  <select value={cpPeriodo} onChange={e=>setCpPeriodo(e.target.value)} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 12px',fontSize:12,color:'#05121b',outline:'none',cursor:'pointer'}}>
-                    {['Maio 2025','Junho 2025','Julho 2025'].map(p=><option key={p}>{p}</option>)}
-                  </select>
+                  <span style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 12px',fontSize:12,color:'#64748b'}}>{new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</span>
                   <button style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer'}}>Exportar</button>
-                  <button onClick={()=>setCpModalOpen(true)} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
+                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:'',categoria:'',tipo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
                 </div>
               </div>
               {/* 2. METRIC CARDS */}
@@ -2114,12 +2103,12 @@ const App = () => {
                 <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #B5D4F4',background:'#E6F1FB'}}>
                   <p style={{fontSize:11,fontWeight:500,color:'#185FA5',marginBottom:6}}>Total do mês</p>
                   <p style={{fontSize:19,fontWeight:500,color:'#0C447C',lineHeight:1.2}}>{formatBRL(totalMes)}</p>
-                  <p style={{fontSize:11,color:'#185FA5',marginTop:4}}>↑ 9,2% vs abril</p>
+                  <p style={{fontSize:11,color:'#185FA5',marginTop:4}}>{new Date().toLocaleDateString('pt-BR',{month:'long'})}</p>
                 </div>
                 <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #e2e8f0',background:'#fff'}}>
                   <p style={{fontSize:11,fontWeight:500,color:'#64748b',marginBottom:6}}>Média por conta</p>
                   <p style={{fontSize:19,fontWeight:500,color:'#05121b',lineHeight:1.2}}>{formatBRL(mediaPorConta)}</p>
-                  <p style={{fontSize:11,color:'#94a3b8',marginTop:4}}>{cpData.length} contas no mês</p>
+                  <p style={{fontSize:11,color:'#94a3b8',marginTop:4}}>{cpData.length} contas cadastradas</p>
                 </div>
               </div>
               {/* 3. ALERTAS */}
@@ -2145,7 +2134,7 @@ const App = () => {
               )}
               {/* 4. CALENDÁRIO */}
               <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,padding:20}}>
-                <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Calendário de vencimentos — {cpPeriodo}</h3>
+                <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Calendário de vencimentos — {new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h3>
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                   {calCells.map((c,i)=>{
                     const s=calStyle[c.status]||calStyle.previsto;
@@ -2376,7 +2365,14 @@ const App = () => {
             ── BANCOS ────────────────────────────────────────────────── */}
         {view==='bancos'&&(
           <div className="fade-in">
-            <BancosContas />
+            <BancosContas
+              bancos={bancos}
+              lancamentos={lancamentos}
+              userId={user?.id}
+              onSaveBanco={handleSaveBancoFromBancosContas}
+              onSaveLancamento={handleSaveLancamentoEspecie}
+              savingItem={savingItem}
+            />
           </div>
         )}
 
@@ -3035,95 +3031,6 @@ const App = () => {
           </div>
         )}
 
-        {/* ── MODAL NOVA CONTA A PAGAR ──────────────────────────────────── */}
-        {cpModalOpen&&(
-          <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.4)',padding:16}} onClick={()=>setCpModalOpen(false)}>
-            <div style={{background:'#fff',borderRadius:20,width:'100%',maxWidth:420,padding:32,maxHeight:'90vh',overflowY:'auto'}} onClick={e=>e.stopPropagation()}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:24}}>
-                <h3 style={{fontSize:18,fontWeight:700,color:'#05121b',margin:0}}>Nova conta a pagar</h3>
-                <button onClick={()=>setCpModalOpen(false)} style={{color:'#cbd5e1',background:'none',border:'none',cursor:'pointer',display:'flex'}}><X size={20}/></button>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:14}}>
-                <div>
-                  <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Fornecedor / descrição</label>
-                  <input value={cpModalForm.desc} onChange={e=>setCpModalForm({...cpModalForm,desc:e.target.value})} placeholder="Ex: Aluguel escritório maio" style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none',boxSizing:'border-box'}}/>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                  <div>
-                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Categoria</label>
-                    <select value={cpModalForm.cat} onChange={e=>setCpModalForm({...cpModalForm,cat:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
-                      <option value="">Selecione...</option>
-                      {['Folha de pagamento','Fornecedores','Impostos e taxas','Infraestrutura','Marketing','Aluguel','Utilities','Outros'].map(c=><option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Centro de custo</label>
-                    <select value={cpModalForm.cc} onChange={e=>setCpModalForm({...cpModalForm,cc:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
-                      <option value="">Selecione...</option>
-                      {['Administrativo','Comercial','Tecnologia','RH','Operações'].map(c=><option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                  <div>
-                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Valor (R$)</label>
-                    <input type="number" value={cpModalForm.valor} onChange={e=>setCpModalForm({...cpModalForm,valor:e.target.value})} placeholder="0,00" style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none',boxSizing:'border-box'}}/>
-                  </div>
-                  <div>
-                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Vencimento</label>
-                    <input type="date" value={cpModalForm.venc} onChange={e=>setCpModalForm({...cpModalForm,venc:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none',boxSizing:'border-box'}}/>
-                  </div>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                  <div>
-                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Tipo</label>
-                    <select value={cpModalForm.tipo} onChange={e=>setCpModalForm({...cpModalForm,tipo:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
-                      <option value="fixa">Fixa</option>
-                      <option value="variavel">Variável</option>
-                      <option value="imposto">Imposto</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Recorrência</label>
-                    <select value={cpModalForm.recorrencia} onChange={e=>setCpModalForm({...cpModalForm,recorrencia:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
-                      <option value="unica">Única</option>
-                      <option value="mensal">Mensal</option>
-                      <option value="trimestral">Trimestral</option>
-                      <option value="anual">Anual</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-                  <div>
-                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Método de pagamento</label>
-                    <select value={cpModalForm.metodo} onChange={e=>setCpModalForm({...cpModalForm,metodo:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
-                      <option value="">Selecione...</option>
-                      {['PIX','Boleto','TED','Cartão'].map(c=><option key={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{display:'block',fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:5}}>Status</label>
-                    <select value={cpModalForm.status} onChange={e=>setCpModalForm({...cpModalForm,status:e.target.value})} style={{width:'100%',background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'8px 14px',fontSize:13,color:'#05121b',outline:'none'}}>
-                      <option value="aberto">Em aberto</option>
-                      <option value="agendado">Agendado</option>
-                      <option value="pago">Pago</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div style={{display:'flex',gap:10,marginTop:24}}>
-                <button onClick={()=>{setCpModalOpen(false);setCpModalForm({desc:'',cat:'',cc:'',valor:'',venc:'',tipo:'variavel',recorrencia:'unica',metodo:'',status:'aberto'});}} style={{flex:1,padding:'12px',borderRadius:12,border:'1px solid #e2e8f0',background:'transparent',fontSize:12,fontWeight:600,color:'#94a3b8',cursor:'pointer'}}>Cancelar</button>
-                <button onClick={()=>{
-                  if(!cpModalForm.desc||!cpModalForm.valor)return;
-                  setCpData(prev=>[...prev,{id:Date.now(),desc:cpModalForm.desc,cat:cpModalForm.cat||'Outros',cc:cpModalForm.cc||'Administrativo',venc:cpModalForm.venc||today,tipo:cpModalForm.tipo,status:cpModalForm.status,valor:parseFloat(cpModalForm.valor)||0}]);
-                  setCpFiltro('todos');
-                  setCpModalOpen(false);
-                  setCpModalForm({desc:'',cat:'',cc:'',valor:'',venc:'',tipo:'variavel',recorrencia:'unica',metodo:'',status:'aberto'});
-                }} style={{flex:1,padding:'12px',borderRadius:12,border:'none',background:'#05121b',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer'}}>Salvar</button>
-              </div>
-            </div>
-          </div>
-        )}
 
       </main>
       </div>
