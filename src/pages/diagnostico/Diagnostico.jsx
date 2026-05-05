@@ -22,6 +22,7 @@ import { StepBar, StatusBadge, SemaforoCard, ScoreRing, IndicadorCard } from './
 import { STEPS_V1, FormStepV1, STEPS_G, FormStepG, EMPTY_FORM, SCENARIOS } from './forms/steps'
 import { calcMetrics, calcLiveMetrics, genCashFlowData, genLiveCashFlowData, genAlerts, genLiveAlerts } from './logic/metrics'
 import { DRAFT_KEY, CHART_COLORS } from './config'
+import ContasReceberView from './ContasReceberView'
 // ── SimComparativo ────────────────────────────────────────────────────────────
 const SimComparativo = ({label, before, after, formato, lowerIsBetter=false}) => {
   const melhorou = lowerIsBetter ? after <= before : after >= before;
@@ -2262,52 +2263,7 @@ const App = () => {
 
         {/* ══════════════════════════════════════════════════════════════
             ── CONTAS A RECEBER ──────────────────────────────────────── */}
-        {view==='contas_receber'&&(()=>{
-          const statusMap={pendente:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',dot:'bg-amber-500',lbl:'Pendente'},recebido:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',dot:'bg-emerald-500',lbl:'Recebido'},vencido:{bg:'bg-red-50',border:'border-red-200',txt:'text-red-700',dot:'bg-red-500',lbl:'Vencido'}};
-          const getStatus=(cr)=>{if(cr.status==='recebido')return 'recebido';if(cr.vencimento<today&&cr.status!=='recebido')return 'vencido';return cr.status||'pendente';};
-          const totPendente=contasReceber.filter(c=>getStatus(c)==='pendente').reduce((a,c)=>a+Number(c.valor),0);
-          return(
-            <div className="max-w-7xl mx-auto fade-in">
-              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-xs text-slate-500 font-medium">Entradas futuras</p><h1 className="text-xl font-medium text-[#05121b]">Contas a Receber</h1></div>
-                <button onClick={()=>setModalCR({cliente:'',descricao:'',valor:'',vencimento:'',status:'pendente',banco_id:'',observacao:'',parcelas:'1',intervalo_dias:'30',meio_pagamento:''})} className="bg-[#137789] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-[#0e5f6b] transition-colors shadow-md"><Plus size={13}/>Nova Conta</button>
-              </header>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 mb-6 flex items-center justify-between">
-                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">A receber (pendente)</p>
-                <p className="text-xl font-medium text-emerald-800">{formatBRL(totPendente)}</p>
-              </div>
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                {contasReceber.length===0?<div className="py-16 text-center"><Wallet size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma conta a receber</p></div>:(
-                  <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Vencimento','Cliente','Descrição','Banco','Valor','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {contasReceber.map(cr=>{
-                        const st=getStatus(cr);
-                        const S=statusMap[st]||statusMap.pendente;
-                        return(
-                          <tr key={cr.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-5 py-3 text-[10px] font-bold text-slate-500 whitespace-nowrap">{fmtDate(cr.vencimento)}</td>
-                            <td className="px-5 py-3 text-xs font-bold text-[#05121b]">{cr.cliente}</td>
-                            <td className="px-5 py-3 text-[10px] text-slate-400">{cr.descricao}</td>
-                            <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===cr.banco_id)?.nome||'—'}</td>
-                            <td className="px-5 py-3 text-sm font-black text-emerald-700 whitespace-nowrap">+{formatBRL(cr.valor)}</td>
-                            <td className="px-5 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}><span className={`w-1.5 h-1.5 rounded-full ${S.dot}`}></span>{S.lbl}</span></td>
-                            <td className="px-5 py-3">
-                              <div className="flex items-center gap-2">
-                                <button onClick={()=>setModalCR({...cr})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
-                                <button onClick={()=>deleteItem('contas_receber',cr.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+        {view==='contas_receber'&&<ContasReceberView/>}
 
         {/* ══════════════════════════════════════════════════════════════
             ── INVESTIMENTOS ─────────────────────────────────────────── */}

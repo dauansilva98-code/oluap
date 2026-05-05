@@ -5,10 +5,9 @@ import {
   Search, Calendar, Filter, Copy, Save, Eye, Lock, Sparkles, Landmark, Target, Wallet, Clock, StickyNote,
   X, Printer, MessageCircle, Send, Download, RefreshCw, Upload, FileBox,
   FolderOpen, CreditCard, Briefcase, Database, Activity, ChevronDown, MoreHorizontal,
-  TrendingUp, PlusCircle, ClipboardList, DollarSign, BarChart, CheckSquare, AlertCircle, XCircle, Receipt
+  TrendingUp, PlusCircle, ClipboardList, DollarSign, BarChart, CheckSquare, AlertCircle, XCircle
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import ContasReceber from './ContasReceber'
 
         // --- COMPONENTES DE FORMULÁRIO MODO LEITURA ---
         const ReadOnlyInput = ({ label, value, subLabel, icon: Icon }) => (
@@ -479,7 +478,6 @@ import ContasReceber from './ContasReceber'
           const [isCreditoMenuOpen, setIsCreditoMenuOpen] = useState(false);
           const [isErpMenuOpen, setIsErpMenuOpen] = useState(false);
           const [isConsultoriaMenuOpen, setIsConsultoriaMenuOpen] = useState(false);
-          const [isFinanceiroMenuOpen, setIsFinanceiroMenuOpen] = useState(false);
           
           const [consultorias, setConsultorias] = useState([]);
           const [diagnostics, setDiagnostics] = useState([]); 
@@ -806,7 +804,6 @@ import ContasReceber from './ContasReceber'
           const goConsultoriaBase = () => { setView('consultoria_base'); setSelectedClient(null); setSelectedSubmission(null); };
           const goConsultoriaAcompanhar = () => { setView('consultoria_acompanhar'); setSelectedClient(null); setSelectedSubmission(null); };
           const goConsultoriaNova = () => { setView('consultoria_nova'); setSelectedClient(null); setSelectedSubmission(null); };
-          const goContasReceber = () => { setView('contas_receber'); setSelectedClient(null); setSelectedSubmission(null); };
           
           const OPERACAO_STEPS_ADMIN = [
             { id: 'preenchimento', label: 'Preenchimento de Dados' },
@@ -1247,24 +1244,6 @@ import ContasReceber from './ContasReceber'
                                 </button>
                                 <button onClick={goCreditoOperacao} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='credito_operacao'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
                                     <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='credito_operacao' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Operações</span>
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                    {/* FINANCEIRO */}
-                    <div className="flex flex-col w-full">
-                        <button onClick={() => { if (!isSidebarOpen) setIsSidebarOpen(true); setIsFinanceiroMenuOpen(!isFinanceiroMenuOpen); }}
-                            className={`w-full flex items-center ${isSidebarOpen ? 'justify-between px-4' : 'justify-center px-0'} py-3.5 rounded-xl font-bold text-sm tracking-wide transition-all ${view==='contas_receber' ? 'bg-[#05121b] text-white shadow-md' : 'text-[#05121b] hover:bg-slate-50'}`}>
-                            <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
-                                <Receipt size={20} className={`shrink-0 ${view==='contas_receber' ? 'text-[#ff7b00]' : 'text-slate-400'}`}/>
-                                {isSidebarOpen && <span className="whitespace-nowrap truncate">Financeiro</span>}
-                            </div>
-                            {isSidebarOpen && <ChevronDown size={16} className={`shrink-0 transition-transform duration-200 ${isFinanceiroMenuOpen ? 'rotate-180' : ''}`} />}
-                        </button>
-                        {isSidebarOpen && isFinanceiroMenuOpen && (
-                            <div className="pl-5 mt-2 space-y-1">
-                                <button onClick={goContasReceber} className={`w-full flex items-center gap-3 p-3 rounded-lg font-bold text-[11px] uppercase tracking-wider transition-all ${view==='contas_receber'?'bg-slate-100 text-[#137789]':'text-slate-400 hover:bg-slate-50 hover:text-[#05121b]'}`}>
-                                    <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${view==='contas_receber' ? 'bg-[#137789]' : 'bg-slate-300'}`}></div> <span className="whitespace-nowrap">Contas a Receber</span>
                                 </button>
                             </div>
                         )}
@@ -2066,9 +2045,6 @@ import ContasReceber from './ContasReceber'
                         onSalvar={() => { fetchConsultorias(); goConsultoriaAcompanhar(); }}
                     />
                 )}
-
-                {/* CONTAS A RECEBER */}
-                {view === 'contas_receber' && <ContasReceber />}
 
               </main>
             </div>
