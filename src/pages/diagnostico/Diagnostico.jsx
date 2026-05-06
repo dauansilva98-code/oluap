@@ -676,6 +676,16 @@ const App = () => {
   const cashFlowData = genLiveCashFlowData(lancamentos);
   const usingLiveData = cashFlowData.some(d=>d.Entradas>0||d.Saidas>0);
   const alertsFeed = liveMetrics ? genLiveAlerts(liveMetrics, contasPagar, contasReceber, dividas, today) : [];
+
+  // KPIs: Custo Fixo Real & Ponto de Equilíbrio (baseados na classificação fixa/variável)
+  const mesAtualPE = new Date().toISOString().slice(0, 7);
+  const itensFixosCP = contasPagar.filter(cp => (cp.tipo_custo || 'variavel') === 'fixa');
+  const itensFixosLanc = lancamentos.filter(l => l.tipo === 'despesa' && (l.tipo_custo || 'variavel') === 'fixa' && l.data?.startsWith(mesAtualPE));
+  const custoFixoMensal = itensFixosCP.reduce((a, cp) => a + Number(cp.valor), 0) + itensFixosLanc.reduce((a, l) => a + Number(l.valor), 0);
+  const receitaMensal = lancamentos.filter(l => l.tipo === 'receita' && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0);
+  const custVarMensal = lancamentos.filter(l => l.tipo === 'despesa' && (l.tipo_custo || 'variavel') === 'variavel' && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0);
+  const margemContribPct = receitaMensal > 0 ? (receitaMensal - custVarMensal) / receitaMensal : 0;
+  const pontoEquilibrioReal = margemContribPct > 0 ? custoFixoMensal / margemContribPct : (custoFixoMensal > 0 ? custoFixoMensal : 0);
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
 
   const firstName=(profileData.full_name||'Cliente').split(' ')[0];
@@ -1213,6 +1223,87 @@ const App = () => {
                     <IndicadorCard titulo="Alavancagem Operacional" valor={metrics.margContrib>0?`${(metrics.margContrib/Math.max(0.1,metrics.margLiq)).toFixed(1)}×`:'—'} formula="Margem Contribuição ÷ Margem Líquida" status={metrics.lucro>0?'green':'neutral'}/>
                   </div>
                 </div>
+
+                {/* ── CUSTO FIXO & PONTO DE EQUILÍBRIO ── */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mt-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide flex items-center gap-2"><Target size={14} className="text-[#137789]"/> Custo Fixo & Ponto de Equilíbrio</h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Baseado nos itens classificados como custo fixo no mês atual</p>
+                    </div>
+                    {custoFixoMensal===0&&(
+                      <span className="text-[9px] bg-amber-50 border border-amber-200 text-amber-700 font-black px-3 py-1 rounded-full uppercase tracking-widest">Classifique custos fixos</span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                    <div className="rounded-2xl p-5 border" style={{background:'#EEEDFE',borderColor:'#CECBF6'}}>
+                      <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{color:'#3C3489'}}>Custo Fixo / Mês</p>
+                      <p className="text-2xl font-black leading-tight mb-1" style={{color:'#26215C'}}>{formatBRL(custoFixoMensal)}</p>
+                      <p className="text-[10px]" style={{color:'#3C3489'}}>{itensFixosCP.length+itensFixosLanc.length} item(ns) classificado(s) como fixo</p>
+                    </div>
+                    <div className={`rounded-2xl p-5 border ${pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'border-orange-200':'border-emerald-200'}`} style={{background:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#FEF3C7':'#E1F5EE'}}>
+                      <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{color:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#92400E':'#085041'}}>Ponto de Equilíbrio</p>
+                      <p className="text-2xl font-black leading-tight mb-1" style={{color:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#78350F':'#085041'}}>{formatBRL(pontoEquilibrioReal)}</p>
+                      <p className="text-[10px]" style={{color:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#92400E':'#085041'}}>
+                        {custoFixoMensal===0?'Classifique custos fixos para calcular':receitaMensal>0?`Faturamento mínimo necessário/mês`:'Registre receitas para calcular'}
+                      </p>
+                      {receitaMensal>0&&pontoEquilibrioReal>0&&(
+                        <p className="text-[10px] font-bold mt-1" style={{color:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#92400E':'#085041'}}>
+                          {pontoEquilibrioReal<=receitaMensal?`✓ Atingido — fatura ${formatBRL(receitaMensal-pontoEquilibrioReal)} acima`:`Faltam ${formatBRL(pontoEquilibrioReal-receitaMensal)} para o equilíbrio`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {custoFixoMensal===0?(
+                    <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 flex items-start gap-3">
+                      <Info size={14} className="text-amber-500 shrink-0 mt-0.5"/>
+                      <div>
+                        <p className="text-xs font-black text-amber-800 mb-0.5">Como usar o Ponto de Equilíbrio?</p>
+                        <p className="text-[11px] text-amber-700 leading-relaxed">Ao registrar despesas ou contas a pagar, classifique-as como <strong>Custo Fixo</strong> (aluguel, folha, assinaturas) ou <strong>Custo Variável</strong> (comissões, matéria-prima). O sistema calculará automaticamente o faturamento mínimo necessário para cobrir todos os custos.</p>
+                      </div>
+                    </div>
+                  ):(
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Itens de Custo Fixo ({new Date().toLocaleString('pt-BR',{month:'long',year:'numeric'})})</p>
+                      <div className="space-y-2">
+                        {itensFixosCP.map(cp=>(
+                          <div key={cp.id} className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0"/>
+                              <span className="text-xs font-medium text-[#05121b]">{cp.descricao||cp.nome||'—'}</span>
+                              <span className="text-[9px] bg-purple-50 border border-purple-100 text-purple-600 font-black px-2 py-0.5 rounded-full uppercase">Conta a Pagar</span>
+                            </div>
+                            <span className="text-xs font-black text-[#05121b]">{formatBRL(Number(cp.valor))}</span>
+                          </div>
+                        ))}
+                        {itensFixosLanc.map(l=>(
+                          <div key={l.id} className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="flex items-center gap-2.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"/>
+                              <span className="text-xs font-medium text-[#05121b]">{l.descricao||'—'}</span>
+                              <span className="text-[9px] bg-blue-50 border border-blue-100 text-blue-600 font-black px-2 py-0.5 rounded-full uppercase">Lançamento</span>
+                            </div>
+                            <span className="text-xs font-black text-[#05121b]">{formatBRL(Number(l.valor))}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-purple-50 border border-purple-100 mt-2">
+                        <span className="text-xs font-black text-purple-800">Total Custo Fixo</span>
+                        <span className="text-sm font-black text-purple-800">{formatBRL(custoFixoMensal)}</span>
+                      </div>
+                      {margemContribPct>0&&(
+                        <div className="mt-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
+                          <p className="text-[10px] text-slate-500">
+                            <span className="font-black text-slate-600">Fórmula: </span>
+                            PE = Custo Fixo ÷ Margem de Contribuição% = {formatBRL(custoFixoMensal)} ÷ {(margemContribPct*100).toFixed(1)}% = <span className="font-black text-[#05121b]">{formatBRL(pontoEquilibrioReal)}</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -1418,15 +1509,6 @@ const App = () => {
           const dias=daysMap[fluxoFiltro]||periodoDias;
           const burnRate=totalSai>0?totalSai/dias:0;
           const runway=burnRate>0?Math.floor(saldoTotal/burnRate):0;
-          // Ponto de Equilíbrio
-          const mesAtualPE=new Date().toISOString().slice(0,7);
-          const despesasFixasMes=lancamentos.filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')==='fixa'&&l.data?.startsWith(mesAtualPE)).reduce((a,l)=>a+Number(l.valor),0);
-          const cpFixasMes=contasPagar.filter(cp=>(cp.tipo_custo||'variavel')==='fixa'&&cp.vencimento?.startsWith(mesAtualPE)).reduce((a,cp)=>a+Number(cp.valor),0);
-          const custoFixoMes=despesasFixasMes+cpFixasMes;
-          const receitaMes=lancamentos.filter(l=>l.tipo==='receita'&&l.data?.startsWith(mesAtualPE)).reduce((a,l)=>a+Number(l.valor),0);
-          const despVariavelMes=lancamentos.filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')==='variavel'&&l.data?.startsWith(mesAtualPE)).reduce((a,l)=>a+Number(l.valor),0);
-          const margemContrib=receitaMes>0?(receitaMes-despVariavelMes)/receitaMes:0;
-          const pontoEquilibrio=margemContrib>0?custoFixoMes/margemContrib:custoFixoMes;
           // Alert: contasPagar due in next 7 days
           const d7=new Date(now);d7.setDate(now.getDate()+7);
           const d7str=d7.toISOString().split('T')[0];
@@ -1528,18 +1610,6 @@ const App = () => {
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Runway</p>
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{runway} dias</p>
                   <p className="text-[11px] text-slate-400 mt-1">com saldo atual</p>
-                </div>
-                <div className="rounded-2xl p-4 border" style={{background:'#EEEDFE',borderColor:'#CECBF6'}}>
-                  <p className="text-[11px] font-medium mb-1.5" style={{color:'#3C3489'}}>Custo Fixo/mês</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:'#26215C'}}>{formatBRL(custoFixoMes)}</p>
-                  <p className="text-[11px] mt-1" style={{color:'#3C3489'}}>despesas fixas</p>
-                </div>
-                <div className={`rounded-2xl p-4 border ${pontoEquilibrio>receitaMes&&receitaMes>0?'border-orange-200':'border-emerald-200'}`} style={{background:pontoEquilibrio>receitaMes&&receitaMes>0?'#FEF3C7':'#E1F5EE'}}>
-                  <p className="text-[11px] font-medium mb-1.5" style={{color:pontoEquilibrio>receitaMes&&receitaMes>0?'#92400E':'#085041'}}>Ponto de Equilíbrio</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:pontoEquilibrio>receitaMes&&receitaMes>0?'#78350F':'#085041'}}>{formatBRL(pontoEquilibrio)}</p>
-                  <p className="text-[11px] mt-1" style={{color:pontoEquilibrio>receitaMes&&receitaMes>0?'#92400E':'#085041'}}>
-                    {custoFixoMes===0?'Classifique custos fixos':'faturamento mínimo/mês'}
-                  </p>
                 </div>
               </div>
               {/* 3. ALERT */}
@@ -2295,7 +2365,7 @@ const App = () => {
                         const isAtrasado=c.status==='atrasado';
                         const isPago=c.status==='pago';
                         const valColor=isPago?'#27500A':isAtrasado?'#791F1F':'#05121b';
-                        const canPay=c.status==='aberto'||c.status==='atrasado';
+                        const canPay=c.status==='pendente'||c.status==='atrasado';
                         const isSelected=cpSelected.has(c.id);
                         return(
                           <tr key={c.id} style={{borderBottom:'1px solid #f8fafc',background:isSelected?'#f0f9ff':undefined}}
