@@ -655,7 +655,7 @@ const App = () => {
 
   const navItems=[
     {id:'dashboard',       label:'Dashboard',             icon:LayoutDashboard},
-    {id:'alertas',         label:'Diagnóstico & Alertas', icon:Brain},
+    {id:'alertas',         label:'CFO Digital',           icon:Brain},
     {id:'fluxo',           label:'Fluxo de Caixa',        icon:Activity},
     {id:'receitas',        label:'Receitas',              icon:TrendingUp},
     {id:'despesas',        label:'Despesas',              icon:TrendingDown},
@@ -666,7 +666,7 @@ const App = () => {
     {id:'bancos',          label:'Bancos',                icon:Landmark},
     {id:'investimentos',   label:'Investimentos',         icon:DollarSign},
     {id:'fontes',          label:'Fonte de Dados',        icon:Database},
-    {id:'analises',        label:'Minhas Análises',       icon:FolderOpen},
+    {id:'analises',        label:'Meus Diagnósticos',     icon:FolderOpen},
     {id:'relatorios',      label:'Relatórios',            icon:FileSpreadsheet},
     {id:'profile',         label:'Meu Perfil',            icon:User},
   ];
@@ -679,7 +679,9 @@ const App = () => {
 
   // KPIs: Custo Fixo Real & Ponto de Equilíbrio (baseados na classificação fixa/variável)
   const mesAtualPE = new Date().toISOString().slice(0, 7);
-  const itensFixosCP = contasPagar.filter(cp => (cp.tipo_custo || 'variavel') === 'fixa');
+  // Contas a pagar fixas não pagas do mês (evita dupla contagem com lançamentos gerados ao pagar)
+  const itensFixosCP = contasPagar.filter(cp => (cp.tipo_custo || 'variavel') === 'fixa' && cp.status !== 'pago' && cp.vencimento?.startsWith(mesAtualPE));
+  // Lançamentos de despesa fixos do mês (inclui contas a pagar já pagas que viraram lançamento)
   const itensFixosLanc = lancamentos.filter(l => l.tipo === 'despesa' && (l.tipo_custo || 'variavel') === 'fixa' && l.data?.startsWith(mesAtualPE));
   const custoFixoMensal = itensFixosCP.reduce((a, cp) => a + Number(cp.valor), 0) + itensFixosLanc.reduce((a, l) => a + Number(l.valor), 0);
   const receitaMensal = lancamentos.filter(l => l.tipo === 'receita' && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0);
@@ -898,7 +900,7 @@ const App = () => {
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Indicadores-Chave</h3>
-                  <button onClick={()=>setView('alertas')} className="text-[9px] font-black text-[#137789] hover:text-[#ff7b00] uppercase tracking-widest transition-colors flex items-center gap-1">Análise completa <ChevronRight size={11}/></button>
+                  <button onClick={()=>setView('alertas')} className="text-[9px] font-black text-[#137789] hover:text-[#ff7b00] uppercase tracking-widest transition-colors flex items-center gap-1">CFO Digital <ChevronRight size={11}/></button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="Receita − Custos Diretos" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
@@ -1068,7 +1070,7 @@ const App = () => {
           <div className="max-w-7xl mx-auto fade-in">
             <header className="mb-8">
               <p className="text-xs font-medium text-[#ff7b00] mb-1">CFO Digital · Análise Completa</p>
-              <h1 className="text-xl font-medium text-[#05121b]">Diagnóstico & Alertas</h1>
+              <h1 className="text-xl font-medium text-[#05121b]">CFO Digital</h1>
               <p className="text-slate-400 text-sm font-medium mt-1">Todos os indicadores financeiros da sua empresa em um único lugar.</p>
             </header>
 
@@ -1100,7 +1102,7 @@ const App = () => {
                   </div>
                   <div className="lg:col-span-2 grid grid-cols-2 gap-4">
                     <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Operação garantida sem novas vendas" status={metrics.folegoDias>=60?'green':metrics.folegoDias>=30?'yellow':'red'}/>
-                    <SemaforoCard icon={Target} title="Ponto de Equilíbrio" value={formatBRL(metrics.pontoEq)} subtitle="Faturamento mínimo necessário/mês" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.8?'yellow':'red'}/>
+                    <SemaforoCard icon={Target} title="Custo Mensal do Negócio" value={formatBRL(custoFixoMensal||metrics.custFix)} subtitle="Total de custos fixos classificados" status={custoFixoMensal>0?(custoFixoMensal/Math.max(1,metrics.receita)<=0.5?'green':custoFixoMensal/Math.max(1,metrics.receita)<=0.7?'yellow':'red'):'neutral'}/>
                     <SemaforoCard icon={DollarSign} title="Margem de Contribuição" value={`${metrics.margContrib.toFixed(1)}%`} subtitle="Sobra após custos variáveis" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'}/>
                     <SemaforoCard icon={TrendingUp} title="Margem Líquida" value={`${metrics.margLiq.toFixed(1)}%`} subtitle="Por R$100 vendidos" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                   </div>
@@ -1196,7 +1198,7 @@ const App = () => {
                     <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="(Receita − Custos Diretos) ÷ Receita" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
                     <IndicadorCard titulo="Margem de Contribuição" valor={`${metrics.margContrib.toFixed(1)}%`} formula="(Receita − Custos Variáveis) ÷ Receita" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'} destaque/>
                     <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
-                    <IndicadorCard titulo="Ponto de Equilíbrio" valor={formatBRL(metrics.pontoEq)} formula="Custo Fixo ÷ Margem de Contribuição" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.85?'yellow':'red'}/>
+                    <IndicadorCard titulo="Ponto de Equilíbrio" valor={formatBRL(pontoEquilibrioReal||metrics.pontoEq)} formula="Custo Fixo ÷ Margem de Contribuição" status={metrics.receita>=(pontoEquilibrioReal||metrics.pontoEq)?'green':metrics.receita>=(pontoEquilibrioReal||metrics.pontoEq)*0.85?'yellow':'red'}/>
                   </div>
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
@@ -1224,49 +1226,53 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* ── CUSTO FIXO & PONTO DE EQUILÍBRIO ── */}
+                {/* ── CUSTO MENSAL DO NEGÓCIO ── */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mt-6">
                   <div className="flex items-center justify-between mb-5">
                     <div>
-                      <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide flex items-center gap-2"><Target size={14} className="text-[#137789]"/> Custo Fixo & Ponto de Equilíbrio</h3>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Baseado nos itens classificados como custo fixo no mês atual</p>
+                      <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide flex items-center gap-2"><Target size={14} className="text-[#137789]"/> Custo Mensal do Negócio</h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Itens classificados como custo fixo · {new Date().toLocaleString('pt-BR',{month:'long',year:'numeric'})}</p>
                     </div>
                     {custoFixoMensal===0&&(
                       <span className="text-[9px] bg-amber-50 border border-amber-200 text-amber-700 font-black px-3 py-1 rounded-full uppercase tracking-widest">Classifique custos fixos</span>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                    <div className="rounded-2xl p-5 border" style={{background:'#EEEDFE',borderColor:'#CECBF6'}}>
-                      <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{color:'#3C3489'}}>Custo Fixo / Mês</p>
-                      <p className="text-2xl font-black leading-tight mb-1" style={{color:'#26215C'}}>{formatBRL(custoFixoMensal)}</p>
-                      <p className="text-[10px]" style={{color:'#3C3489'}}>{itensFixosCP.length+itensFixosLanc.length} item(ns) classificado(s) como fixo</p>
-                    </div>
-                    <div className={`rounded-2xl p-5 border ${pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'border-orange-200':'border-emerald-200'}`} style={{background:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#FEF3C7':'#E1F5EE'}}>
-                      <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{color:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#92400E':'#085041'}}>Ponto de Equilíbrio</p>
-                      <p className="text-2xl font-black leading-tight mb-1" style={{color:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#78350F':'#085041'}}>{formatBRL(pontoEquilibrioReal)}</p>
-                      <p className="text-[10px]" style={{color:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#92400E':'#085041'}}>
-                        {custoFixoMensal===0?'Classifique custos fixos para calcular':receitaMensal>0?`Faturamento mínimo necessário/mês`:'Registre receitas para calcular'}
-                      </p>
-                      {receitaMensal>0&&pontoEquilibrioReal>0&&(
-                        <p className="text-[10px] font-bold mt-1" style={{color:pontoEquilibrioReal>receitaMensal&&receitaMensal>0?'#92400E':'#085041'}}>
-                          {pontoEquilibrioReal<=receitaMensal?`✓ Atingido — fatura ${formatBRL(receitaMensal-pontoEquilibrioReal)} acima`:`Faltam ${formatBRL(pontoEquilibrioReal-receitaMensal)} para o equilíbrio`}
-                        </p>
+                  <div className="rounded-2xl p-5 border mb-5" style={{background:'#EEEDFE',borderColor:'#CECBF6'}}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{color:'#3C3489'}}>Custo Mensal do Negócio</p>
+                        <p className="text-2xl font-black leading-tight" style={{color:'#26215C'}}>{formatBRL(custoFixoMensal)}</p>
+                        <p className="text-[10px] mt-1" style={{color:'#3C3489'}}>{itensFixosCP.length+itensFixosLanc.length} item(ns) classificado(s) como custo fixo</p>
+                      </div>
+                      {margemContribPct>0&&(
+                        <div className="text-right">
+                          <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{color:'#3C3489'}}>Ponto de Equilíbrio</p>
+                          <p className="text-xl font-black" style={{color:'#26215C'}}>{formatBRL(pontoEquilibrioReal)}</p>
+                          <p className="text-[9px] mt-1" style={{color:'#3C3489'}}>= Custo Fixo ÷ {(margemContribPct*100).toFixed(1)}% MC</p>
+                        </div>
                       )}
                     </div>
+                    {receitaMensal>0&&pontoEquilibrioReal>0&&(
+                      <div className={`mt-3 pt-3 border-t flex items-center gap-2`} style={{borderColor:'#CECBF6'}}>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${pontoEquilibrioReal<=receitaMensal?'bg-emerald-100 text-emerald-700':'bg-orange-100 text-orange-700'}`}>
+                          {pontoEquilibrioReal<=receitaMensal?`✓ Equilíbrio atingido — sobram ${formatBRL(receitaMensal-pontoEquilibrioReal)}`:`Faltam ${formatBRL(pontoEquilibrioReal-receitaMensal)} para o equilíbrio`}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {custoFixoMensal===0?(
                     <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 flex items-start gap-3">
                       <Info size={14} className="text-amber-500 shrink-0 mt-0.5"/>
                       <div>
-                        <p className="text-xs font-black text-amber-800 mb-0.5">Como usar o Ponto de Equilíbrio?</p>
-                        <p className="text-[11px] text-amber-700 leading-relaxed">Ao registrar despesas ou contas a pagar, classifique-as como <strong>Custo Fixo</strong> (aluguel, folha, assinaturas) ou <strong>Custo Variável</strong> (comissões, matéria-prima). O sistema calculará automaticamente o faturamento mínimo necessário para cobrir todos os custos.</p>
+                        <p className="text-xs font-black text-amber-800 mb-0.5">Como classificar o Custo Mensal do Negócio?</p>
+                        <p className="text-[11px] text-amber-700 leading-relaxed">Ao registrar despesas ou contas a pagar, classifique-as como <strong>Custo Fixo</strong> (aluguel, folha, assinaturas) ou <strong>Custo Variável</strong> (comissões, matéria-prima). O sistema calcula automaticamente o faturamento mínimo necessário para cobrir todos os seus custos fixos.</p>
                       </div>
                     </div>
                   ):(
                     <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Itens de Custo Fixo ({new Date().toLocaleString('pt-BR',{month:'long',year:'numeric'})})</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Itens de custo fixo</p>
                       <div className="space-y-2">
                         {itensFixosCP.map(cp=>(
                           <div key={cp.id} className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
@@ -1290,17 +1296,9 @@ const App = () => {
                         ))}
                       </div>
                       <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-purple-50 border border-purple-100 mt-2">
-                        <span className="text-xs font-black text-purple-800">Total Custo Fixo</span>
+                        <span className="text-xs font-black text-purple-800">Total Custo Mensal do Negócio</span>
                         <span className="text-sm font-black text-purple-800">{formatBRL(custoFixoMensal)}</span>
                       </div>
-                      {margemContribPct>0&&(
-                        <div className="mt-3 px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
-                          <p className="text-[10px] text-slate-500">
-                            <span className="font-black text-slate-600">Fórmula: </span>
-                            PE = Custo Fixo ÷ Margem de Contribuição% = {formatBRL(custoFixoMensal)} ÷ {(margemContribPct*100).toFixed(1)}% = <span className="font-black text-[#05121b]">{formatBRL(pontoEquilibrioReal)}</span>
-                          </p>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -1458,7 +1456,7 @@ const App = () => {
         {view==='analises'&&(
           <div className="max-w-7xl mx-auto fade-in">
             <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-              <div><p className="text-xs text-slate-500 font-medium">Central de</p><h1 className="text-xl font-medium text-[#05121b]">Minhas Análises</h1></div>
+              <div><p className="text-xs text-slate-500 font-medium">Central de</p><h1 className="text-xl font-medium text-[#05121b]">Meus Diagnósticos</h1></div>
               <button onClick={()=>setModalSolicitarAnalise(true)} className="bg-[#ff7b00] text-white px-6 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] shadow-md hover:scale-[1.02] transition-transform self-start sm:self-auto flex items-center gap-2"><Plus size={13}/> Solicitar Nova Análise</button>
             </header>
             {newlyCompleted&&(<div className="slide-down mb-5 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"><div className="flex items-center gap-3"><div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shrink-0"><Bell size={16} className="text-white"/></div><div><h4 className="font-black text-emerald-800 text-sm">Diagnóstico concluído! 🎉</h4><p className="text-[10px] text-emerald-600 mt-0.5"><strong>{newlyCompleted.client_name}</strong> — resultado disponível</p></div></div><button onClick={()=>handleViewResult(newlyCompleted)} className="shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2">Ver Resultado <ChevronRight size={12}/></button></div>)}
@@ -2142,17 +2140,18 @@ const App = () => {
             cpFiltro==='pago'?c.status==='pago':
             c.status==='agendado');
           const handleConfirmPagarCP=async()=>{
-            const{id,desc,valor,meioPagamento,bancoId,dataPagamento,cat}=modalPagarCP;
+            const{id,desc,valor,meioPagamento,bancoId,dataPagamento,cat,tipo_custo}=modalPagarCP;
             setSavingItem(true);
             try{
               const dp=dataPagamento||today;
               await supabase.from('contas_pagar').update({status:'pago',meio_pagamento:meioPagamento,data_pagamento:dp}).eq('id',id);
-              // Lança automaticamente como despesa no fluxo de caixa
+              // Lança automaticamente como despesa no fluxo de caixa, preservando classificação fixa/variável
               await supabase.from('lancamentos').insert({
                 descricao:desc,valor:Number(valor),data:dp,
                 categoria:cat||'Outros',tipo:'despesa',
                 meio_pagamento:meioPagamento,
                 banco_id:bancoId||null,
+                tipo_custo:tipo_custo||'variavel',
                 user_id:user.id,
               });
               await fetchFinanceiro(user.id);
@@ -2365,7 +2364,7 @@ const App = () => {
                         const isAtrasado=c.status==='atrasado';
                         const isPago=c.status==='pago';
                         const valColor=isPago?'#27500A':isAtrasado?'#791F1F':'#05121b';
-                        const canPay=c.status==='pendente'||c.status==='atrasado';
+                        const canPay=c.status==='aberto'||c.status==='atrasado';
                         const isSelected=cpSelected.has(c.id);
                         return(
                           <tr key={c.id} style={{borderBottom:'1px solid #f8fafc',background:isSelected?'#f0f9ff':undefined}}
@@ -2383,7 +2382,7 @@ const App = () => {
                             <td style={{padding:'10px 16px'}}>
                               <div style={{display:'flex',gap:6,alignItems:'center'}}>
                                 <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:c.valor,vencimento:c.venc,categoria:c.cat,tipo_custo:c.tipo_custo||'variavel',status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
-                                {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,cat:c.cat,meioPagamento:'',bancoId:'',dataPagamento:today})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'#EAF3DE',color:'#3B6D11',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
+                                {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,cat:c.cat,tipo_custo:contasPagar.find(x=>x.id===c.id)?.tipo_custo||'variavel',meioPagamento:'',bancoId:'',dataPagamento:today})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'#EAF3DE',color:'#3B6D11',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
                               </div>
                             </td>
                           </tr>
@@ -3184,7 +3183,7 @@ const App = () => {
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
               <button onClick={handleContactExpert} className="flex-1 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1da851] text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"><MessageCircle size={13}/> WhatsApp</button>
-              <button onClick={()=>setView('analises')} className="flex-1 flex items-center justify-center gap-2 bg-[#05121b] hover:bg-slate-800 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"><FolderOpen size={13}/> Minhas Análises</button>
+              <button onClick={()=>setView('analises')} className="flex-1 flex items-center justify-center gap-2 bg-[#05121b] hover:bg-slate-800 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-colors"><FolderOpen size={13}/> Meus Diagnósticos</button>
             </div>
           </div>
         )}
@@ -3203,7 +3202,7 @@ const App = () => {
         {/* ── RESULTADO ─────────────────────────────────────────────────── */}
         {view==='result'&&selectedSubmission&&(
           <div className="max-w-7xl mx-auto fade-in">
-            <button onClick={()=>setView('analises')} className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors mb-6"><ArrowLeft size={13}/> Voltar para Análises</button>
+            <button onClick={()=>setView('analises')} className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest hover:text-[#05121b] transition-colors mb-6"><ArrowLeft size={13}/> Voltar para Diagnósticos</button>
             <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden mb-10">
               <div className={`p-6 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${selectedSubmission.health_status==='healthy'?'bg-emerald-50 border-emerald-100':selectedSubmission.health_status==='warning'?'bg-amber-50 border-amber-100':'bg-red-50 border-red-100'}`}>
                 <div className="flex items-center gap-4">

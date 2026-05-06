@@ -91,10 +91,16 @@ export const calcLiveMetrics = (lancamentos, bancos, dividas) => {
   const allDesp = src.filter(l=>l.tipo==='despesa')
   const despTotal = allDesp.reduce((a,l)=>a+Number(l.valor),0) / divisor
   if (receita===0 && despTotal===0) return null
+  // Prefer tipo_custo classification when available, fallback to category-based
+  const hasClassificacao = allDesp.some(l=>l.tipo_custo)
   const cogsCats = new Set(['Fornecedor','Cartão de Crédito'])
-  const custDir = allDesp.filter(l=>cogsCats.has(l.categoria)).reduce((a,l)=>a+Number(l.valor),0) / divisor
-  const custFix = despTotal - custDir
-  const custVar = custDir
+  const custFix = hasClassificacao
+    ? allDesp.filter(l=>(l.tipo_custo||'variavel')==='fixa').reduce((a,l)=>a+Number(l.valor),0) / divisor
+    : allDesp.filter(l=>!cogsCats.has(l.categoria)).reduce((a,l)=>a+Number(l.valor),0) / divisor
+  const custVar = hasClassificacao
+    ? allDesp.filter(l=>(l.tipo_custo||'variavel')==='variavel').reduce((a,l)=>a+Number(l.valor),0) / divisor
+    : allDesp.filter(l=>cogsCats.has(l.categoria)).reduce((a,l)=>a+Number(l.valor),0) / divisor
+  const custDir = custVar
   const totalCust = custVar + custFix
   const lucro = receita - totalCust
   const margemBruta = receita>0 ? ((receita-custDir)/receita)*100 : 0
