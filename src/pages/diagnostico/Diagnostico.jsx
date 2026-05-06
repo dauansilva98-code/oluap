@@ -510,6 +510,27 @@ const App = () => {
     setSavingItem(false);
   };
 
+  const handleConfirmPagarCP = async () => {
+    if (!modalPagarCP) return;
+    const { id, desc, valor, meioPagamento, bancoId, dataPagamento, cat, tipo_custo } = modalPagarCP;
+    setSavingItem(true);
+    try {
+      const dp = dataPagamento || today;
+      await supabase.from('contas_pagar').update({ status: 'pago', meio_pagamento: meioPagamento, data_pagamento: dp }).eq('id', id);
+      await supabase.from('lancamentos').insert({
+        descricao: desc, valor: Number(valor), data: dp,
+        categoria: cat || 'Outros', tipo: 'despesa',
+        meio_pagamento: meioPagamento,
+        banco_id: bancoId || null,
+        tipo_custo: tipo_custo || 'variavel',
+        user_id: user.id,
+      });
+      await fetchFinanceiro(user.id);
+      setModalPagarCP(null);
+    } catch (e) { console.error(e); alert(`Erro ao registrar pagamento: ${e.message}`); }
+    setSavingItem(false);
+  };
+
   const markAsSeen=id=>{
     try{const k='oluap_seen_completed';let s=JSON.parse(localStorage.getItem(k)||'[]');if(!s.includes(id)){s.push(id);localStorage.setItem(k,JSON.stringify(s));}}catch(e){}
     setNewlyCompleted(null);
@@ -2139,26 +2160,6 @@ const App = () => {
             cpFiltro==='atrasado'?c.status==='atrasado':
             cpFiltro==='pago'?c.status==='pago':
             c.status==='agendado');
-          const handleConfirmPagarCP=async()=>{
-            const{id,desc,valor,meioPagamento,bancoId,dataPagamento,cat,tipo_custo}=modalPagarCP;
-            setSavingItem(true);
-            try{
-              const dp=dataPagamento||today;
-              await supabase.from('contas_pagar').update({status:'pago',meio_pagamento:meioPagamento,data_pagamento:dp}).eq('id',id);
-              // Lança automaticamente como despesa no fluxo de caixa, preservando classificação fixa/variável
-              await supabase.from('lancamentos').insert({
-                descricao:desc,valor:Number(valor),data:dp,
-                categoria:cat||'Outros',tipo:'despesa',
-                meio_pagamento:meioPagamento,
-                banco_id:bancoId||null,
-                tipo_custo:tipo_custo||'variavel',
-                user_id:user.id,
-              });
-              await fetchFinanceiro(user.id);
-              setModalPagarCP(null);
-            }catch(e){console.error(e);alert(`Erro ao registrar pagamento: ${e.message}`);}
-            setSavingItem(false);
-          };
           const handleBulkDeleteCP=async()=>{
             if(cpSelected.size===0)return;
             if(!confirm(`Excluir ${cpSelected.size} conta(s)? Essa ação não pode ser desfeita.`))return;
