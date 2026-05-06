@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { X, AlertTriangle, Clock } from 'lucide-react'
 
-const fmtBRL = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+const fmtBRL = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const fmtDate = d => d ? `${d.substring(8,10)}/${d.substring(5,7)}/${d.substring(0,4)}` : '—'
 const todayStr = new Date().toISOString().split('T')[0]
 
 const STATUS_BADGE = {
-  recebido: { bg: '#EAF3DE', color: '#3B6D11', label: 'Recebido'     },
-  aberto:   { bg: '#FAEEDA', color: '#854F0B', label: 'Em aberto'    },
-  atrasado: { bg: '#FCEBEB', color: '#A32D2D', label: 'Inadimplente' },
+  recebido:  { bg: '#EAF3DE', color: '#3B6D11', label: 'Recebido'     },
+  aberto:    { bg: '#FAEEDA', color: '#854F0B', label: 'Em aberto'    },
+  atrasado:  { bg: '#FCEBEB', color: '#A32D2D', label: 'Inadimplente' },
+  parcial:   { bg: '#E6F1FB', color: '#185FA5', label: 'Pago parcial' },
 }
 
 const FILTROS = [
@@ -26,6 +28,7 @@ export default function ContasReceberView({
   onSalvar,
   onEditar,
   onReceber,
+  onPagamentoParcial,
   onExcluir,
   savingItem = false,
 }) {
@@ -33,27 +36,33 @@ export default function ContasReceberView({
   const [crSelected, setCrSelected] = useState(new Set())
   const [modalForm, setModalForm] = useState(null)
   const [modalReceber, setModalReceber] = useState(null)
+  const [modalParcial, setModalParcial] = useState(null)
 
   const lineRef    = useRef(null)
   const donutRef   = useRef(null)
   const lineChart  = useRef(null)
   const donutChart = useRef(null)
 
-  // Normalize Supabase rows to display format
   const cobranças = contasReceber.map(cr => {
     const venc = cr.vencimento || ''
     const realStatus = cr.status === 'recebido' ? 'recebido'
+      : cr.status === 'parcial' ? 'parcial'
       : venc && venc < todayStr ? 'atrasado'
       : 'aberto'
+    const diasAteVencer = venc && realStatus === 'aberto'
+      ? Math.ceil((new Date(venc) - new Date(todayStr)) / 86400000)
+      : null
     return {
-      id:     cr.id,
-      desc:   cr.cliente ? `${cr.cliente} — ${cr.descricao}` : cr.descricao,
-      cat:    cr.categoria || 'Outros',
+      id:            cr.id,
+      desc:          cr.cliente ? `${cr.cliente} — ${cr.descricao}` : cr.descricao,
+      cat:           cr.categoria || 'Outros',
       venc,
-      met:    cr.meio_pagamento || '',
-      valor:  Number(cr.valor) || 0,
-      status: realStatus,
-      _raw:   cr,
+      dataPagamento: cr.data_pagamento || null,
+      met:           cr.meio_pagamento || '',
+      valor:         Number(cr.valor) || 0,
+      status:        realStatus,
+      diasAteVencer,
+      _raw:          cr,
     }
   })
 
@@ -70,11 +79,9 @@ export default function ContasReceberView({
   const pctRecebido  = totalEmitido ? recebido / totalEmitido * 100 : 0
   const pctInad      = totalEmitido ? inadimplente / totalEmitido * 100 : 0
   const pctVencer    = totalEmitido ? totalVencer7 / totalEmitido * 100 : 0
-  const pctAberto    = Math.max(0, 100 - pctRecebido - pctInad - pctVencer)
 
   const filtrados = filtro === 'todos' ? cobranças : cobranças.filter(c => c.status === filtro)
 
-  // Chart data from real contasReceber
   const lineData = (() => {
     const labels = [], emitido = [], recebidoData = []
     for (let i = 5; i >= 0; i--) {
@@ -97,8 +104,6 @@ export default function ContasReceberView({
       if (!alive || !lineRef.current || !donutRef.current) return
       lineChart.current?.destroy()
       donutChart.current?.destroy()
-      const gridY      = 'rgba(128,128,128,0.08)'
-      const tickFn     = { font: { size: 11 } }
       const tooltipBRL = { callbacks: { label: ctx => `R$ ${ctx.raw.toLocaleString('pt-BR')}` } }
       lineChart.current = new window.Chart(lineRef.current, {
         type: 'line',
@@ -113,8 +118,8 @@ export default function ContasReceberView({
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display: false }, tooltip: tooltipBRL },
           scales: {
-            x: { grid: { display: false }, border: { display: false }, ticks: tickFn },
-            y: { grid: { color: gridY }, border: { display: false }, ticks: { ...tickFn, callback: v => `R$ ${v/1000}k` } },
+            x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: 'rgba(128,128,128,0.08)' }, border: { display: false }, ticks: { font: { size: 11 }, callback: v => `R$ ${v/1000}k` } },
           },
         },
       })
@@ -150,6 +155,34 @@ export default function ContasReceberView({
   const ss = c => ({ fontSize: 11, color: c, marginTop: 2 })
   const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-[#05121b] bg-white outline-none focus:border-[#137789] transition-colors'
 
+  // Confirmar recebimento total
+  const handleConfirmarReceber = () => {
+    onReceber?.(
+      modalReceber.id,
+      modalReceber.meioPagamento,
+      modalReceber.dataRecebimento || todayStr,
+      modalReceber.bancoId || null,
+      modalReceber.cat,
+    )
+    setModalReceber(null)
+  }
+
+  // Confirmar pagamento parcial
+  const handleConfirmarParcial = () => {
+    onPagamentoParcial?.({
+      id:              modalParcial.id,
+      valorPago:       parseFloat(modalParcial.valorPago) || 0,
+      novaData:        modalParcial.novaData,
+      meio:            modalParcial.meio,
+      bancoId:         modalParcial.bancoId || null,
+      desc:            modalParcial.desc,
+      cat:             modalParcial.cat,
+      valorTotal:      modalParcial.valorTotal,
+      dataRecebimento: modalParcial.dataRecebimento,
+    })
+    setModalParcial(null)
+  }
+
   return (
     <>
       {/* Modal Nova Cobrança */}
@@ -158,7 +191,7 @@ export default function ContasReceberView({
           onClick={e => { if (e.target === e.currentTarget) setModalForm(null) }}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[440px]">
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
-              <h3 className="text-sm font-semibold text-[#05121b]">Nova cobrança</h3>
+              <h3 className="text-sm font-semibold text-[#05121b]">{modalForm.id ? 'Editar cobrança' : 'Nova cobrança'}</h3>
               <button onClick={() => setModalForm(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50"><X size={16} /></button>
             </div>
             <div className="px-6 py-5 space-y-4">
@@ -176,8 +209,8 @@ export default function ContasReceberView({
                   <input className={inputCls} type="number" min="0" step="0.01" placeholder="0,00" value={modalForm.valor || ''} onChange={e => setModalForm(f => ({ ...f, valor: e.target.value }))} />
                 </label>
                 <label className="block">
-                  <span className="text-xs font-medium text-slate-500 mb-1.5 block">Vencimento</span>
-                  <input className={inputCls} type="date" value={modalForm.vencimento || ''} onChange={e => setModalForm(f => ({ ...f, vencimento: e.target.value }))} />
+                  <span className="text-xs font-medium text-slate-500 mb-1.5 block">Data de Vencimento</span>
+                  <input className={inputCls} type="date" value={modalForm.vencimento || todayStr} onChange={e => setModalForm(f => ({ ...f, vencimento: e.target.value }))} />
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -208,11 +241,11 @@ export default function ContasReceberView({
         </div>
       )}
 
-      {/* Modal Confirmar Recebimento */}
+      {/* Modal Confirmar Recebimento Total */}
       {modalReceber && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.4)' }}
           onClick={e => { if (e.target === e.currentTarget) setModalReceber(null) }}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[360px]">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[380px]">
             <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-[#05121b]">Confirmar recebimento</h3>
               <button onClick={() => setModalReceber(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50"><X size={16} /></button>
@@ -221,19 +254,91 @@ export default function ContasReceberView({
               <p className="text-sm text-slate-500">{modalReceber.desc}</p>
               <p className="text-xl font-black text-[#05121b]">{fmtBRL(modalReceber.valor)}</p>
               <label className="block">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">Data do recebimento</span>
+                <input className={inputCls} type="date" value={modalReceber.dataRecebimento || todayStr} onChange={e => setModalReceber(m => ({ ...m, dataRecebimento: e.target.value }))} />
+              </label>
+              <label className="block">
                 <span className="text-xs font-medium text-slate-500 mb-1.5 block">Forma de recebimento</span>
                 <select className={inputCls} value={modalReceber.meioPagamento} onChange={e => setModalReceber(m => ({ ...m, meioPagamento: e.target.value }))}>
                   <option value="">Selecione...</option>
                   {MEIOS.map(m => <option key={m}>{m}</option>)}
                 </select>
               </label>
+              {modalReceber.meioPagamento && modalReceber.meioPagamento !== 'Dinheiro' && (
+                <label className="block">
+                  <span className="text-xs font-medium text-slate-500 mb-1.5 block">Conta bancária creditada</span>
+                  <select className={inputCls} value={modalReceber.bancoId || ''} onChange={e => setModalReceber(m => ({ ...m, bancoId: e.target.value }))}>
+                    <option value="">— Nenhuma —</option>
+                    {bancos.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
+                  </select>
+                </label>
+              )}
+              <p className="text-[10px] text-slate-400 bg-slate-50 rounded-lg p-2">✓ Será lançado como receita no fluxo de caixa.</p>
             </div>
             <div className="flex gap-3 px-6 pb-5">
               <button onClick={() => setModalReceber(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
               <button disabled={savingItem || !modalReceber.meioPagamento}
-                onClick={() => { onReceber?.(modalReceber.id, modalReceber.meioPagamento); setModalReceber(null) }}
+                onClick={handleConfirmarReceber}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#137789] hover:bg-[#0e5f6b] transition-colors disabled:opacity-50">
-                Confirmar
+                Confirmar recebimento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pagamento Parcial */}
+      {modalParcial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={e => { if (e.target === e.currentTarget) setModalParcial(null) }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px]">
+            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-[#05121b]">Pagamento parcial</h3>
+              <button onClick={() => setModalParcial(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50"><X size={16} /></button>
+            </div>
+            <div className="px-6 py-5 space-y-3">
+              <p className="text-sm text-slate-500">{modalParcial.desc}</p>
+              <p className="text-xs text-slate-400">Valor total original: <strong className="text-[#05121b]">{fmtBRL(modalParcial.valorTotal)}</strong></p>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">Valor recebido agora (R$)</span>
+                <input className={inputCls} type="number" min="0" max={modalParcial.valorTotal} step="0.01" placeholder="0,00"
+                  value={modalParcial.valorPago || ''} onChange={e => setModalParcial(m => ({ ...m, valorPago: e.target.value }))} />
+                {modalParcial.valorPago > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">Restante: <strong className="text-orange-600">{fmtBRL(Math.max(0, modalParcial.valorTotal - parseFloat(modalParcial.valorPago || 0)))}</strong></p>
+                )}
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">Data do recebimento</span>
+                <input className={inputCls} type="date" value={modalParcial.dataRecebimento || todayStr} onChange={e => setModalParcial(m => ({ ...m, dataRecebimento: e.target.value }))} />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">Nova data de vencimento do restante</span>
+                <input className={inputCls} type="date" value={modalParcial.novaData || ''} onChange={e => setModalParcial(m => ({ ...m, novaData: e.target.value }))} />
+              </label>
+              <label className="block">
+                <span className="text-xs font-medium text-slate-500 mb-1.5 block">Forma de recebimento</span>
+                <select className={inputCls} value={modalParcial.meio || ''} onChange={e => setModalParcial(m => ({ ...m, meio: e.target.value }))}>
+                  <option value="">Selecione...</option>
+                  {MEIOS.map(m => <option key={m}>{m}</option>)}
+                </select>
+              </label>
+              {modalParcial.meio && modalParcial.meio !== 'Dinheiro' && (
+                <label className="block">
+                  <span className="text-xs font-medium text-slate-500 mb-1.5 block">Conta bancária creditada</span>
+                  <select className={inputCls} value={modalParcial.bancoId || ''} onChange={e => setModalParcial(m => ({ ...m, bancoId: e.target.value }))}>
+                    <option value="">— Nenhuma —</option>
+                    {bancos.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
+                  </select>
+                </label>
+              )}
+              <p className="text-[10px] text-slate-400 bg-slate-50 rounded-lg p-2">✓ O valor recebido será lançado como receita. A cobrança será atualizada com o valor restante.</p>
+            </div>
+            <div className="flex gap-3 px-6 pb-5">
+              <button onClick={() => setModalParcial(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+              <button disabled={savingItem || !modalParcial.valorPago || !modalParcial.meio || !modalParcial.novaData}
+                onClick={handleConfirmarParcial}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#378ADD] hover:bg-[#2563EB] transition-colors disabled:opacity-50">
+                Registrar pagamento parcial
               </button>
             </div>
           </div>
@@ -250,14 +355,13 @@ export default function ContasReceberView({
             <h1 style={{ fontSize: 20, fontWeight: 500, color: '#05121b', margin: 0 }}>Contas a receber</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button onClick={() => setModalForm({ cliente: '', descricao: '', valor: '', vencimento: '', categoria: 'Mensalidade', status: 'pendente' })}
+            <button onClick={() => setModalForm({ cliente: '', descricao: '', valor: '', vencimento: todayStr, categoria: 'Mensalidade', status: 'pendente' })}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors">
               + Nova cobrança
             </button>
           </div>
         </div>
 
-        {/* Metric cards */}
         {cobranças.length === 0 ? (
           <div className="bg-white border border-slate-100 rounded-2xl p-10 text-center">
             <p className="text-slate-300 text-sm font-bold uppercase tracking-widest mb-2">Sem cobranças cadastradas</p>
@@ -265,6 +369,7 @@ export default function ContasReceberView({
           </div>
         ) : (
           <>
+            {/* Metric cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
               {card('#EAF3DE','#C0DD97', <><p style={ls('#3B6D11')}>Total a receber</p><p style={vs('#27500A')}>{fmtBRL(totalAReceber)}</p><p style={ss('#3B6D11')}>{qtdAReceber} cobranças</p></>)}
               {card('#FCEBEB','#F7C1C1', <><p style={ls('#993C1D')}>Inadimplentes</p><p style={vs('#791F1F')}>{fmtBRL(inadimplente)}</p><p style={ss('#993C1D')}>{atrasados.length} clientes</p></>)}
@@ -278,22 +383,22 @@ export default function ContasReceberView({
               </div>
             </div>
 
-            {/* Alertas */}
+            {/* Alertas de vencimento */}
             {(atrasados.length > 0 || vencendoLogo.length > 0) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {atrasados.length > 0 && (
-                  <div style={{ background: '#FCEBEB', border: '0.5px solid #F09595', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#D85A30', marginTop: 5, flexShrink: 0 }} />
-                    <p style={{ fontSize: 12, color: '#791F1F', lineHeight: 1.6, margin: 0 }}>
-                      <strong>{atrasados.length} clientes inadimplentes</strong> — Total em atraso: <strong>{fmtBRL(inadimplente)}</strong>
+                  <div style={{ background: '#FCEBEB', border: '0.5px solid #F09595', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <AlertTriangle size={16} color="#D85A30" style={{ flexShrink: 0 }} />
+                    <p style={{ fontSize: 12, color: '#791F1F', margin: 0 }}>
+                      <strong>{atrasados.length} cobranças em atraso</strong> — Total inadimplente: <strong>{fmtBRL(inadimplente)}</strong>
                     </p>
                   </div>
                 )}
                 {vencendoLogo.length > 0 && (
-                  <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#BA7517', marginTop: 5, flexShrink: 0 }} />
-                    <p style={{ fontSize: 12, color: '#633806', lineHeight: 1.6, margin: 0 }}>
-                      <strong>{vencendoLogo.length} cobranças vencem em 7 dias</strong> — Total: <strong>{fmtBRL(totalVencer7)}</strong>
+                  <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <Clock size={16} color="#BA7517" style={{ flexShrink: 0 }} />
+                    <p style={{ fontSize: 12, color: '#633806', margin: 0 }}>
+                      <strong>{vencendoLogo.length} cobranças vencem nos próximos 7 dias</strong> — Total: <strong>{fmtBRL(totalVencer7)}</strong>
                     </p>
                   </div>
                 )}
@@ -307,14 +412,12 @@ export default function ContasReceberView({
                 <div style={{ width: `${pctRecebido}%`, background: '#1D9E75', transition: 'width 0.5s' }} />
                 <div style={{ width: `${pctInad}%`,     background: '#D85A30', transition: 'width 0.5s' }} />
                 <div style={{ width: `${pctVencer}%`,   background: '#EF9F27', transition: 'width 0.5s' }} />
-                <div style={{ width: `${pctAberto}%`,   background: '#378ADD', transition: 'width 0.5s' }} />
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 20px', marginTop: 10 }}>
                 {[
                   { color: '#1D9E75', label: 'Recebido',     valor: recebido,     pct: pctRecebido },
                   { color: '#D85A30', label: 'Inadimplente', valor: inadimplente, pct: pctInad     },
-                  { color: '#EF9F27', label: 'A vencer',     valor: totalVencer7, pct: pctVencer   },
-                  { color: '#378ADD', label: 'Em aberto',    valor: Math.max(0, totalEmitido - recebido - inadimplente - totalVencer7), pct: pctAberto },
+                  { color: '#EF9F27', label: 'A vencer (7d)',valor: totalVencer7, pct: pctVencer   },
                 ].map(({ color, label, valor, pct }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
@@ -374,16 +477,16 @@ export default function ContasReceberView({
             )}
           </div>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', minWidth: 800 }}>
               <colgroup>
-                <col style={{ width: '4%' }} /><col style={{ width: '23%' }} /><col style={{ width: '12%' }} />
-                <col style={{ width: '10%' }} /><col style={{ width: '11%' }} /><col style={{ width: '10%' }} />
-                <col style={{ width: '14%' }} /><col style={{ width: '16%' }} />
+                <col style={{ width: '4%' }} /><col style={{ width: '22%' }} /><col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} /><col style={{ width: '10%' }} /><col style={{ width: '10%' }} />
+                <col style={{ width: '10%' }} /><col style={{ width: '24%' }} />
               </colgroup>
               <thead>
                 <tr style={{ borderBottom: '0.5px solid #e2e8f0', background: '#f8fafc' }}>
                   <th style={{ padding: '10px 12px' }}></th>
-                  {['Cliente / descrição','Categoria','Vencimento','Status','Valor','Meio de recebimento','Ações'].map(h => (
+                  {['Descrição','Categoria','Vencimento','Data pgto.','Status','Valor','Ações'].map(h => (
                     <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 500, color: '#94a3b8', textAlign: h === 'Valor' ? 'right' : 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -395,10 +498,12 @@ export default function ContasReceberView({
                   const statusBadge = STATUS_BADGE[c.status] || STATUS_BADGE.aberto
                   const valorColor  = isAtrasado ? '#791F1F' : isRecebido ? '#27500A' : '#05121b'
                   const isSelected  = crSelected.has(c.id)
+                  const rowBg       = isSelected ? '#f0f9ff' : isAtrasado ? '#fffbfa' : undefined
                   return (
-                    <tr key={c.id} style={{ borderBottom: '0.5px solid #f1f5f9', background: isSelected ? '#f0f9ff' : undefined, transition: 'background 0.1s' }}
-                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#f8fafc' }}
-                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '' }}>
+                    <tr key={c.id}
+                      style={{ borderBottom: '0.5px solid #f1f5f9', background: rowBg, transition: 'background 0.1s' }}
+                      onMouseEnter={e => { if (!isSelected && !isAtrasado) e.currentTarget.style.background = '#f8fafc' }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = isAtrasado ? '#fffbfa' : '' }}>
                       <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                         <input type="checkbox" checked={isSelected} onChange={() => toggleCrSelect(c.id)} style={{ cursor: 'pointer', accentColor: '#137789' }} />
                       </td>
@@ -409,8 +514,23 @@ export default function ContasReceberView({
                         <span style={{ fontSize: 11, color: '#94a3b8' }}>{c.cat}</span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ fontSize: 12, color: isAtrasado ? '#D85A30' : '#64748b', fontWeight: isAtrasado ? 500 : 400 }}>
-                          {c.venc ? c.venc.substring(5).replace('-', '/') : '—'}
+                        <div>
+                          <span style={{ fontSize: 12, color: isAtrasado ? '#D85A30' : '#64748b', fontWeight: isAtrasado ? 600 : 400 }}>
+                            {c.venc ? fmtDate(c.venc) : '—'}
+                          </span>
+                          {isAtrasado && (
+                            <p style={{ fontSize: 10, color: '#A32D2D', margin: 0 }}>
+                              {Math.abs(Math.ceil((new Date(c.venc) - new Date(todayStr)) / 86400000))} dias em atraso
+                            </p>
+                          )}
+                          {c.status === 'aberto' && c.diasAteVencer !== null && c.diasAteVencer <= 7 && c.diasAteVencer >= 0 && (
+                            <p style={{ fontSize: 10, color: '#BA7517', margin: 0 }}>vence em {c.diasAteVencer}d</p>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <span style={{ fontSize: 12, color: isRecebido ? '#3B6D11' : '#94a3b8' }}>
+                          {c.dataPagamento ? fmtDate(c.dataPagamento) : '—'}
                         </span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
@@ -420,19 +540,22 @@ export default function ContasReceberView({
                         <span style={{ fontSize: 13, fontWeight: 500, color: valorColor }}>{fmtBRL(c.valor)}</span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ fontSize: 12, color: '#64748b' }}>{c.met || '—'}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                           <button onClick={() => onEditar?.(c._raw)}
                             style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', cursor: 'pointer', fontWeight: 500 }}>
                             Editar
                           </button>
                           {!isRecebido && (
-                            <button onClick={() => setModalReceber({ id: c.id, desc: c.desc, valor: c.valor, meioPagamento: '' })}
-                              style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 500, background: '#E6F1FB', color: '#185FA5', border: '0.5px solid #B5D4F4', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                              Receber
-                            </button>
+                            <>
+                              <button onClick={() => setModalReceber({ id: c.id, desc: c.desc, valor: c.valor, cat: c.cat, meioPagamento: '', bancoId: '', dataRecebimento: todayStr })}
+                                style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#3B6D11', border: '0.5px solid #C0DD97', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                Receber
+                              </button>
+                              <button onClick={() => setModalParcial({ id: c.id, desc: c.desc, valorTotal: c.valor, cat: c.cat, valorPago: '', novaData: '', meio: '', bancoId: '', dataRecebimento: todayStr })}
+                                style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, fontWeight: 500, background: '#E6F1FB', color: '#185FA5', border: '0.5px solid #B5D4F4', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                Parcial
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>

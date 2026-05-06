@@ -66,17 +66,21 @@ const HubCliente = () => {
 
   const handleContratar = async (prod) => {
     if (prod.isFree) {
-      await supabase.from('profiles').update({ [`has_${prod.id}`]: true }).eq('id', user.id)
-      setAccess(prev => ({ ...prev, [prod.id]: true }))
+      // Simular: acessa direto e marca como ativo no perfil
+      try {
+        await supabase.from('profiles').update({ [`has_${prod.id}`]: true }).eq('id', user.id)
+        setAccess(prev => ({ ...prev, [prod.id]: true }))
+      } catch (e) { console.error(e) }
       window.location.href = prod.url
     } else {
+      // Pago (ex: Diagnóstico): redireciona para página de pagamento
       window.location.href = `produto-${prod.id}.html`
     }
   }
 
   const productsInfo = [
     { id: 'diagnostico', title: 'Diagnóstico Financeiro', desc: 'CFO Virtual: indicadores financeiros em tempo real, alertas proativos e simulação de cenários.', icon: Activity, color: 'text-[#ff7b00]', bgLight: 'bg-[#ff7b00]/10', bgBtn: 'bg-[#ff7b00] hover:bg-[#e66e00]', url: 'diagnostico.html', price: 'R$ 289,90/mês', benefits: ['Score de Saúde Financeira', 'Margem, Runway e Ponto de Equilíbrio', 'Simulador de Cenários + PDF'] },
-    { id: 'credito', title: 'Crédito Inteligente', desc: 'Antecipação de recebíveis de cartão e duplicatas. Taxas a partir de 2%. Sem burocracia.', icon: CreditCard, color: 'text-emerald-500', bgLight: 'bg-emerald-500/10', bgBtn: 'bg-emerald-600 hover:bg-emerald-700', url: 'credito.html', landingUrl: 'produto-credito.html', isFree: true, price: 'Taxas a partir de 2% · Gratuito para você', benefits: ['Antecipação de Recebíveis', 'Primeira operação até R$ 50k', 'Aprovação em até 24h'] },
+    { id: 'credito', title: 'Crédito Inteligente', desc: 'Antecipe recebíveis de cartão e duplicatas. Primeira operação sem cadastro até R$ 50 mil. Taxas a partir de 2%. Sem burocracia.', icon: CreditCard, color: 'text-emerald-500', bgLight: 'bg-emerald-500/10', bgBtn: 'bg-emerald-600 hover:bg-emerald-700', url: 'credito.html', landingUrl: 'produto-credito.html', isFree: true, price: 'Taxas a partir de 2% · Gratuito para você', benefits: ['Primeira operação sem cadastro até R$ 50 mil', 'Taxas a partir de 2%', 'Antecipe duplicatas de serviço ou de venda', 'Antecipe recebíveis de cartão'] },
     { id: 'consultoria', title: 'Consultoria Empresarial', desc: 'Sócio estratégico nos seus processos, comercial, financeiro e estratégias. Só ganhamos quando você ganha.', icon: Briefcase, color: 'text-blue-500', bgLight: 'bg-blue-500/10', bgBtn: 'bg-blue-600 hover:bg-blue-700', url: 'produto-consultoria.html', isFree: true, price: 'Valor personalizado · Sem custo inicial', benefits: ['Estratégia e Processos', 'Comercial e Financeiro', 'Contrato após alinhamento'] },
     { id: 'erp', title: 'ERP Financeiro', desc: 'Sistema integrado para gestão de caixa, notas fiscais, contas a pagar e receber.', icon: Database, color: 'text-slate-400', bgLight: 'bg-slate-700/30', bgBtn: 'bg-slate-700 hover:bg-slate-600', url: 'produto-erp.html', price: 'Em breve', benefits: ['Fluxo de Caixa', 'Contas a Pagar/Receber', 'Relatórios Automáticos'], emDesenvolvimento: true },
   ]
@@ -139,7 +143,7 @@ const HubCliente = () => {
                   <div className="flex gap-2">
                     <button onClick={() => setModalInfo(prod)} className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-colors">Saber mais</button>
                     <button onClick={() => handleContratar(prod)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white flex items-center justify-center gap-1 transition-colors ${prod.bgBtn}`}>
-                      {prod.isFree ? 'Solicitar' : 'Contratar'} <ArrowRight size={12} />
+                      {prod.isFree ? 'Simular' : 'Contratar'} <ArrowRight size={12} />
                     </button>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import ReactDOM from 'react-dom'
-import { X, Download } from 'lucide-react'
+import { X, Download, Pencil, Trash2 } from 'lucide-react'
 
 const fmtBRL = v => `R$ ${Number(v || 0).toLocaleString('pt-BR')}`
 
@@ -28,14 +28,12 @@ const labelSt = color => ({ fontSize: 11, fontWeight: 500, color, marginBottom: 
 const valueSt = color => ({ fontSize: 19, fontWeight: 500, color, lineHeight: 1.2 })
 const subSt   = color => ({ fontSize: 11, color, marginTop: 2 })
 
-// Calcula saldo real de um banco a partir dos lançamentos
 const calcSaldo = (bancoId, lancs, saldoInicial) => {
   const ent = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'receita').reduce((a, l) => a + Number(l.valor), 0)
   const sai = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'despesa').reduce((a, l) => a + Number(l.valor), 0)
   return Number(saldoInicial || 0) + ent - sai
 }
 
-// Evolução do saldo nos últimos 6 meses
 const computeLineData = (bancos, lancamentos) => {
   const labels = [], totalData = [], bancarioData = []
   const totalInicial = bancos.reduce((a, b) => a + Number(b.saldo_inicial || 0), 0)
@@ -53,27 +51,31 @@ const computeLineData = (bancos, lancamentos) => {
   return { labels, totalData, bancarioData }
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
 export default function BancosContas({
   bancos = [],
   lancamentos = [],
   userId,
   onSaveBanco,
+  onDeleteBanco,
   onSaveLancamento,
+  onDeleteLancamentos,
   savingItem = false,
 }) {
-  const [filtroBank,   setFiltroBank]   = useState('todos')
-  const [modalConta,   setModalConta]   = useState(false)
-  const [modalEspecie, setModalEspecie] = useState(false)
-  const [formConta,    setFormConta]    = useState(EMPTY_CONTA)
-  const [formMov,      setFormMov]      = useState(EMPTY_MOV)
+  const [filtroBank,    setFiltroBank]    = useState('todos')
+  const [modalConta,    setModalConta]    = useState(false)
+  const [modalEspecie,  setModalEspecie]  = useState(false)
+  const [modalEditMov,  setModalEditMov]  = useState(null)
+  const [formConta,     setFormConta]     = useState(EMPTY_CONTA)
+  const [formMov,       setFormMov]       = useState(EMPTY_MOV)
+  const [selectedLancs, setSelectedLancs] = useState(new Set())
 
   const donutRef   = useRef(null)
   const lineRef    = useRef(null)
   const donutChart = useRef(null)
   const lineChart  = useRef(null)
 
-  // ── Dados derivados ───────────────────────────────────────────────────────
+  const today = new Date().toISOString().slice(0, 10)
+
   const bancosComSaldo = bancos.map((b, i) => ({
     ...b,
     saldoCalc: calcSaldo(b.id, lancamentos, b.saldo_inicial),
@@ -116,11 +118,14 @@ export default function BancosContas({
         desc: l.descricao || '—',
         conta: isDinheiro ? 'Espécie' : (banco?.nome || '—'),
         bank: isDinheiro ? 'especie' : (l.banco_id || 'outros'),
-        data: l.data ? `${l.data.slice(8, 10)}/${l.data.slice(5, 7)}` : '—',
+        data: l.data || '',
+        dataFmt: l.data ? `${l.data.slice(8, 10)}/${l.data.slice(5, 7)}` : '—',
         met: l.meio_pagamento || '—',
         tipo: l.tipo === 'receita' ? 'entrada' : 'saida',
         valor: Number(l.valor),
         categoria: l.categoria || '—',
+        rawBancoId: l.banco_id || null,
+        rawTipo: l.tipo,
       }
     })
 
@@ -134,7 +139,13 @@ export default function BancosContas({
     : filtroBank === 'especie' ? extrato.filter(l => l.bank === 'especie')
     : extrato.filter(l => l.bank === filtroBank)
 
-  // ── Chart data ────────────────────────────────────────────────────────────
+  const allSelected = extratoFiltrado.length > 0 && extratoFiltrado.every(l => selectedLancs.has(l.id))
+  const toggleSelectAll = () => {
+    if (allSelected) setSelectedLancs(s => { const n = new Set(s); extratoFiltrado.forEach(l => n.delete(l.id)); return n })
+    else setSelectedLancs(s => { const n = new Set(s); extratoFiltrado.forEach(l => n.add(l.id)); return n })
+  }
+  const toggleSelectLanc = id => setSelectedLancs(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+
   const donutLabels = [
     ...bancosComSaldo.map(b => b.nome),
     ...(especieSaldo > 0 ? ['Espécie'] : []),
@@ -148,63 +159,37 @@ export default function BancosContas({
     '#888780',
   ]
   const hasDonutData = donutValues.some(v => v > 0)
-
   const lineData = computeLineData(bancos, lancamentos)
 
-  // ── Charts ────────────────────────────────────────────────────────────────
   useEffect(() => {
     let alive = true
-
     const buildCharts = () => {
       if (!alive || !donutRef.current || !lineRef.current) return
       donutChart.current?.destroy()
       lineChart.current?.destroy()
-
       const tickFn = { font: { size: 11, family: "'Plus Jakarta Sans', sans-serif" }, color: '#94a3b8' }
       const gridY  = 'rgba(128,128,128,0.08)'
-
       donutChart.current = new window.Chart(donutRef.current, {
         type: 'doughnut',
         data: {
           labels: hasDonutData ? donutLabels : ['Sem dados'],
-          datasets: [{
-            data: hasDonutData ? donutValues : [1],
-            backgroundColor: hasDonutData ? donutColors : ['#e2e8f0'],
-            borderWidth: 0,
-          }],
+          datasets: [{ data: hasDonutData ? donutValues : [1], backgroundColor: hasDonutData ? donutColors : ['#e2e8f0'], borderWidth: 0 }],
         },
         options: {
           responsive: true, maintainAspectRatio: false, cutout: '68%',
           plugins: {
             legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: ctx => hasDonutData
-                  ? `R$ ${ctx.raw.toLocaleString('pt-BR')} (${((ctx.raw / ctx.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%)`
-                  : 'Sem dados',
-              },
-            },
+            tooltip: { callbacks: { label: ctx => hasDonutData ? `R$ ${ctx.raw.toLocaleString('pt-BR')} (${((ctx.raw / ctx.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(1)}%)` : 'Sem dados' } },
           },
         },
       })
-
       lineChart.current = new window.Chart(lineRef.current, {
         type: 'line',
         data: {
           labels: lineData.labels,
           datasets: [
-            {
-              label: 'Saldo total',
-              data: lineData.totalData,
-              borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.07)',
-              fill: true, tension: 0.4, pointRadius: 3, borderWidth: 2,
-            },
-            {
-              label: 'Só bancário',
-              data: lineData.bancarioData,
-              borderColor: '#378ADD', borderDash: [4, 3],
-              fill: false, tension: 0.4, pointRadius: 3, borderWidth: 2,
-            },
+            { label: 'Saldo total', data: lineData.totalData, borderColor: '#1D9E75', backgroundColor: 'rgba(29,158,117,0.07)', fill: true, tension: 0.4, pointRadius: 3, borderWidth: 2 },
+            { label: 'Só bancário', data: lineData.bancarioData, borderColor: '#378ADD', borderDash: [4, 3], fill: false, tension: 0.4, pointRadius: 3, borderWidth: 2 },
           ],
         },
         options: {
@@ -220,7 +205,6 @@ export default function BancosContas({
         },
       })
     }
-
     if (window.Chart) buildCharts()
     else {
       const s = document.createElement('script')
@@ -228,20 +212,33 @@ export default function BancosContas({
       s.onload = buildCharts
       document.head.appendChild(s)
     }
-
-    return () => {
-      alive = false
-      donutChart.current?.destroy()
-      lineChart.current?.destroy()
-    }
+    return () => { alive = false; donutChart.current?.destroy(); lineChart.current?.destroy() }
   }, [bancos, lancamentos])
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  const openEditBanco = (b) => {
+    setFormConta({
+      id:     b.id,
+      nome:   b.nome || '',
+      tipo:   b.tipo || 'Corrente PJ',
+      agencia: b.agencia || '',
+      numero: b.numero || '',
+      saldo:  b.saldo_inicial ?? '',
+      pix:    b.pix || '',
+    })
+    setModalConta(true)
+  }
+
+  const openNewBanco = () => {
+    setFormConta(EMPTY_CONTA)
+    setModalConta(true)
+  }
+
   const salvarConta = async () => {
     if (!formConta.nome.trim()) return
     await onSaveBanco?.({
+      ...(formConta.id ? { id: formConta.id } : {}),
       nome:          formConta.nome,
-      tipo:          formConta.tipo.replace(' PJ', '').replace('Conta ', ''),
+      tipo:          formConta.tipo,
       agencia:       formConta.agencia,
       numero:        formConta.numero,
       saldo_inicial: parseFloat(formConta.saldo) || 0,
@@ -249,6 +246,28 @@ export default function BancosContas({
     })
     setModalConta(false)
     setFormConta(EMPTY_CONTA)
+  }
+
+  const deleteBanco = async (id, nome) => {
+    if (!window.confirm(`Excluir o banco "${nome}"? Os lançamentos vinculados não serão excluídos.`)) return
+    await onDeleteBanco?.(id)
+  }
+
+  const openNewMov = () => {
+    setFormMov({ ...EMPTY_MOV, data: today })
+    setModalEspecie(true)
+  }
+
+  const openEditMov = (l) => {
+    setModalEditMov({
+      id:      l.id,
+      desc:    l.desc,
+      valor:   String(l.valor),
+      data:    l.data,
+      cat:     l.categoria,
+      tipomov: l.tipo === 'entrada' ? 'entrada' : 'saida',
+      obs:     '',
+    })
   }
 
   const salvarMov = async () => {
@@ -266,23 +285,89 @@ export default function BancosContas({
     setFormMov(EMPTY_MOV)
   }
 
+  const salvarEditMov = async () => {
+    if (!modalEditMov?.desc?.trim() || !modalEditMov.valor || !modalEditMov.data) return
+    await onSaveLancamento?.({
+      id:             modalEditMov.id,
+      descricao:      modalEditMov.desc,
+      valor:          parseFloat(modalEditMov.valor) || 0,
+      data:           modalEditMov.data,
+      categoria:      modalEditMov.cat,
+      tipo:           modalEditMov.tipomov === 'entrada' ? 'receita' : 'despesa',
+      meio_pagamento: 'Dinheiro',
+      banco_id:       null,
+    })
+    setModalEditMov(null)
+  }
+
+  const deleteLancs = async (ids) => {
+    const arr = Array.from(ids)
+    if (!window.confirm(`Excluir ${arr.length} lançamento${arr.length > 1 ? 's' : ''}?`)) return
+    await onDeleteLancamentos?.(arr)
+    setSelectedLancs(s => { const n = new Set(s); arr.forEach(id => n.delete(id)); return n })
+  }
+
   const fieldConta = k => e => setFormConta(f => ({ ...f, [k]: e.target.value }))
   const fieldMov   = k => e => setFormMov(f => ({ ...f, [k]: e.target.value }))
+  const fieldEditMov = k => e => setModalEditMov(m => ({ ...m, [k]: e.target.value }))
   const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-[#05121b] bg-white outline-none focus:border-[#137789] transition-colors'
 
-  // ── Modais via Portal (escapa qualquer stacking context) ──────────────────
+  const movModalContent = (fields, setFields, onSave, onClose, title) => (
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px]">
+      <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-[#05121b]">{title}</h3>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50"><X size={16} /></button>
+      </div>
+      <div className="px-6 py-5 space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+          {['entrada', 'saida'].map(t => (
+            <button key={t} onClick={() => setFields(f => ({ ...f, tipomov: t }))} style={{
+              padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', border: '1px solid',
+              background:   fields.tipomov === t ? (t === 'entrada' ? '#EAF3DE' : '#FCEBEB') : '#fff',
+              color:        fields.tipomov === t ? (t === 'entrada' ? '#3B6D11' : '#A32D2D') : '#94a3b8',
+              borderColor:  fields.tipomov === t ? (t === 'entrada' ? '#9FE1CB' : '#F7C1C1') : '#e2e8f0',
+            }}>
+              {t === 'entrada' ? '+ Entrada' : '− Saída'}
+            </button>
+          ))}
+        </div>
+        <label className="block">
+          <span className="text-xs font-medium text-slate-500 mb-1.5 block">Descrição</span>
+          <input className={inputCls} placeholder="Ex: Venda à vista balcão" value={fields.desc} onChange={e => setFields(f => ({ ...f, desc: e.target.value }))} />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Valor (R$)</span>
+            <input className={inputCls} type="number" min="0" step="0.01" placeholder="0,00" value={fields.valor} onChange={e => setFields(f => ({ ...f, valor: e.target.value }))} />
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Data</span>
+            <input className={inputCls} type="date" value={fields.data} onChange={e => setFields(f => ({ ...f, data: e.target.value }))} />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs font-medium text-slate-500 mb-1.5 block">Categoria</span>
+          <select className={inputCls} value={fields.cat} onChange={e => setFields(f => ({ ...f, cat: e.target.value }))}>
+            {['Venda à vista', 'Reembolso', 'Depósito', 'Pagamento fornecedor', 'Sangria', 'Outros'].map(c => <option key={c}>{c}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="flex justify-end gap-3 px-6 pb-5">
+        <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+        <button onClick={onSave} disabled={savingItem} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors disabled:opacity-50">
+          {savingItem ? 'Salvando...' : 'Salvar'}
+        </button>
+      </div>
+    </div>
+  )
+
   const modalContaEl = modalConta ? ReactDOM.createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center px-4"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
-      onClick={e => { if (e.target === e.currentTarget) setModalConta(false) }}
-    >
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.4)' }}
+      onClick={e => { if (e.target === e.currentTarget) { setModalConta(false); setFormConta(EMPTY_CONTA) } }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px]">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-[#05121b]">Nova conta bancária</h3>
-          <button onClick={() => setModalConta(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50">
-            <X size={16} />
-          </button>
+          <h3 className="text-sm font-semibold text-[#05121b]">{formConta.id ? 'Editar conta bancária' : 'Nova conta bancária'}</h3>
+          <button onClick={() => { setModalConta(false); setFormConta(EMPTY_CONTA) }} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50"><X size={16} /></button>
         </div>
         <div className="px-6 py-5 space-y-4">
           <label className="block">
@@ -317,9 +402,7 @@ export default function BancosContas({
           </label>
         </div>
         <div className="flex justify-end gap-3 px-6 pb-5">
-          <button onClick={() => setModalConta(false)} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">
-            Cancelar
-          </button>
+          <button onClick={() => { setModalConta(false); setFormConta(EMPTY_CONTA) }} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
           <button onClick={salvarConta} disabled={savingItem} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors disabled:opacity-50">
             {savingItem ? 'Salvando...' : 'Salvar'}
           </button>
@@ -330,78 +413,26 @@ export default function BancosContas({
   ) : null
 
   const modalEspecieEl = modalEspecie ? ReactDOM.createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center px-4"
-      style={{ background: 'rgba(0,0,0,0.4)' }}
-      onClick={e => { if (e.target === e.currentTarget) setModalEspecie(false) }}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px]">
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-[#05121b]">Movimentação em espécie</h3>
-          <button onClick={() => setModalEspecie(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50">
-            <X size={16} />
-          </button>
-        </div>
-        <div className="px-6 py-5 space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            {['entrada', 'saida'].map(t => (
-              <button
-                key={t}
-                onClick={() => setFormMov(f => ({ ...f, tipomov: t }))}
-                style={{
-                  padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', border: '1px solid',
-                  background:   formMov.tipomov === t ? (t === 'entrada' ? '#EAF3DE' : '#FCEBEB') : '#fff',
-                  color:        formMov.tipomov === t ? (t === 'entrada' ? '#3B6D11' : '#A32D2D') : '#94a3b8',
-                  borderColor:  formMov.tipomov === t ? (t === 'entrada' ? '#9FE1CB' : '#F7C1C1') : '#e2e8f0',
-                }}
-              >
-                {t === 'entrada' ? '+ Entrada' : '− Saída'}
-              </button>
-            ))}
-          </div>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Descrição</span>
-            <input className={inputCls} placeholder="Ex: Venda à vista balcão" value={formMov.desc} onChange={fieldMov('desc')} />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-xs font-medium text-slate-500 mb-1.5 block">Valor (R$)</span>
-              <input className={inputCls} type="number" min="0" step="0.01" placeholder="0,00" value={formMov.valor} onChange={fieldMov('valor')} />
-            </label>
-            <label className="block">
-              <span className="text-xs font-medium text-slate-500 mb-1.5 block">Data</span>
-              <input className={inputCls} type="date" value={formMov.data} onChange={fieldMov('data')} />
-            </label>
-          </div>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Categoria</span>
-            <select className={inputCls} value={formMov.cat} onChange={fieldMov('cat')}>
-              {['Venda à vista', 'Reembolso', 'Depósito', 'Pagamento fornecedor', 'Sangria', 'Outros'].map(c => <option key={c}>{c}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Observação (opcional)</span>
-            <input className={inputCls} placeholder="Observação" value={formMov.obs} onChange={fieldMov('obs')} />
-          </label>
-        </div>
-        <div className="flex justify-end gap-3 px-6 pb-5">
-          <button onClick={() => setModalEspecie(false)} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">
-            Cancelar
-          </button>
-          <button onClick={salvarMov} disabled={savingItem} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors disabled:opacity-50">
-            {savingItem ? 'Salvando...' : 'Salvar'}
-          </button>
-        </div>
-      </div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.4)' }}
+      onClick={e => { if (e.target === e.currentTarget) setModalEspecie(false) }}>
+      {movModalContent(formMov, setFormMov, salvarMov, () => setModalEspecie(false), 'Movimentação em espécie')}
     </div>,
     document.body
   ) : null
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const modalEditMovEl = modalEditMov ? ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.4)' }}
+      onClick={e => { if (e.target === e.currentTarget) setModalEditMov(null) }}>
+      {movModalContent(modalEditMov, setModalEditMov, salvarEditMov, () => setModalEditMov(null), 'Editar lançamento')}
+    </div>,
+    document.body
+  ) : null
+
   return (
     <>
       {modalContaEl}
       {modalEspecieEl}
+      {modalEditMovEl}
 
       <div className="max-w-7xl mx-auto w-full" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
@@ -415,22 +446,15 @@ export default function BancosContas({
             <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors">
               <Download size={14} /> Exportar
             </button>
-            <button
-              onClick={() => setModalEspecie(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors"
-            >
+            <button onClick={openNewMov} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors">
               + Mov. espécie
             </button>
-            <button
-              onClick={() => setModalConta(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors"
-            >
+            <button onClick={openNewBanco} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors">
               + Nova conta
             </button>
           </div>
         </div>
 
-        {/* Estado vazio */}
         {bancos.length === 0 && lancamentos.length === 0 && (
           <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
             <p className="text-slate-400 text-sm mb-1">Nenhum banco cadastrado ainda.</p>
@@ -440,39 +464,15 @@ export default function BancosContas({
 
         {/* Cards de métricas */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
-          {card('#EAF3DE', '#C0DD97',
-            <>
-              <p style={labelSt('#3B6D11')}>Saldo total consolidado</p>
-              <p style={valueSt('#27500A')}>{fmtBRL(saldoTotal)}</p>
-              <p style={subSt('#3B6D11')}>todas as contas</p>
-            </>
-          )}
-          {card('#E6F1FB', '#B5D4F4',
-            <>
-              <p style={labelSt('#185FA5')}>Saldo bancário</p>
-              <p style={valueSt('#0C447C')}>{fmtBRL(saldoBancario)}</p>
-              <p style={subSt('#185FA5')}>{bancos.length} conta{bancos.length !== 1 ? 's' : ''} ativa{bancos.length !== 1 ? 's' : ''}</p>
-            </>
-          )}
-          {card('#FAEEDA', '#FAC775',
-            <>
-              <p style={labelSt('#854F0B')}>Dinheiro em espécie</p>
-              <p style={valueSt('#633806')}>{fmtBRL(especieSaldo)}</p>
-              <p style={subSt('#854F0B')}>caixa físico</p>
-            </>
-          )}
+          {card('#EAF3DE', '#C0DD97', <><p style={labelSt('#3B6D11')}>Saldo total consolidado</p><p style={valueSt('#27500A')}>{fmtBRL(saldoTotal)}</p><p style={subSt('#3B6D11')}>todas as contas</p></>)}
+          {card('#E6F1FB', '#B5D4F4', <><p style={labelSt('#185FA5')}>Saldo bancário</p><p style={valueSt('#0C447C')}>{fmtBRL(saldoBancario)}</p><p style={subSt('#185FA5')}>{bancos.length} conta{bancos.length !== 1 ? 's' : ''} ativa{bancos.length !== 1 ? 's' : ''}</p></>)}
+          {card('#FAEEDA', '#FAC775', <><p style={labelSt('#854F0B')}>Dinheiro em espécie</p><p style={valueSt('#633806')}>{fmtBRL(especieSaldo)}</p><p style={subSt('#854F0B')}>caixa físico</p></>)}
           <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.1rem' }}>
             <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', marginBottom: 4 }}>Maior saldo</p>
             <p style={{ fontSize: 19, fontWeight: 500, color: '#05121b', lineHeight: 1.2 }}>{fmtBRL(maiorBanco?.saldoCalc || 0)}</p>
             <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{maiorBanco?.nome || '—'}</p>
           </div>
-          {card('#EEEDFE', '#CECBF6',
-            <>
-              <p style={labelSt('#3C3489')}>Entradas do mês</p>
-              <p style={valueSt('#26215C')}>{fmtBRL(entradasMes)}</p>
-              <p style={subSt('#3C3489')}>receitas registradas</p>
-            </>
-          )}
+          {card('#EEEDFE', '#CECBF6', <><p style={labelSt('#3C3489')}>Entradas do mês</p><p style={valueSt('#26215C')}>{fmtBRL(entradasMes)}</p><p style={subSt('#3C3489')}>receitas registradas</p></>)}
           <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.1rem' }}>
             <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', marginBottom: 4 }}>Última atualização</p>
             <p style={{ fontSize: 19, fontWeight: 500, color: '#05121b', lineHeight: 1.2 }}>Hoje</p>
@@ -484,24 +484,28 @@ export default function BancosContas({
         {bancosComSaldo.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
             {bancosComSaldo.map(b => {
-              const tipoKey = b.tipo?.replace(' PJ', '') || b.tipo || 'Corrente'
-              const badge = TIPO_BADGE[b.tipo] || TIPO_BADGE[tipoKey] || { bg: '#f8fafc', color: '#64748b' }
+              const badge = TIPO_BADGE[b.tipo] || { bg: '#f8fafc', color: '#64748b' }
               const entradas = lancamentos.filter(l => l.banco_id === b.id && l.tipo === 'receita' && l.data?.startsWith(mesAtual)).reduce((a, l) => a + Number(l.valor), 0)
               const saidas   = lancamentos.filter(l => l.banco_id === b.id && l.tipo === 'despesa' && l.data?.startsWith(mesAtual)).reduce((a, l) => a + Number(l.valor), 0)
               return (
                 <div key={b.id} className="bg-white" style={{ border: '0.5px solid #e2e8f0', borderRadius: 12, padding: '1.1rem 1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <div style={{
-                      width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                      background: b.color + '20', color: b.color,
-                      fontSize: 12, fontWeight: 600,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: b.color + '20', color: b.color, fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {b.init}
                     </div>
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.nome}</p>
                       <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>{b.tipo || 'Corrente'}{b.agencia ? ` · Ag. ${b.agencia}` : ''}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button onClick={() => openEditBanco(b)} title="Editar" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#94a3b8', borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                        onMouseEnter={e => e.currentTarget.style.color='#137789'} onMouseLeave={e => e.currentTarget.style.color='#94a3b8'}>
+                        <Pencil size={13} />
+                      </button>
+                      <button onClick={() => deleteBanco(b.id, b.nome)} title="Excluir" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#94a3b8', borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                        onMouseEnter={e => e.currentTarget.style.color='#dc2626'} onMouseLeave={e => e.currentTarget.style.color='#94a3b8'}>
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
                   <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Saldo disponível</p>
@@ -521,13 +525,6 @@ export default function BancosContas({
                       {b.tipo || 'Corrente'}
                     </span>
                   </div>
-                  <div style={{ borderTop: '0.5px solid #e2e8f0', paddingTop: 10, display: 'flex', gap: 6 }}>
-                    {['Extrato', 'Transferir'].map(lbl => (
-                      <button key={lbl} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 999, border: '0.5px solid #e2e8f0', background: 'transparent', color: '#64748b', cursor: 'pointer' }}>
-                        {lbl}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               )
             })}
@@ -543,12 +540,11 @@ export default function BancosContas({
             </div>
             <p style={{ fontSize: 22, fontWeight: 500, color: especieSaldo >= 0 ? '#27500A' : '#791F1F', margin: 0 }}>{fmtBRL(especieSaldo)}</p>
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
             {[
               { label: 'Entradas do mês', valor: `+ ${fmtBRL(especieMov.filter(m => m.tipo === 'entrada' && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`, cor: '#27500A' },
-              { label: 'Saídas do mês',   valor: `- ${fmtBRL(especieMov.filter(m => m.tipo === 'saida'   && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`,   cor: '#791F1F' },
-              { label: 'Total movimentos', valor: `${especieMov.length}`,  cor: '#05121b' },
+              { label: 'Saídas do mês',   valor: `- ${fmtBRL(especieMov.filter(m => m.tipo === 'saida'   && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`, cor: '#791F1F' },
+              { label: 'Total movimentos', valor: `${especieMov.length}`, cor: '#05121b' },
             ].map(({ label, valor, cor }) => (
               <div key={label} style={{ background: '#f8fafc', borderRadius: 8, padding: '.75rem' }}>
                 <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 4px' }}>{label}</p>
@@ -556,7 +552,6 @@ export default function BancosContas({
               </div>
             ))}
           </div>
-
           {especieMov.length === 0 ? (
             <p style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '12px 0' }}>
               Nenhuma movimentação em espécie. Clique em <strong>+ Mov. espécie</strong> para registrar.
@@ -578,7 +573,6 @@ export default function BancosContas({
 
         {/* Gráficos */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          {/* Donut — distribuição do saldo */}
           <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.2rem' }}>
             <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', marginBottom: 12, marginTop: 0 }}>Distribuição do saldo</p>
             <div style={{ position: 'relative', width: '100%', height: 180 }}>
@@ -603,8 +597,6 @@ export default function BancosContas({
               <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', marginTop: 12 }}>Cadastre bancos para visualizar a distribuição</p>
             )}
           </div>
-
-          {/* Linha — evolução 6 meses */}
           <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.2rem' }}>
             <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', marginBottom: 10, marginTop: 0 }}>Evolução do saldo — 6 meses</p>
             <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
@@ -626,21 +618,28 @@ export default function BancosContas({
         {/* Extrato consolidado */}
         <div className="bg-white border border-slate-200" style={{ borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, borderBottom: '0.5px solid #e2e8f0' }}>
-            <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: 0 }}>
-              {extratoFiltrado.length} lançamento{extratoFiltrado.length !== 1 ? 's' : ''}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: 0 }}>
+                {extratoFiltrado.length} lançamento{extratoFiltrado.length !== 1 ? 's' : ''}
+              </p>
+              {selectedLancs.size > 0 && (
+                <button onClick={() => deleteLancs(selectedLancs)} style={{
+                  display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderRadius: 8,
+                  fontSize: 11, fontWeight: 600, border: '1px solid #fecaca',
+                  background: '#fef2f2', color: '#dc2626', cursor: 'pointer',
+                }}>
+                  <Trash2 size={12} /> Excluir {selectedLancs.size}
+                </button>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {filtros.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setFiltroBank(key)}
-                  style={{
-                    padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 500, border: '0.5px solid', cursor: 'pointer', transition: 'all 0.15s',
-                    background:   filtroBank === key ? '#05121b' : '#f8fafc',
-                    color:        filtroBank === key ? '#fff'    : '#64748b',
-                    borderColor:  filtroBank === key ? '#05121b' : '#e2e8f0',
-                  }}
-                >
+                <button key={key} onClick={() => setFiltroBank(key)} style={{
+                  padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 500, border: '0.5px solid', cursor: 'pointer', transition: 'all 0.15s',
+                  background:  filtroBank === key ? '#05121b' : '#f8fafc',
+                  color:       filtroBank === key ? '#fff'    : '#64748b',
+                  borderColor: filtroBank === key ? '#05121b' : '#e2e8f0',
+                }}>
                   {label}
                 </button>
               ))}
@@ -649,27 +648,21 @@ export default function BancosContas({
 
           {extratoFiltrado.length === 0 ? (
             <div style={{ padding: '32px', textAlign: 'center' }}>
-              <p style={{ fontSize: 13, color: '#94a3b8' }}>Nenhum lançamento encontrado. Registre receitas e despesas para ver o extrato.</p>
+              <p style={{ fontSize: 13, color: '#94a3b8' }}>Nenhum lançamento encontrado.</p>
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
-                <colgroup>
-                  <col style={{ width: '30%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '13%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '11%' }} />
-                  <col style={{ width: '12%' }} />
-                </colgroup>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '0.5px solid #e2e8f0', background: '#f8fafc' }}>
-                    {['Descrição', 'Conta', 'Data', 'Categoria', 'Tipo', 'Método', 'Valor'].map(h => (
+                    <th style={{ width: 40, padding: '10px 12px' }}>
+                      <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ cursor: 'pointer', accentColor: '#137789' }} />
+                    </th>
+                    {['Descrição', 'Conta', 'Data', 'Categoria', 'Tipo', 'Método', 'Valor', ''].map(h => (
                       <th key={h} style={{
                         padding: '10px 12px', fontSize: 11, fontWeight: 500, color: '#94a3b8',
                         textAlign: h === 'Valor' ? 'right' : 'left',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        whiteSpace: 'nowrap',
                       }}>
                         {h}
                       </th>
@@ -677,44 +670,55 @@ export default function BancosContas({
                   </tr>
                 </thead>
                 <tbody>
-                  {extratoFiltrado.map(l => (
-                    <tr
-                      key={l.id}
-                      style={{ borderBottom: '0.5px solid #f1f5f9', transition: 'background 0.1s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                      onMouseLeave={e => e.currentTarget.style.background = ''}
-                    >
-                      <td style={{ padding: '10px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: '#05121b' }}>{l.desc}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: 11, color: '#94a3b8' }}>{l.conta}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span style={{ fontSize: 11, color: '#94a3b8' }}>{l.data}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: 12, color: '#64748b' }}>{l.categoria}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span style={{
-                          fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 999,
-                          background: l.tipo === 'entrada' ? '#EAF3DE' : '#FCEBEB',
-                          color:      l.tipo === 'entrada' ? '#3B6D11' : '#A32D2D',
-                        }}>
-                          {l.tipo === 'entrada' ? 'Entrada' : 'Saída'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: 12, color: '#64748b' }}>{l.met}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'right' }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: l.tipo === 'entrada' ? '#27500A' : '#791F1F' }}>
-                          {l.tipo === 'entrada' ? '+' : '-'} {fmtBRL(l.valor)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {extratoFiltrado.map(l => {
+                    const isSel = selectedLancs.has(l.id)
+                    return (
+                      <tr key={l.id} style={{ borderBottom: '0.5px solid #f1f5f9', background: isSel ? '#f0f9ff' : '', transition: 'background 0.1s' }}
+                        onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = '#f8fafc' }}
+                        onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = '' }}>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          <input type="checkbox" checked={isSel} onChange={() => toggleSelectLanc(l.id)} style={{ cursor: 'pointer', accentColor: '#137789' }} />
+                        </td>
+                        <td style={{ padding: '10px 12px', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: '#05121b' }}>{l.desc}</span>
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>{l.conta}</span>
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>{l.dataFmt}</span>
+                        </td>
+                        <td style={{ padding: '10px 12px', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 12, color: '#64748b' }}>{l.categoria}</span>
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 999, background: l.tipo === 'entrada' ? '#EAF3DE' : '#FCEBEB', color: l.tipo === 'entrada' ? '#3B6D11' : '#A32D2D' }}>
+                            {l.tipo === 'entrada' ? 'Entrada' : 'Saída'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 12, color: '#64748b' }}>{l.met}</span>
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: l.tipo === 'entrada' ? '#27500A' : '#791F1F' }}>
+                            {l.tipo === 'entrada' ? '+' : '-'} {fmtBRL(l.valor)}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button onClick={() => openEditMov(l)} title="Editar" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#94a3b8', borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                              onMouseEnter={e => e.currentTarget.style.color='#137789'} onMouseLeave={e => e.currentTarget.style.color='#94a3b8'}>
+                              <Pencil size={13} />
+                            </button>
+                            <button onClick={() => deleteLancs(new Set([l.id]))} title="Excluir" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#94a3b8', borderRadius: 6, display: 'flex', alignItems: 'center' }}
+                              onMouseEnter={e => e.currentTarget.style.color='#dc2626'} onMouseLeave={e => e.currentTarget.style.color='#94a3b8'}>
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

@@ -200,6 +200,8 @@ const App = () => {
   const [contasReceber, setContasReceber] = useState([]);
   const [dividas, setDividas] = useState([]);
   const [fluxoFiltro, setFluxoFiltro] = useState('mensal');
+  const [fluxoDataInicio, setFluxoDataInicio] = useState('');
+  const [fluxoDataFim, setFluxoDataFim] = useState('');
   const [savingItem, setSavingItem] = useState(false);
   // Modal forms (null = closed, {} = new, {id:...} = editing)
   const [modalBanco, setModalBanco] = useState(null);
@@ -290,15 +292,18 @@ const App = () => {
     }catch(e){console.error('fetchFinanceiro',e);}
   };
 
+  const cleanPayload=(obj)=>Object.fromEntries(Object.entries(obj).map(([k,v])=>[k,v===''?null:v]));
+
   const saveItem=async(table,payload,setModal,resetList)=>{
     setSavingItem(true);
+    const clean=cleanPayload(payload);
     try{
-      if(payload.id){
-        const{id,...rest}=payload;
+      if(clean.id){
+        const{id,...rest}=clean;
         const{error}=await supabase.from(table).update(rest).eq('id',id);
         if(error)throw error;
       }else{
-        const{error}=await supabase.from(table).insert(payload);
+        const{error}=await supabase.from(table).insert(clean);
         if(error)throw error;
       }
       await resetList();
@@ -380,20 +385,52 @@ const App = () => {
   const handleSaveBancoFromBancosContas = async (payload) => {
     setSavingItem(true);
     try {
-      const { error } = await supabase.from('bancos').insert({ ...payload, user_id: user.id });
-      if (error) throw error;
+      if (payload.id) {
+        const { id, ...rest } = payload;
+        const { error } = await supabase.from('bancos').update(rest).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('bancos').insert({ ...payload, user_id: user.id });
+        if (error) throw error;
+      }
       await fetchFinanceiro(user.id);
     } catch (e) { console.error(e); alert(`Erro ao salvar banco: ${e.message}`); }
+    setSavingItem(false);
+  };
+
+  const handleDeleteBanco = async (id) => {
+    setSavingItem(true);
+    try {
+      const { error } = await supabase.from('bancos').delete().eq('id', id);
+      if (error) throw error;
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); alert(`Erro ao excluir banco: ${e.message}`); }
     setSavingItem(false);
   };
 
   const handleSaveLancamentoEspecie = async (payload) => {
     setSavingItem(true);
     try {
-      const { error } = await supabase.from('lancamentos').insert({ ...payload, user_id: user.id });
-      if (error) throw error;
+      if (payload.id) {
+        const { id, ...rest } = payload;
+        const { error } = await supabase.from('lancamentos').update(rest).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('lancamentos').insert({ ...payload, user_id: user.id });
+        if (error) throw error;
+      }
       await fetchFinanceiro(user.id);
     } catch (e) { console.error(e); alert(`Erro ao salvar movimentação: ${e.message}`); }
+    setSavingItem(false);
+  };
+
+  const handleDeleteLancamentos = async (ids) => {
+    setSavingItem(true);
+    try {
+      const { error } = await supabase.from('lancamentos').delete().in('id', ids);
+      if (error) throw error;
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); alert(`Erro ao excluir lançamento: ${e.message}`); }
     setSavingItem(false);
   };
 
@@ -411,12 +448,56 @@ const App = () => {
     setSavingItem(false);
   };
 
-  const handleReceberCR = async (id, meioPagamento) => {
+  const handleReceberCR = async (id, meioPagamento, dataPagamento, bancoId, cat) => {
     setSavingItem(true);
     try {
-      await supabase.from('contas_receber').update({ status: 'recebido', meio_pagamento: meioPagamento }).eq('id', id);
+      const dp = dataPagamento || new Date().toISOString().slice(0,10);
+      const { data: cr } = await supabase.from('contas_receber').select('descricao,valor').eq('id', id).single();
+      await supabase.from('contas_receber').update({
+        status: 'recebido',
+        meio_pagamento: meioPagamento,
+        data_pagamento: dp,
+      }).eq('id', id);
+      if (cr) {
+        await supabase.from('lancamentos').insert({
+          descricao: cr.descricao,
+          valor: Number(cr.valor),
+          data: dp,
+          categoria: cat || 'Receitas',
+          tipo: 'receita',
+          meio_pagamento: meioPagamento,
+          banco_id: bancoId || null,
+          user_id: user.id,
+        });
+      }
       await fetchFinanceiro(user.id);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); alert(`Erro ao registrar recebimento: ${e.message}`); }
+    setSavingItem(false);
+  };
+
+  const handlePagamentoParcial = async ({ id, desc, valorPago, novaData, dataRecebimento, meio, bancoId, cat, valorTotal }) => {
+    setSavingItem(true);
+    try {
+      const dp = dataRecebimento || new Date().toISOString().slice(0,10);
+      const resto = Number(valorTotal) - Number(valorPago);
+      await supabase.from('contas_receber').update({
+        valor: resto > 0 ? resto : 0,
+        vencimento: novaData,
+        status: resto > 0 ? 'parcial' : 'recebido',
+        data_pagamento: resto > 0 ? null : dp,
+      }).eq('id', id);
+      await supabase.from('lancamentos').insert({
+        descricao: `${desc} (parcial)`,
+        valor: Number(valorPago),
+        data: dp,
+        categoria: cat || 'Receitas',
+        tipo: 'receita',
+        meio_pagamento: meio,
+        banco_id: bancoId || null,
+        user_id: user.id,
+      });
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); alert(`Erro ao registrar pagamento parcial: ${e.message}`); }
     setSavingItem(false);
   };
 
@@ -1318,6 +1399,11 @@ const App = () => {
             if(fluxoFiltro==='semanal'){const s=new Date(now);s.setDate(now.getDate()-7);return d>=s;}
             if(fluxoFiltro==='mensal')return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
             if(fluxoFiltro==='anual')return d.getFullYear()===now.getFullYear();
+            if(fluxoFiltro==='periodo'){
+              if(fluxoDataInicio&&l.data<fluxoDataInicio)return false;
+              if(fluxoDataFim&&l.data>fluxoDataFim)return false;
+              return true;
+            }
             return true;
           });
           const totalEnt=filteredLanc.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
@@ -1326,7 +1412,10 @@ const App = () => {
           const saldoTotal=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
           const saldoInic=saldoTotal-saldoPeriodo;
           const daysMap={diario:1,semanal:7,mensal:30,anual:365};
-          const dias=daysMap[fluxoFiltro]||30;
+          const periodoDias=fluxoFiltro==='periodo'&&fluxoDataInicio&&fluxoDataFim
+            ?Math.max(1,Math.round((new Date(fluxoDataFim)-new Date(fluxoDataInicio))/(1000*60*60*24)))
+            :30;
+          const dias=daysMap[fluxoFiltro]||periodoDias;
           const burnRate=totalSai>0?totalSai/dias:0;
           const runway=burnRate>0?Math.floor(saldoTotal/burnRate):0;
           // Alert: contasPagar due in next 7 days
@@ -1380,10 +1469,21 @@ const App = () => {
                   <p className="text-xs text-slate-500 font-medium">Visão financeira</p>
                   <h1 className="text-[22px] font-medium text-[#05121b] mt-0.5">Fluxo de Caixa</h1>
                 </div>
-                <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1">
-                  {[{id:'diario',l:'Diário'},{id:'semanal',l:'Semanal'},{id:'mensal',l:'Mensal'},{id:'anual',l:'Anual'}].map(f=>(
-                    <button key={f.id} onClick={()=>setFluxoFiltro(f.id)} className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${fluxoFiltro===f.id?'bg-[#05121b] text-white shadow-sm':'text-slate-500 hover:text-[#05121b]'}`}>{f.l}</button>
-                  ))}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1">
+                    {[{id:'diario',l:'Diário'},{id:'semanal',l:'Semanal'},{id:'mensal',l:'Mensal'},{id:'anual',l:'Anual'},{id:'periodo',l:'Período'}].map(f=>(
+                      <button key={f.id} onClick={()=>setFluxoFiltro(f.id)} className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${fluxoFiltro===f.id?'bg-[#05121b] text-white shadow-sm':'text-slate-500 hover:text-[#05121b]'}`}>{f.l}</button>
+                    ))}
+                  </div>
+                  {fluxoFiltro==='periodo'&&(
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5">
+                      <input type="date" value={fluxoDataInicio} onChange={e=>setFluxoDataInicio(e.target.value)}
+                        className="text-xs text-[#05121b] border-none outline-none bg-transparent cursor-pointer" />
+                      <span className="text-slate-300 text-xs">—</span>
+                      <input type="date" value={fluxoDataFim} onChange={e=>setFluxoDataFim(e.target.value)}
+                        className="text-xs text-[#05121b] border-none outline-none bg-transparent cursor-pointer" />
+                    </div>
+                  )}
                 </div>
               </div>
               {/* 2. METRIC CARDS */}
@@ -1950,11 +2050,23 @@ const App = () => {
             cpFiltro==='atrasado'?c.status==='atrasado':
             cpFiltro==='pago'?c.status==='pago':
             c.status==='agendado');
-          const handleConfirmPagarCP=async(id,meioPagamento)=>{
+          const handleConfirmPagarCP=async()=>{
+            const{id,desc,valor,meioPagamento,bancoId,dataPagamento,cat}=modalPagarCP;
             setSavingItem(true);
-            await supabase.from('contas_pagar').update({status:'pago',meio_pagamento:meioPagamento}).eq('id',id);
-            await fetchFinanceiro(user.id);
-            setModalPagarCP(null);
+            try{
+              const dp=dataPagamento||today;
+              await supabase.from('contas_pagar').update({status:'pago',meio_pagamento:meioPagamento,data_pagamento:dp}).eq('id',id);
+              // Lança automaticamente como despesa no fluxo de caixa
+              await supabase.from('lancamentos').insert({
+                descricao:desc,valor:Number(valor),data:dp,
+                categoria:cat||'Outros',tipo:'despesa',
+                meio_pagamento:meioPagamento,
+                banco_id:bancoId||null,
+                user_id:user.id,
+              });
+              await fetchFinanceiro(user.id);
+              setModalPagarCP(null);
+            }catch(e){console.error(e);alert(`Erro ao registrar pagamento: ${e.message}`);}
             setSavingItem(false);
           };
           const handleBulkDeleteCP=async()=>{
@@ -2009,7 +2121,7 @@ const App = () => {
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                   <span style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 12px',fontSize:12,color:'#64748b'}}>{new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</span>
                   <button style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer'}}>Exportar</button>
-                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:'',categoria:'',tipo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
+                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
                 </div>
               </div>
               {/* 2. METRIC CARDS */}
@@ -2180,7 +2292,7 @@ const App = () => {
                             <td style={{padding:'10px 16px'}}>
                               <div style={{display:'flex',gap:6,alignItems:'center'}}>
                                 <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:c.valor,vencimento:c.venc,categoria:c.cat,tipo:c.tipo,status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
-                                {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,meioPagamento:''})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'#EAF3DE',color:'#3B6D11',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
+                                {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,cat:c.cat,meioPagamento:'',bancoId:'',dataPagamento:today})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'#EAF3DE',color:'#3B6D11',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
                               </div>
                             </td>
                           </tr>
@@ -2207,6 +2319,7 @@ const App = () => {
             onEditar={cr=>setModalCR({...cr})}
             onReceber={handleReceberCR}
             onExcluir={handleExcluirCR}
+            onPagamentoParcial={handlePagamentoParcial}
             savingItem={savingItem}
           />
         )}
@@ -2326,7 +2439,9 @@ const App = () => {
               lancamentos={lancamentos}
               userId={user?.id}
               onSaveBanco={handleSaveBancoFromBancosContas}
+              onDeleteBanco={handleDeleteBanco}
               onSaveLancamento={handleSaveLancamentoEspecie}
+              onDeleteLancamentos={handleDeleteLancamentos}
               savingItem={savingItem}
             />
           </div>
@@ -2437,7 +2552,8 @@ const App = () => {
           const handleSaveCP=async()=>{
             setSavingItem(true);
             const valorNum=parseFloat((modalCP.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
-            const {parcelas:_p,intervalo_dias:_i,...baseCP}={...modalCP,valor:valorNum,user_id:user.id};
+            const {parcelas:_p,intervalo_dias:_i,...baseRaw}={...modalCP,valor:valorNum,user_id:user.id};
+            const baseCP=cleanPayload(baseRaw);
             try{
               if(isParcelado&&modalCP.vencimento){
                 const interval=parseInt(modalCP.intervalo_dias)||30;
@@ -2447,14 +2563,15 @@ const App = () => {
                   d.setDate(d.getDate()+i*interval);
                   inserts.push({...baseCP,descricao:`${modalCP.descricao} (${i+1}/${qtdParc})`,valor:valorNum/qtdParc,vencimento:d.toISOString().split('T')[0],status:'pendente'});
                 }
-                await supabase.from('contas_pagar').insert(inserts);
+                const{error}=await supabase.from('contas_pagar').insert(inserts);
+                if(error)throw error;
               }else{
-                if(baseCP.id){const{id,...rest}=baseCP;await supabase.from('contas_pagar').update(rest).eq('id',id);}
-                else{await supabase.from('contas_pagar').insert(baseCP);}
+                if(baseCP.id){const{id,...rest}=baseCP;const{error}=await supabase.from('contas_pagar').update(rest).eq('id',id);if(error)throw error;}
+                else{const{error}=await supabase.from('contas_pagar').insert(baseCP);if(error)throw error;}
               }
               await fetchFinanceiro(user.id);
               setModalCP(null);
-            }catch(e){console.error(e);}
+            }catch(e){console.error(e);alert(`Erro ao salvar conta: ${e.message||'Tente novamente'}`);}
             setSavingItem(false);
           };
           return(
@@ -2517,16 +2634,32 @@ const App = () => {
               <div className="flex items-center justify-between mb-4"><h3 className="text-lg font-black text-[#05121b]">Confirmar pagamento</h3><button onClick={()=>setModalPagarCP(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={18}/></button></div>
               <p className="text-sm text-slate-500 mb-1">{modalPagarCP.desc}</p>
               <p className="text-xl font-black text-[#05121b] mb-5">{formatBRL(modalPagarCP.valor)}</p>
-              <div className="space-y-1.5 mb-5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de pagamento</label>
-                <select value={modalPagarCP.meioPagamento} onChange={e=>setModalPagarCP({...modalPagarCP,meioPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500">
-                  <option value="">Selecione...</option>
-                  {['PIX','Boleto Bancário','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Dinheiro','Cheque','Outros'].map(m=><option key={m}>{m}</option>)}
-                </select>
+              <div className="space-y-3 mb-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data do pagamento</label>
+                  <input type="date" value={modalPagarCP.dataPagamento||today} onChange={e=>setModalPagarCP({...modalPagarCP,dataPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"/>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de pagamento</label>
+                  <select value={modalPagarCP.meioPagamento} onChange={e=>setModalPagarCP({...modalPagarCP,meioPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500">
+                    <option value="">Selecione...</option>
+                    {['PIX','Boleto Bancário','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Dinheiro','Cheque','Outros'].map(m=><option key={m}>{m}</option>)}
+                  </select>
+                </div>
+                {modalPagarCP.meioPagamento&&modalPagarCP.meioPagamento!=='Dinheiro'&&(
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta bancária debitada</label>
+                    <select value={modalPagarCP.bancoId||''} onChange={e=>setModalPagarCP({...modalPagarCP,bancoId:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500">
+                      <option value="">— Nenhuma —</option>
+                      {bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}
+                    </select>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-400 bg-slate-50 rounded-lg p-2.5">✓ Será lançado automaticamente como despesa no fluxo de caixa.</p>
               </div>
               <div className="flex gap-3">
                 <button onClick={()=>setModalPagarCP(null)} className="flex-1 py-3 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalPagarCP.meioPagamento} onClick={()=>handleConfirmPagarCP(modalPagarCP.id,modalPagarCP.meioPagamento)} className="flex-1 py-3 rounded-xl font-black text-xs bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Marcar como pago</button>
+                <button disabled={savingItem||!modalPagarCP.meioPagamento} onClick={handleConfirmPagarCP} className="flex-1 py-3 rounded-xl font-black text-xs bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Marcar como pago</button>
               </div>
             </div>
           </div>
@@ -2538,17 +2671,49 @@ const App = () => {
             <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-7" onClick={e=>e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4"><h3 className="text-lg font-black text-[#05121b]">Confirmar recebimento</h3><button onClick={()=>setModalPagarCR(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={18}/></button></div>
               <p className="text-sm text-slate-500 mb-1">{modalPagarCR.desc}</p>
-              <p className="text-xl font-black text-[#05121b] mb-5">{formatBRL(modalPagarCR.valor)}</p>
-              <div className="space-y-1.5 mb-5">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de recebimento</label>
-                <select value={modalPagarCR.meioPagamento} onChange={e=>setModalPagarCR({...modalPagarCR,meioPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]">
-                  <option value="">Selecione...</option>
-                  {['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros'].map(m=><option key={m}>{m}</option>)}
-                </select>
+              <p className="text-xl font-black text-[#05121b] mb-4">{formatBRL(modalPagarCR.valor)}</p>
+              <div className="space-y-3 mb-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data do recebimento</label>
+                  <input type="date" value={modalPagarCR.dataRecebimento||today} onChange={e=>setModalPagarCR({...modalPagarCR,dataRecebimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"/>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de recebimento</label>
+                  <select value={modalPagarCR.meioPagamento} onChange={e=>setModalPagarCR({...modalPagarCR,meioPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]">
+                    <option value="">Selecione...</option>
+                    {['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros'].map(m=><option key={m}>{m}</option>)}
+                  </select>
+                </div>
+                {modalPagarCR.meioPagamento&&modalPagarCR.meioPagamento!=='Dinheiro'&&(
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta bancária creditada</label>
+                    <select value={modalPagarCR.bancoId||''} onChange={e=>setModalPagarCR({...modalPagarCR,bancoId:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]">
+                      <option value="">— Nenhuma —</option>
+                      {bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}
+                    </select>
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-400 bg-slate-50 rounded-lg p-2.5">✓ Será lançado automaticamente como receita no fluxo de caixa.</p>
               </div>
               <div className="flex gap-3">
                 <button onClick={()=>setModalPagarCR(null)} className="flex-1 py-3 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalPagarCR.meioPagamento} onClick={async()=>{setSavingItem(true);await supabase.from('contas_receber').update({status:'recebido',meio_pagamento:modalPagarCR.meioPagamento}).eq('id',modalPagarCR.id);await fetchFinanceiro(user.id);setModalPagarCR(null);setSavingItem(false);}} className="flex-1 py-3 rounded-xl font-black text-xs bg-[#137789] text-white hover:bg-[#0e5f6b] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Marcar como recebido</button>
+                <button disabled={savingItem||!modalPagarCR.meioPagamento} onClick={async()=>{
+                  setSavingItem(true);
+                  try{
+                    const dr=modalPagarCR.dataRecebimento||today;
+                    await supabase.from('contas_receber').update({status:'recebido',meio_pagamento:modalPagarCR.meioPagamento,data_pagamento:dr}).eq('id',modalPagarCR.id);
+                    await supabase.from('lancamentos').insert({
+                      descricao:modalPagarCR.desc,valor:Number(modalPagarCR.valor),
+                      data:dr,categoria:modalPagarCR.cat||'Outros',tipo:'receita',
+                      meio_pagamento:modalPagarCR.meioPagamento,
+                      banco_id:modalPagarCR.bancoId||null,
+                      user_id:user.id,
+                    });
+                    await fetchFinanceiro(user.id);
+                    setModalPagarCR(null);
+                  }catch(e){console.error(e);alert(`Erro: ${e.message}`);}
+                  setSavingItem(false);
+                }} className="flex-1 py-3 rounded-xl font-black text-xs bg-[#137789] text-white hover:bg-[#0e5f6b] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Marcar como recebido</button>
               </div>
             </div>
           </div>
