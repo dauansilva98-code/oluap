@@ -218,6 +218,9 @@ const App = () => {
   const [filtroDespesas, setFiltroDespesas] = useState('todos');
   const [fluxoTabFilter, setFluxoTabFilter] = useState('todos');
   const [cpFiltro, setCpFiltro] = useState('todos');
+  const [cpSelected, setCpSelected] = useState(new Set());
+  const [modalPagarCP, setModalPagarCP] = useState(null);
+  const [modalPagarCR, setModalPagarCR] = useState(null);
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -391,6 +394,38 @@ const App = () => {
       if (error) throw error;
       await fetchFinanceiro(user.id);
     } catch (e) { console.error(e); alert(`Erro ao salvar movimentação: ${e.message}`); }
+    setSavingItem(false);
+  };
+
+  const handleSalvarCR = async (payload) => {
+    setSavingItem(true);
+    try {
+      const { id, ...data } = payload;
+      if (id) {
+        await supabase.from('contas_receber').update({ ...data }).eq('id', id);
+      } else {
+        await supabase.from('contas_receber').insert({ ...data, user_id: user.id });
+      }
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); }
+    setSavingItem(false);
+  };
+
+  const handleReceberCR = async (id, meioPagamento) => {
+    setSavingItem(true);
+    try {
+      await supabase.from('contas_receber').update({ status: 'recebido', meio_pagamento: meioPagamento }).eq('id', id);
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); }
+    setSavingItem(false);
+  };
+
+  const handleExcluirCR = async (ids) => {
+    setSavingItem(true);
+    try {
+      await supabase.from('contas_receber').delete().in('id', ids);
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); }
     setSavingItem(false);
   };
 
@@ -1311,40 +1346,9 @@ const App = () => {
           const filtrados=tableRows.filter(tFiltFn[fluxoTabFilter]||tFiltFn.todos);
           const entFiltered=tableRows.filter(r=>r.tipo_flow==='entrada');
           const saiFiltered=tableRows.filter(r=>r.tipo_flow==='saida');
-          // Chart mock data (historical) with current month updated from real data
-          const mesLabel=(()=>{const m=now.toLocaleString('pt-BR',{month:'short'});return m.charAt(0).toUpperCase()+m.slice(1).replace('.','');})();
-          const evolucao=[
-            {name:'Dez',Entradas:58200,Saídas:51000,Resultado:7200},
-            {name:'Jan',Entradas:62400,Saídas:55200,Resultado:7200},
-            {name:'Fev',Entradas:67100,Saídas:58400,Resultado:8700},
-            {name:'Mar',Entradas:71800,Saídas:62100,Resultado:9700},
-            {name:'Abr',Entradas:75000,Saídas:57600,Resultado:17400},
-            {name:mesLabel,Entradas:totalEnt||84320,Saídas:totalSai||62480,Resultado:saldoPeriodo||21840},
-          ];
-          const saldoAcum=[
-            {name:'01/05',real:saldoInic||42800,proj:null},
-            {name:'05/05',real:31900,proj:null},
-            {name:'10/05',real:27000,proj:null},
-            {name:'15/05',real:26600,proj:26600},
-            {name:'18/05',real:null,proj:28720},
-            {name:'22/05',real:null,proj:25640},
-            {name:'28/05',real:null,proj:24110},
-            {name:'31/05',real:null,proj:saldoTotal||64640},
-          ];
-          const ORCAMENTO=75000;
-          const pctOrc=Math.min((totalSai||62480)/ORCAMENTO*100,100);
-          const badgeCls=pctOrc<75?'bg-emerald-50 text-emerald-700 border-emerald-200':pctOrc<100?'bg-amber-50 text-amber-700 border-amber-200':'bg-red-50 text-red-700 border-red-200';
-          const projecao=[
-            {mes:'Junho 2025',ent:88400,sai:64100,liq:24300},
-            {mes:'Julho 2025',ent:91200,sai:65800,liq:25400},
-            {mes:'Agosto 2025',ent:89600,sai:71200,liq:18400},
-            {mes:'Setembro 2025',ent:94000,sai:68500,liq:25500},
-          ];
-          const donutSets=[
-            {title:'Fluxo operacional',ent:71200,sai:48300,liq:22900,pos:true},
-            {title:'Fluxo de investimentos',ent:8200,sai:9800,liq:1600,pos:false},
-            {title:'Fluxo de financiamentos',ent:4920,sai:4380,liq:540,pos:true},
-          ];
+          // Evolução real dos últimos 6 meses
+          const evolucao=(()=>{const result=[];for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const mes=d.toISOString().slice(0,7);const label=d.toLocaleDateString('pt-BR',{month:'short'});const ent=lancamentos.filter(l=>l.data?.startsWith(mes)&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);const sai=lancamentos.filter(l=>l.data?.startsWith(mes)&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);result.push({name:label.charAt(0).toUpperCase()+label.slice(1).replace('.',''),Entradas:ent,Saídas:sai,Resultado:ent-sai});}return result;})();
+          const flowDonut=[{name:'Entradas',value:totalEnt,color:'#1D9E75'},{name:'Saídas',value:totalSai,color:'#D85A30'}];
           const statusStyle={
             realizado:{cls:'bg-[#EAF3DE] text-[#3B6D11] border-[#9FE1CB]',lbl:'Realizado'},
             previsto:{cls:'bg-[#E6F1FB] text-[#185FA5] border-[#B5D4F4]',lbl:'Previsto'},
@@ -1391,18 +1395,15 @@ const App = () => {
                 </div>
                 <div className="rounded-2xl p-4 border" style={{background:'#E1F5EE',borderColor:'#9FE1CB'}}>
                   <p className="text-[11px] font-medium mb-1.5" style={{color:'#085041'}}>Total entradas</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:'#085041'}}>{formatBRL(totalEnt||84320)}</p>
-                  <p className="text-[11px] mt-1 font-medium" style={{color:'#085041'}}>↑ 12,4% vs anterior</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'#085041'}}>{formatBRL(totalEnt)}</p>
                 </div>
                 <div className="rounded-2xl p-4 border" style={{background:'#FCEBEB',borderColor:'#F7C1C1'}}>
                   <p className="text-[11px] font-medium mb-1.5" style={{color:'#791F1F'}}>Total saídas</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:'#791F1F'}}>{formatBRL(totalSai||62480)}</p>
-                  <p className="text-[11px] mt-1 font-medium" style={{color:'#791F1F'}}>↑ 8,3% vs anterior</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'#791F1F'}}>{formatBRL(totalSai)}</p>
                 </div>
                 <div className="rounded-2xl p-4 border" style={{background:'#E6F1FB',borderColor:'#B5D4F4'}}>
                   <p className="text-[11px] font-medium mb-1.5" style={{color:'#0C447C'}}>Saldo período</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:'#0C447C'}}>{formatBRL(saldoPeriodo||21840)}</p>
-                  <p className="text-[11px] mt-1 font-medium" style={{color:'#0C447C'}}>↑ 24,1%</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'#0C447C'}}>{formatBRL(saldoPeriodo)}</p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Saldo final</p>
@@ -1411,12 +1412,12 @@ const App = () => {
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Burn rate</p>
-                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(burnRate||2083)}</p>
+                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(burnRate)}</p>
                   <p className="text-[11px] text-slate-400 mt-1">por dia</p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Runway</p>
-                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{runway||31} dias</p>
+                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{runway} dias</p>
                   <p className="text-[11px] text-slate-400 mt-1">com saldo atual</p>
                 </div>
               </div>
@@ -1453,83 +1454,27 @@ const App = () => {
                   </div>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-5">
-                  <h3 className="text-sm font-medium text-[#05121b] mb-3">Saldo acumulado</h3>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <LineChart data={saldoAcum} margin={{top:4,right:4,bottom:0,left:-16}}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" vertical={false}/>
-                      <XAxis dataKey="name" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
-                      <YAxis tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={46}/>
-                      <RTooltip content={<Tip/>}/>
-                      <Line dataKey="real" name="Saldo real" stroke="#378ADD" type="monotone" dot={{r:3,fill:'#378ADD'}} strokeWidth={2} connectNulls={false}/>
-                      <Line dataKey="proj" name="Projeção" stroke="#BA7517" type="monotone" dot={{r:3,fill:'#BA7517'}} strokeWidth={1.5} strokeDasharray="4 3" connectNulls={false}/>
-                    </LineChart>
-                  </ResponsiveContainer>
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:'#378ADD'}}/>Saldo real</span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background:'#BA7517'}}/>Projeção</span>
-                  </div>
-                </div>
-              </div>
-              {/* 5. DONUTS */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                {donutSets.map((d,i)=>{
-                  const dData=[{name:'Entradas',value:d.ent,color:'#1D9E75'},{name:'Saídas',value:d.sai,color:'#D85A30'}];
-                  return(
-                    <div key={i} className="bg-white border border-slate-100 rounded-2xl p-5">
-                      <h3 className="text-xs font-medium text-[#05121b] mb-2">{d.title}</h3>
-                      <ResponsiveContainer width="100%" height={120}>
+                  <h3 className="text-sm font-medium text-[#05121b] mb-3">Distribuição do período</h3>
+                  {totalEnt>0||totalSai>0?(
+                    <>
+                      <ResponsiveContainer width="100%" height={180}>
                         <PieChart>
-                          <Pie data={dData} dataKey="value" cx="50%" cy="50%" innerRadius="58%" outerRadius="80%" strokeWidth={0} paddingAngle={1}>
-                            {dData.map((e,j)=><Cell key={j} fill={e.color}/>)}
+                          <Pie data={flowDonut} dataKey="value" cx="50%" cy="50%" innerRadius="58%" outerRadius="80%" strokeWidth={0} paddingAngle={2}>
+                            {flowDonut.map((e,j)=><Cell key={j} fill={e.color}/>)}
                           </Pie>
+                          <RTooltip content={<Tip/>}/>
                         </PieChart>
                       </ResponsiveContainer>
-                      <div className="mt-1 space-y-1 border-t border-slate-100 pt-2">
-                        <div className="flex justify-between text-[11px]"><span className="text-slate-400">Entradas</span><span className="font-medium" style={{color:'#085041'}}>{formatBRL(d.ent)}</span></div>
-                        <div className="flex justify-between text-[11px]"><span className="text-slate-400">Saídas</span><span className="font-medium" style={{color:'#791F1F'}}>{formatBRL(d.sai)}</span></div>
-                        <div className="flex justify-between text-[11px] border-t border-slate-100 pt-1"><span className="text-slate-400">Líquido</span><span className="font-medium" style={{color:d.pos?'#3B6D11':'#A32D2D'}}>{d.pos?'+ ':'- '}{formatBRL(d.liq)}</span></div>
+                      <div className="flex items-center gap-4 mt-2 flex-wrap">
+                        {flowDonut.map(d=><span key={d.name} className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:d.color}}/>{d.name}: {formatBRL(d.value)}</span>)}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* 6. BUDGET BAR */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <h3 className="text-sm font-medium text-[#05121b]">Orçamento mensal</h3>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-[#05121b]">{formatBRL(totalSai||62480)}</span>
-                    <span className="text-xs text-slate-400">de {formatBRL(ORCAMENTO)}</span>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${badgeCls}`}>{pctOrc.toFixed(1)}% usado</span>
-                  </div>
-                </div>
-                <div className="h-2 bg-slate-100 rounded-full mb-3 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-700" style={{width:`${pctOrc}%`,background:'#1D9E75'}}/>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-[11px] text-slate-500">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{background:'#378ADD'}}/>Fixas — {formatBRL(38200)}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{background:'#BA7517'}}/>Variáveis — {formatBRL(24280)}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block bg-slate-300"/>Disponível — {formatBRL(Math.max(ORCAMENTO-(totalSai||62480),0))}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{background:'#D85A30'}}/>Limite — {formatBRL(ORCAMENTO)}</span>
+                    </>
+                  ):(
+                    <div className="h-[180px] flex items-center justify-center"><p className="text-slate-300 text-xs font-bold uppercase tracking-widest">Sem dados no período</p></div>
+                  )}
                 </div>
               </div>
-              {/* 7. PROJECTION */}
-              <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-slate-100"><h3 className="text-sm font-medium text-[#05121b]">Projeção — próximos 4 meses</h3></div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-slate-100">
-                  {projecao.map((p,i)=>(
-                    <div key={i} className={`p-4${i>=2?' border-t border-slate-100 sm:border-t-0':''}`}>
-                      <p className="text-[11px] text-slate-400 mb-2">{p.mes}</p>
-                      <p className="text-[13px] font-medium" style={{color:'#085041'}}>{formatBRL(p.ent)}</p>
-                      <p className="text-[11px] mt-0.5" style={{color:'#791F1F'}}>{formatBRL(p.sai)}</p>
-                      <div className="border-t border-slate-100 mt-2 pt-2">
-                        <p className="text-[12px] font-medium" style={{color:p.liq>0?'#3B6D11':'#A32D2D'}}>{p.liq>0?'+ ':'- '}{formatBRL(Math.abs(p.liq))}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              {/* 8. TABLE */}
+              {/* 5. TABLE */}
               <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1819,10 +1764,6 @@ const App = () => {
           const aPagarCount=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento?.startsWith(periodoKey)).length;
           // Delta: expense rising = bad (red), falling = good (green)
           const deltaStr=(curr,prev)=>{if(prev===0)return null;const p=((curr-prev)/prev*100);return{txt:`${p>=0?'↑':'↓'} ${Math.abs(p).toFixed(1)}% vs anterior`,pos:p<0};};
-          // Budget
-          const ORCAMENTO=75000;
-          const pctUsado=(totalMes/ORCAMENTO)*100;
-          const budgeBadgeCls=pctUsado>=100?'bg-red-50 text-red-600 border-red-200':pctUsado>=75?'bg-amber-50 text-amber-700 border-amber-200':'bg-emerald-50 text-emerald-700 border-emerald-200';
           // Donut
           const catMap={};
           despesasMes.forEach(l=>{const c=l.categoria||'Outros';catMap[c]=(catMap[c]||0)+Number(l.valor);});
@@ -1881,27 +1822,6 @@ const App = () => {
                     {m.delta&&<p className="text-xs font-semibold mt-1.5" style={{color:m.delta.pos===null?'#94a3b8':m.delta.pos?'#34d399':'#f87171'}}>{m.delta.txt}</p>}
                   </div>
                 ))}
-              </div>
-              {/* Budget Bar */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <h3 className="text-sm font-semibold text-[#05121b]">Orçamento mensal</h3>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-[#05121b]">{formatBRL(totalMes)}</span>
-                    <span className="text-xs text-slate-400">de {formatBRL(ORCAMENTO)}</span>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${budgeBadgeCls}`}>{pctUsado.toFixed(1)}% usado</span>
-                  </div>
-                </div>
-                <div className="relative h-2.5 bg-slate-100 rounded-full mb-3">
-                  <div className="h-full rounded-full transition-all duration-500" style={{width:`${Math.min(pctUsado,100)}%`,background:'linear-gradient(90deg,#137789,#34d399)'}}/>
-                  <div className="absolute top-1/2 right-0 -translate-y-1/2 w-0.5 h-5 bg-[#f87171] rounded-full"/>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#137789] flex-shrink-0"/>Fixas — {formatBRL(fixas)}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"/>Variáveis — {formatBRL(variaveis)}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300 flex-shrink-0"/>Disponível — {formatBRL(Math.max(ORCAMENTO-totalMes,0))}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#f87171] flex-shrink-0"/>Limite — {formatBRL(ORCAMENTO)}</span>
-                </div>
               </div>
               {/* Charts */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))',gap:'16px'}}>
@@ -2030,9 +1950,23 @@ const App = () => {
             cpFiltro==='atrasado'?c.status==='atrasado':
             cpFiltro==='pago'?c.status==='pago':
             c.status==='agendado');
-          const handlePagar=id=>{
-            supabase.from('contas_pagar').update({status:'pago'}).eq('id',id).then(()=>fetchFinanceiro(user.id));
+          const handleConfirmPagarCP=async(id,meioPagamento)=>{
+            setSavingItem(true);
+            await supabase.from('contas_pagar').update({status:'pago',meio_pagamento:meioPagamento}).eq('id',id);
+            await fetchFinanceiro(user.id);
+            setModalPagarCP(null);
+            setSavingItem(false);
           };
+          const handleBulkDeleteCP=async()=>{
+            if(cpSelected.size===0)return;
+            if(!confirm(`Excluir ${cpSelected.size} conta(s)? Essa ação não pode ser desfeita.`))return;
+            setSavingItem(true);
+            await supabase.from('contas_pagar').delete().in('id',Array.from(cpSelected));
+            await fetchFinanceiro(user.id);
+            setCpSelected(new Set());
+            setSavingItem(false);
+          };
+          const toggleCpSelect=id=>setCpSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
           const CAT_COLORS={'Folha':'#378ADD','Fornecedores':'#7F77DD','Impostos':'#D85A30','Infraestrutura':'#BA7517','Marketing':'#1D9E75','Utilities':'#137789','Financeiro':'#E8734A','Outros':'#888780'};
           const catMap=cpData.reduce((acc,c)=>{const cat=c.cat||'Outros';acc[cat]=(acc[cat]||0)+c.valor;return acc},{});
           const donutData=Object.entries(catMap).map(([name,value])=>({name,value,color:CAT_COLORS[name]||'#888780'}));
@@ -2205,12 +2139,18 @@ const App = () => {
                       ))}
                     </div>
                   </div>
+                  {cpSelected.size>0&&(
+                    <button onClick={handleBulkDeleteCP} style={{padding:'4px 12px',borderRadius:8,fontSize:11,background:'#FCEBEB',color:'#A32D2D',border:'1px solid #F7C1C1',cursor:'pointer',fontWeight:600}}>
+                      Excluir {cpSelected.size} selecionada(s)
+                    </button>
+                  )}
                 </div>
                 <div style={{overflowX:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
                     <thead>
                       <tr style={{borderBottom:'1px solid #f1f5f9'}}>
-                        {[{h:'Fornecedor / descrição',w:'26%'},{h:'Categoria',w:'13%'},{h:'Centro de custo',w:'12%'},{h:'Vencimento',w:'10%'},{h:'Tipo',w:'10%'},{h:'Status',w:'11%'},{h:'Valor',w:'10%'},{h:'Ação',w:'8%'}].map(col=>(
+                        <th style={{padding:'10px 12px',width:'4%'}}></th>
+                        {[{h:'Fornecedor / descrição',w:'24%'},{h:'Categoria',w:'13%'},{h:'Vencimento',w:'10%'},{h:'Tipo',w:'10%'},{h:'Status',w:'11%'},{h:'Valor',w:'10%'},{h:'Ações',w:'18%'}].map(col=>(
                           <th key={col.h} style={{padding:'10px 16px',fontSize:10,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:col.h==='Valor'?'right':'left',width:col.w}}>{col.h}</th>
                         ))}
                       </tr>
@@ -2223,19 +2163,25 @@ const App = () => {
                         const isPago=c.status==='pago';
                         const valColor=isPago?'#27500A':isAtrasado?'#791F1F':'#05121b';
                         const canPay=c.status==='aberto'||c.status==='atrasado';
+                        const isSelected=cpSelected.has(c.id);
                         return(
-                          <tr key={c.id} style={{borderBottom:'1px solid #f8fafc'}}
-                            onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
-                            onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                          <tr key={c.id} style={{borderBottom:'1px solid #f8fafc',background:isSelected?'#f0f9ff':undefined}}
+                            onMouseEnter={e=>{if(!isSelected)e.currentTarget.style.background='#f8fafc';}}
+                            onMouseLeave={e=>{if(!isSelected)e.currentTarget.style.background='transparent';}}>
+                            <td style={{padding:'10px 12px',textAlign:'center'}}>
+                              <input type="checkbox" checked={isSelected} onChange={()=>toggleCpSelect(c.id)} style={{cursor:'pointer',accentColor:'#137789'}}/>
+                            </td>
                             <td style={{padding:'10px 16px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,fontWeight:500,color:'#05121b'}}>{c.desc}</td>
                             <td style={{padding:'10px 16px',fontSize:12,color:'#64748b'}}>{c.cat}</td>
-                            <td style={{padding:'10px 16px',fontSize:12,color:'#64748b'}}>{c.cc}</td>
                             <td style={{padding:'10px 16px',fontSize:12,fontWeight:isAtrasado?700:400,color:isAtrasado?'#D85A30':'#64748b',whiteSpace:'nowrap'}}>{c.venc.substring(5).replace('-','/')}</td>
                             <td style={{padding:'10px 16px'}}><span style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:500,background:tp.bg,color:tp.txt}}>{tp.lbl}</span></td>
                             <td style={{padding:'10px 16px'}}><span style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:500,background:sb.bg,color:sb.txt}}>{sb.lbl}</span></td>
                             <td style={{padding:'10px 16px',textAlign:'right',fontSize:13,fontWeight:500,color:valColor,whiteSpace:'nowrap'}}>{formatBRL(c.valor)}</td>
                             <td style={{padding:'10px 16px'}}>
-                              {canPay&&<button onClick={()=>handlePagar(c.id)} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'#EAF3DE',color:'#3B6D11',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
+                              <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                                <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:c.valor,vencimento:c.venc,categoria:c.cat,tipo:c.tipo,status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
+                                {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,meioPagamento:''})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'#EAF3DE',color:'#3B6D11',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
+                              </div>
                             </td>
                           </tr>
                         );
@@ -2253,7 +2199,17 @@ const App = () => {
 
         {/* ══════════════════════════════════════════════════════════════
             ── CONTAS A RECEBER ──────────────────────────────────────── */}
-        {view==='contas_receber'&&<ContasReceberView/>}
+        {view==='contas_receber'&&(
+          <ContasReceberView
+            contasReceber={contasReceber}
+            bancos={bancos}
+            onSalvar={handleSalvarCR}
+            onEditar={cr=>setModalCR({...cr})}
+            onReceber={handleReceberCR}
+            onExcluir={handleExcluirCR}
+            savingItem={savingItem}
+          />
+        )}
 
         {/* ══════════════════════════════════════════════════════════════
             ── INVESTIMENTOS ─────────────────────────────────────────── */}
@@ -2553,6 +2509,50 @@ const App = () => {
           </div>
           );
         })()}
+
+        {/* Modal Confirmar Pagamento CP */}
+        {modalPagarCP&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalPagarCP(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-7" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4"><h3 className="text-lg font-black text-[#05121b]">Confirmar pagamento</h3><button onClick={()=>setModalPagarCP(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={18}/></button></div>
+              <p className="text-sm text-slate-500 mb-1">{modalPagarCP.desc}</p>
+              <p className="text-xl font-black text-[#05121b] mb-5">{formatBRL(modalPagarCP.valor)}</p>
+              <div className="space-y-1.5 mb-5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de pagamento</label>
+                <select value={modalPagarCP.meioPagamento} onChange={e=>setModalPagarCP({...modalPagarCP,meioPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500">
+                  <option value="">Selecione...</option>
+                  {['PIX','Boleto Bancário','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Dinheiro','Cheque','Outros'].map(m=><option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={()=>setModalPagarCP(null)} className="flex-1 py-3 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalPagarCP.meioPagamento} onClick={()=>handleConfirmPagarCP(modalPagarCP.id,modalPagarCP.meioPagamento)} className="flex-1 py-3 rounded-xl font-black text-xs bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Marcar como pago</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Confirmar Recebimento CR */}
+        {modalPagarCR&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalPagarCR(null)}>
+            <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-7" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4"><h3 className="text-lg font-black text-[#05121b]">Confirmar recebimento</h3><button onClick={()=>setModalPagarCR(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={18}/></button></div>
+              <p className="text-sm text-slate-500 mb-1">{modalPagarCR.desc}</p>
+              <p className="text-xl font-black text-[#05121b] mb-5">{formatBRL(modalPagarCR.valor)}</p>
+              <div className="space-y-1.5 mb-5">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de recebimento</label>
+                <select value={modalPagarCR.meioPagamento} onChange={e=>setModalPagarCR({...modalPagarCR,meioPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]">
+                  <option value="">Selecione...</option>
+                  {['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros'].map(m=><option key={m}>{m}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={()=>setModalPagarCR(null)} className="flex-1 py-3 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem||!modalPagarCR.meioPagamento} onClick={async()=>{setSavingItem(true);await supabase.from('contas_receber').update({status:'recebido',meio_pagamento:modalPagarCR.meioPagamento}).eq('id',modalPagarCR.id);await fetchFinanceiro(user.id);setModalPagarCR(null);setSavingItem(false);}} className="flex-1 py-3 rounded-xl font-black text-xs bg-[#137789] text-white hover:bg-[#0e5f6b] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Marcar como recebido</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal Conta a Receber */}
         {modalCR&&(()=>{

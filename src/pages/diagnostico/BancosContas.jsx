@@ -238,7 +238,7 @@ export default function BancosContas({
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const salvarConta = async () => {
-    if (!formConta.nome.trim() || !formConta.agencia || !formConta.numero) return
+    if (!formConta.nome.trim()) return
     await onSaveBanco?.({
       nome:          formConta.nome,
       tipo:          formConta.tipo.replace(' PJ', '').replace('Conta ', ''),
