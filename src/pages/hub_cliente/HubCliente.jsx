@@ -73,13 +73,22 @@ const HubCliente = () => {
       } catch (e) { console.error(e) }
       window.location.href = prod.url
     } else {
-      // Pago (ex: Diagnóstico): redireciona para página de pagamento
-      window.location.href = `produto-${prod.id}.html`
+      // Pago: se tiver stripeUrl, redireciona para pagamento Stripe
+      // Temporariamente: libera acesso direto até Stripe estar configurado
+      if (prod.stripeUrl) {
+        window.location.href = prod.stripeUrl
+      } else {
+        try {
+          await supabase.from('profiles').update({ [`has_${prod.id}`]: true }).eq('id', user.id)
+          setAccess(prev => ({ ...prev, [prod.id]: true }))
+        } catch (e) { console.error(e) }
+        window.location.href = prod.url
+      }
     }
   }
 
   const productsInfo = [
-    { id: 'diagnostico', title: 'Diagnóstico Financeiro', desc: 'CFO Virtual: indicadores financeiros em tempo real, alertas proativos e simulação de cenários.', icon: Activity, color: 'text-[#ff7b00]', bgLight: 'bg-[#ff7b00]/10', bgBtn: 'bg-[#ff7b00] hover:bg-[#e66e00]', url: 'diagnostico.html', price: 'R$ 289,90/mês', benefits: ['Score de Saúde Financeira', 'Margem, Runway e Ponto de Equilíbrio', 'Simulador de Cenários + PDF'] },
+    { id: 'diagnostico', title: 'Diagnóstico Financeiro', desc: 'CFO Virtual: indicadores financeiros em tempo real, alertas proativos e simulação de cenários para empresas que querem crescer com clareza.', icon: Activity, color: 'text-[#ff7b00]', bgLight: 'bg-[#ff7b00]/10', bgBtn: 'bg-[#ff7b00] hover:bg-[#e66e00]', url: 'diagnostico.html', stripeUrl: '', price: 'R$ 149,90/mês', benefits: ['Score de Saúde Financeira em tempo real', 'Margem, Runway e Ponto de Equilíbrio', 'Simulador de Cenários financeiros', 'Alertas proativos de risco', 'Contas a Pagar e Receber integradas'] },
     { id: 'credito', title: 'Crédito Inteligente', desc: 'Antecipe recebíveis de cartão e duplicatas. Primeira operação sem cadastro até R$ 50 mil. Taxas a partir de 2%. Sem burocracia.', icon: CreditCard, color: 'text-emerald-500', bgLight: 'bg-emerald-500/10', bgBtn: 'bg-emerald-600 hover:bg-emerald-700', url: 'credito.html', landingUrl: 'produto-credito.html', isFree: true, price: 'Taxas a partir de 2% · Gratuito para você', benefits: ['Primeira operação sem cadastro até R$ 50 mil', 'Taxas a partir de 2%', 'Antecipe duplicatas de serviço ou de venda', 'Antecipe recebíveis de cartão'] },
     { id: 'consultoria', title: 'Consultoria Empresarial', desc: 'Sócio estratégico nos seus processos, comercial, financeiro e estratégias. Só ganhamos quando você ganha.', icon: Briefcase, color: 'text-blue-500', bgLight: 'bg-blue-500/10', bgBtn: 'bg-blue-600 hover:bg-blue-700', url: 'produto-consultoria.html', isFree: true, price: 'Valor personalizado · Sem custo inicial', benefits: ['Estratégia e Processos', 'Comercial e Financeiro', 'Contrato após alinhamento'] },
     { id: 'erp', title: 'ERP Financeiro', desc: 'Sistema integrado para gestão de caixa, notas fiscais, contas a pagar e receber.', icon: Database, color: 'text-slate-400', bgLight: 'bg-slate-700/30', bgBtn: 'bg-slate-700 hover:bg-slate-600', url: 'produto-erp.html', price: 'Em breve', benefits: ['Fluxo de Caixa', 'Contas a Pagar/Receber', 'Relatórios Automáticos'], emDesenvolvimento: true },
@@ -204,14 +213,14 @@ const HubCliente = () => {
                 ))}
               </div>
               <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex justify-between items-center mb-6">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Condição</span>
-                <span className={`text-sm font-black ${modalInfo.color}`}>{modalInfo.price}</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Investimento</span>
+                <span className={`text-lg font-black ${modalInfo.color}`}>{modalInfo.price}</span>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={() => setModalInfo(null)} className="flex-1 py-3.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors">Fechar</button>
-                <a href={modalInfo.landingUrl || modalInfo.url} className="flex-1 py-3.5 rounded-xl text-xs font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 border border-white/15 transition-colors">
-                  Ver página completa <ArrowRight size={13} />
-                </a>
+                <button onClick={() => { setModalInfo(null); handleContratar(modalInfo) }} className={`flex-1 py-3.5 rounded-xl text-xs font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${modalInfo.bgBtn}`}>
+                  {modalInfo.isFree ? 'Simular' : 'Contratar'} <ArrowRight size={13} />
+                </button>
               </div>
             </div>
           </div>

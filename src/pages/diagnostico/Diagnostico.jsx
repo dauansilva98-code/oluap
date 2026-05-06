@@ -1418,6 +1418,15 @@ const App = () => {
           const dias=daysMap[fluxoFiltro]||periodoDias;
           const burnRate=totalSai>0?totalSai/dias:0;
           const runway=burnRate>0?Math.floor(saldoTotal/burnRate):0;
+          // Ponto de Equilíbrio
+          const mesAtualPE=new Date().toISOString().slice(0,7);
+          const despesasFixasMes=lancamentos.filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')==='fixa'&&l.data?.startsWith(mesAtualPE)).reduce((a,l)=>a+Number(l.valor),0);
+          const cpFixasMes=contasPagar.filter(cp=>(cp.tipo_custo||'variavel')==='fixa'&&cp.vencimento?.startsWith(mesAtualPE)).reduce((a,cp)=>a+Number(cp.valor),0);
+          const custoFixoMes=despesasFixasMes+cpFixasMes;
+          const receitaMes=lancamentos.filter(l=>l.tipo==='receita'&&l.data?.startsWith(mesAtualPE)).reduce((a,l)=>a+Number(l.valor),0);
+          const despVariavelMes=lancamentos.filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')==='variavel'&&l.data?.startsWith(mesAtualPE)).reduce((a,l)=>a+Number(l.valor),0);
+          const margemContrib=receitaMes>0?(receitaMes-despVariavelMes)/receitaMes:0;
+          const pontoEquilibrio=margemContrib>0?custoFixoMes/margemContrib:custoFixoMes;
           // Alert: contasPagar due in next 7 days
           const d7=new Date(now);d7.setDate(now.getDate()+7);
           const d7str=d7.toISOString().split('T')[0];
@@ -1520,6 +1529,18 @@ const App = () => {
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{runway} dias</p>
                   <p className="text-[11px] text-slate-400 mt-1">com saldo atual</p>
                 </div>
+                <div className="rounded-2xl p-4 border" style={{background:'#EEEDFE',borderColor:'#CECBF6'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:'#3C3489'}}>Custo Fixo/mês</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'#26215C'}}>{formatBRL(custoFixoMes)}</p>
+                  <p className="text-[11px] mt-1" style={{color:'#3C3489'}}>despesas fixas</p>
+                </div>
+                <div className={`rounded-2xl p-4 border ${pontoEquilibrio>receitaMes&&receitaMes>0?'border-orange-200':'border-emerald-200'}`} style={{background:pontoEquilibrio>receitaMes&&receitaMes>0?'#FEF3C7':'#E1F5EE'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:pontoEquilibrio>receitaMes&&receitaMes>0?'#92400E':'#085041'}}>Ponto de Equilíbrio</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:pontoEquilibrio>receitaMes&&receitaMes>0?'#78350F':'#085041'}}>{formatBRL(pontoEquilibrio)}</p>
+                  <p className="text-[11px] mt-1" style={{color:pontoEquilibrio>receitaMes&&receitaMes>0?'#92400E':'#085041'}}>
+                    {custoFixoMes===0?'Classifique custos fixos':'faturamento mínimo/mês'}
+                  </p>
+                </div>
               </div>
               {/* 3. ALERT */}
               {alertas.length>0&&(
@@ -1587,7 +1608,7 @@ const App = () => {
                   </div>
                   <div className="flex gap-2">
                     <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'#EAF3DE',color:'#3B6D11',borderColor:'#9FE1CB'}}><Plus size={11}/>Receita</button>
-                    <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'#FCEBEB',color:'#A32D2D',borderColor:'#F7C1C1'}}><Plus size={11}/>Despesa</button>
+                    <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'#FCEBEB',color:'#A32D2D',borderColor:'#F7C1C1'}}><Plus size={11}/>Despesa</button>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -1908,7 +1929,7 @@ const App = () => {
                   <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="border border-slate-200 bg-white text-slate-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5">
                     <Upload size={14}/>Exportar
                   </button>
-                  <button onClick={()=>setModalDespesa({tipo:'despesa',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
+                  <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
                     <Plus size={14}/>Lançar despesa
                   </button>
                 </div>
@@ -2121,7 +2142,7 @@ const App = () => {
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                   <span style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 12px',fontSize:12,color:'#64748b'}}>{new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</span>
                   <button style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer'}}>Exportar</button>
-                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
+                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo_custo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
                 </div>
               </div>
               {/* 2. METRIC CARDS */}
@@ -2291,7 +2312,7 @@ const App = () => {
                             <td style={{padding:'10px 16px',textAlign:'right',fontSize:13,fontWeight:500,color:valColor,whiteSpace:'nowrap'}}>{formatBRL(c.valor)}</td>
                             <td style={{padding:'10px 16px'}}>
                               <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                                <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:c.valor,vencimento:c.venc,categoria:c.cat,tipo:c.tipo,status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
+                                <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:c.valor,vencimento:c.venc,categoria:c.cat,tipo_custo:c.tipo_custo||'variavel',status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
                                 {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,cat:c.cat,meioPagamento:'',bancoId:'',dataPagamento:today})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'#EAF3DE',color:'#3B6D11',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
                               </div>
                             </td>
@@ -2512,6 +2533,17 @@ const App = () => {
                 return(
                 <div className="space-y-4">
                   <InputField label="Descrição" value={modalDespesa.descricao} onChange={v=>setModalDespesa({...modalDespesa,descricao:v})}/>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo de custo</label>
+                    <div className="flex gap-2">
+                      {[{v:'fixa',l:'Custo Fixo'},{v:'variavel',l:'Custo Variável'}].map(({v,l})=>(
+                        <button key={v} type="button" onClick={()=>setModalDespesa({...modalDespesa,tipo_custo:v})}
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${(modalDespesa.tipo_custo||'variavel')===v?'bg-red-500 text-white border-red-500':'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <InputField label="Valor" value={modalDespesa.valor} onChange={v=>setModalDespesa({...modalDespesa,valor:v})} maskType="currency"/>
                     <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalDespesa.data} onChange={e=>setModalDespesa({...modalDespesa,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>
@@ -2552,7 +2584,8 @@ const App = () => {
           const handleSaveCP=async()=>{
             setSavingItem(true);
             const valorNum=parseFloat((modalCP.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
-            const {parcelas:_p,intervalo_dias:_i,...baseRaw}={...modalCP,valor:valorNum,user_id:user.id};
+            // strip tipo/tipo_custo: 'tipo' não existe na tabela; 'tipo_custo' aguarda migration SQL
+            const {parcelas:_p,intervalo_dias:_i,tipo:_tp,tipo_custo:_tc,...baseRaw}={...modalCP,valor:valorNum,user_id:user.id};
             const baseCP=cleanPayload(baseRaw);
             try{
               if(isParcelado&&modalCP.vencimento){
@@ -2610,6 +2643,17 @@ const App = () => {
                     )}
                   </div>
                 )}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo de custo</label>
+                  <div className="flex gap-2">
+                    {[{v:'fixa',l:'Custo Fixo'},{v:'variavel',l:'Custo Variável'}].map(({v,l})=>(
+                      <button key={v} type="button" onClick={()=>setModalCP({...modalCP,tipo_custo:v})}
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${modalCP.tipo_custo===v?'bg-[#05121b] text-white border-[#05121b]':'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalCP.categoria} onChange={e=>setModalCP({...modalCP,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCP.status} onChange={e=>setModalCP({...modalCP,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="atrasado">Atrasado</option></select></div>
