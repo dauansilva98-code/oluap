@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidade — OLUAP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.7;
+    }
+    .topbar {
+      background: #0b1117;
+      padding: 18px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .topbar-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar-logo {
+      display: flex; align-items: center; gap: 10px; text-decoration: none;
+    }
+    .logo-circle {
+      width: 32px; height: 32px; background: #ff7b00; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; color: #0b1117; font-size: 14px;
+    }
+    .logo-text { color: #fff; font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
+    .topbar-back { color: #94a3b8; font-size: 13px; font-weight: 500; text-decoration: none; transition: color 0.2s; }
+    .topbar-back:hover { color: #ff7b00; }
+
+    .hero {
+      background: linear-gradient(135deg, #0b1117 0%, #0f1923 100%);
+      padding: 64px 24px 56px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(19,119,137,0.15); border: 1px solid rgba(19,119,137,0.35);
+      color: #22d3ee; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      padding: 6px 14px; border-radius: 999px; margin-bottom: 20px;
+    }
+    .hero h1 { color: #fff; font-size: clamp(28px, 5vw, 40px); font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+    .hero p { color: #94a3b8; font-size: 15px; max-width: 560px; margin: 0 auto; }
+    .hero-meta { margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+    .hero-meta span { color: #64748b; font-size: 12px; font-weight: 500; }
+    .hero-meta strong { color: #94a3b8; }
+
+    .main-layout {
+      max-width: 860px; margin: 0 auto; padding: 48px 24px 80px;
+      display: grid; grid-template-columns: 220px 1fr; gap: 40px; align-items: start;
+    }
+    @media (max-width: 700px) { .main-layout { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+    .sidebar {
+      position: sticky; top: 80px;
+      background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px;
+    }
+    .sidebar-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 12px; }
+    .sidebar a { display: block; font-size: 13px; color: #475569; text-decoration: none; padding: 6px 10px; border-radius: 8px; margin-bottom: 2px; font-weight: 500; transition: all 0.15s; }
+    .sidebar a:hover { background: #f1f5f9; color: #137789; }
+
+    .content { min-width: 0; }
+    .section { margin-bottom: 40px; }
+    .section-num { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #137789; margin-bottom: 8px; }
+    .section h2 { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; }
+    .section p { color: #475569; font-size: 14.5px; margin-bottom: 12px; }
+    .section ul, .section ol { padding-left: 20px; margin-bottom: 12px; }
+    .section li { color: #475569; font-size: 14.5px; margin-bottom: 6px; }
+    .section strong { color: #1e293b; }
+    .highlight-box { background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; border-radius: 10px; padding: 14px 16px; margin: 16px 0; }
+    .highlight-box p { color: #92400e; margin: 0; font-size: 13.5px; }
+    .info-box { background: #f0fdfa; border: 1px solid #99f6e4; border-left: 4px solid #14b8a6; border-radius: 10px; padding: 14px 16px; margin: 16px 0; }
+    .info-box p { color: #134e4a; margin: 0; font-size: 13.5px; }
+    .rights-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+    .right-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; }
+    .right-card .icon { font-size: 20px; margin-bottom: 8px; }
+    .right-card strong { display: block; font-size: 13px; color: #0f172a; margin-bottom: 4px; }
+    .right-card p { font-size: 12px; color: #64748b; margin: 0; line-height: 1.5; }
+    .table-wrap { overflow-x: auto; margin: 16px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th { background: #f8fafc; color: #475569; font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; color: #475569; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+
+    .footer { background: #0b1117; padding: 32px 24px; text-align: center; border-top: 1px solid rgba(255,255,255,0.06); }
+    .footer p { color: #475569; font-size: 13px; }
+    .footer a { color: #22d3ee; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="index.html" class="topbar-logo">
+        <div class="logo-circle">O</div>
+        <span class="logo-text">OLUAP</span>
+      </a>
+      <a href="javascript:history.back()" class="topbar-back">← Voltar</a>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-badge">LGPD · Lei 13.709/2018</div>
+    <h1>Política de Privacidade</h1>
+    <p>Transparência total sobre como coletamos, usamos e protegemos seus dados pessoais e financeiros.</p>
+    <div class="hero-meta">
+      <span>Versão <strong>1.0</strong></span>
+      <span>Última atualização: <strong>Maio de 2025</strong></span>
+      <span>Vigência: <strong>Imediata</strong></span>
+    </div>
+  </div>
+
+  <div class="main-layout">
+
+    <aside class="sidebar">
+      <div class="sidebar-title">Índice</div>
+      <a href="#sec1">1. Controlador</a>
+      <a href="#sec2">2. Dados Coletados</a>
+      <a href="#sec3">3. Finalidade e Base Legal</a>
+      <a href="#sec4">4. Compartilhamento</a>
+      <a href="#sec5">5. Retenção</a>
+      <a href="#sec6">6. Segurança</a>
+      <a href="#sec7">7. Direitos do Titular</a>
+      <a href="#sec8">8. Cookies</a>
+      <a href="#sec9">9. Menores de Idade</a>
+      <a href="#sec10">10. Transferência Internacional</a>
+      <a href="#sec11">11. Alterações</a>
+      <a href="#sec12">12. Contato e DPO</a>
+    </aside>
+
+    <div class="content">
+
+      <div class="section" id="sec1">
+        <div class="section-num">Artigo 1</div>
+        <h2>Controlador dos Dados</h2>
+        <p>
+          O controlador responsável pelo tratamento dos seus dados pessoais é a <strong>OLUAP TECNOLOGIA LTDA</strong>, operadora da plataforma OLUAP, com sede no Brasil.
+        </p>
+        <p>
+          Esta Política de Privacidade descreve como a OLUAP coleta, utiliza, armazena e protege os dados pessoais dos usuários da plataforma, em conformidade com a <strong>Lei Geral de Proteção de Dados Pessoais — LGPD (Lei nº 13.709/2018)</strong>.
+        </p>
+        <div class="info-box">
+          <p><strong>✓ Compromisso OLUAP:</strong> Coletamos apenas os dados estritamente necessários para prestação dos nossos serviços. Nunca vendemos seus dados pessoais a terceiros para fins de marketing.</p>
+        </div>
+      </div>
+
+      <div class="section" id="sec2">
+        <div class="section-num">Artigo 2</div>
+        <h2>Dados Pessoais Coletados</h2>
+        <p>A OLUAP coleta as seguintes categorias de dados:</p>
+
+        <p><strong>2.1 Dados de Cadastro (fornecidos diretamente por você):</strong></p>
+        <ul>
+          <li>Nome completo do responsável;</li>
+          <li>Endereço de e-mail;</li>
+          <li>Número de telefone / WhatsApp;</li>
+          <li>CNPJ da empresa;</li>
+          <li>Senha (armazenada em formato criptografado, nunca em texto puro).</li>
+        </ul>
+
+        <p><strong>2.2 Dados Financeiros Inseridos pelo Usuário:</strong></p>
+        <ul>
+          <li>Receitas, despesas e lançamentos financeiros;</li>
+          <li>Dados bancários (nome do banco, agência, conta, saldo — nunca senhas bancárias);</li>
+          <li>Contas a pagar e a receber;</li>
+          <li>Fluxo de caixa e indicadores financeiros;</li>
+          <li>Dados de crédito e perfil empresarial (quando aplicável).</li>
+        </ul>
+
+        <p><strong>2.3 Dados de Uso da Plataforma (coletados automaticamente):</strong></p>
+        <ul>
+          <li>Endereço IP e informações de localização aproximada;</li>
+          <li>Tipo de navegador e dispositivo;</li>
+          <li>Páginas visitadas, tempo de sessão e ações dentro da plataforma;</li>
+          <li>Logs de acesso e atividade (conforme Marco Civil da Internet).</li>
+        </ul>
+
+        <div class="highlight-box">
+          <p><strong>⚠ Importante:</strong> A OLUAP <strong>não coleta</strong> senhas bancárias, números de cartão de crédito completos, dados biométricos ou qualquer informação classificada como dado pessoal sensível, conforme art. 5°, II da LGPD.</p>
+        </div>
+      </div>
+
+      <div class="section" id="sec3">
+        <div class="section-num">Artigo 3</div>
+        <h2>Finalidade do Tratamento e Base Legal</h2>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Finalidade</th>
+                <th>Base Legal (LGPD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Criação e gerenciamento da sua conta</td>
+                <td>Execução de contrato (art. 7°, V)</td>
+              </tr>
+              <tr>
+                <td>Prestação dos serviços contratados (Diagnóstico, ERP, Crédito, Consultoria)</td>
+                <td>Execução de contrato (art. 7°, V)</td>
+              </tr>
+              <tr>
+                <td>Cobrança e gestão financeira do plano</td>
+                <td>Execução de contrato (art. 7°, V)</td>
+              </tr>
+              <tr>
+                <td>Comunicações sobre serviços, atualizações e suporte</td>
+                <td>Legítimo interesse / Consentimento (art. 7°, IX / VI)</td>
+              </tr>
+              <tr>
+                <td>Envio de notificações, alertas e relatórios</td>
+                <td>Execução de contrato (art. 7°, V)</td>
+              </tr>
+              <tr>
+                <td>Análise e melhoria da plataforma (dados anonimizados)</td>
+                <td>Legítimo interesse (art. 7°, IX)</td>
+              </tr>
+              <tr>
+                <td>Cumprimento de obrigações legais e regulatórias</td>
+                <td>Cumprimento de obrigação legal (art. 7°, II)</td>
+              </tr>
+              <tr>
+                <td>Prevenção de fraudes e segurança</td>
+                <td>Legítimo interesse / Proteção ao crédito (art. 7°, IX / X)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section" id="sec4">
+        <div class="section-num">Artigo 4</div>
+        <h2>Compartilhamento de Dados</h2>
+        <p>A OLUAP pode compartilhar seus dados nas seguintes situações:</p>
+        <ul>
+          <li><strong>Provedores de infraestrutura:</strong> utilizamos a plataforma Supabase (banco de dados e autenticação) e outros provedores de nuvem que processam dados sob nosso controle e em conformidade com acordos de proteção de dados;</li>
+          <li><strong>Processadores de pagamento:</strong> para cobrança dos planos pagos, seus dados de pagamento são processados por gateways certificados PCI-DSS;</li>
+          <li><strong>Consultores parceiros:</strong> no módulo de Consultoria, dados podem ser compartilhados com especialistas parceiros, estritamente limitados ao escopo da consultoria contratada e sujeitos a acordo de confidencialidade;</li>
+          <li><strong>Autoridades e cumprimento legal:</strong> quando exigido por lei, ordem judicial ou autoridade competente;</li>
+          <li><strong>Fusão ou aquisição:</strong> em caso de reestruturação societária, com manutenção dos mesmos níveis de proteção.</li>
+        </ul>
+        <p>
+          <strong>A OLUAP não vende, aluga ou cede seus dados pessoais a terceiros para fins de marketing ou publicidade.</strong>
+        </p>
+      </div>
+
+      <div class="section" id="sec5">
+        <div class="section-num">Artigo 5</div>
+        <h2>Retenção dos Dados</h2>
+        <p>Seus dados são armazenados pelo tempo necessário para cumprir as finalidades descritas nesta Política:</p>
+        <ul>
+          <li><strong>Dados de cadastro e conta ativa:</strong> enquanto a conta estiver ativa;</li>
+          <li><strong>Dados financeiros inseridos:</strong> enquanto a conta estiver ativa, mais 5 (cinco) anos após o encerramento (prazo de prescrição civil);</li>
+          <li><strong>Logs de acesso:</strong> 6 (seis) meses, conforme exigência do Marco Civil da Internet (Lei nº 12.965/2014);</li>
+          <li><strong>Dados para cumprimento de obrigações fiscais:</strong> 5 (cinco) anos, conforme legislação tributária.</li>
+        </ul>
+        <p>Após os prazos aplicáveis, os dados serão eliminados de forma segura ou anonimizados para fins estatísticos.</p>
+      </div>
+
+      <div class="section" id="sec6">
+        <div class="section-num">Artigo 6</div>
+        <h2>Segurança dos Dados</h2>
+        <p>A OLUAP adota medidas técnicas e organizacionais para proteger seus dados, incluindo:</p>
+        <ul>
+          <li><strong>Criptografia:</strong> dados transmitidos via HTTPS (TLS 1.2+); senhas armazenadas com hash seguro (bcrypt);</li>
+          <li><strong>Controle de acesso:</strong> autenticação obrigatória para acesso a dados; princípio do menor privilégio para colaboradores internos;</li>
+          <li><strong>Infraestrutura segura:</strong> servidores gerenciados por provedores certificados (ISO 27001);</li>
+          <li><strong>Monitoramento:</strong> logs de acesso e monitoramento contínuo de atividades suspeitas;</li>
+          <li><strong>Backups:</strong> cópias de segurança regulares para prevenção de perda de dados.</li>
+        </ul>
+        <div class="info-box">
+          <p><strong>Incidente de Segurança:</strong> Em caso de incidente que possa afetar seus dados, a OLUAP notificará os titulares e a Autoridade Nacional de Proteção de Dados (ANPD) nos prazos previstos na LGPD.</p>
+        </div>
+      </div>
+
+      <div class="section" id="sec7">
+        <div class="section-num">Artigo 7</div>
+        <h2>Seus Direitos como Titular dos Dados</h2>
+        <p>Conforme a LGPD (art. 18), você tem os seguintes direitos em relação aos seus dados pessoais:</p>
+
+        <div class="rights-grid">
+          <div class="right-card">
+            <div class="icon">👁</div>
+            <strong>Acesso</strong>
+            <p>Solicitar confirmação e acesso aos dados que temos sobre você.</p>
+          </div>
+          <div class="right-card">
+            <div class="icon">✏️</div>
+            <strong>Correção</strong>
+            <p>Corrigir dados incompletos, inexatos ou desatualizados.</p>
+          </div>
+          <div class="right-card">
+            <div class="icon">🗑️</div>
+            <strong>Eliminação</strong>
+            <p>Solicitar exclusão dos dados tratados com base no consentimento.</p>
+          </div>
+          <div class="right-card">
+            <div class="icon">📦</div>
+            <strong>Portabilidade</strong>
+            <p>Receber seus dados em formato estruturado para outro fornecedor.</p>
+          </div>
+          <div class="right-card">
+            <div class="icon">🚫</div>
+            <strong>Oposição</strong>
+            <p>Opor-se ao tratamento baseado em legítimo interesse.</p>
+          </div>
+          <div class="right-card">
+            <div class="icon">📋</div>
+            <strong>Informação</strong>
+            <p>Saber com quais entidades seus dados são compartilhados.</p>
+          </div>
+        </div>
+
+        <p style="margin-top: 16px;">
+          Para exercer seus direitos, envie solicitação para <strong>privacidade@oluap.com.br</strong> com identificação do titular. Responderemos em até <strong>15 dias</strong>.
+        </p>
+      </div>
+
+      <div class="section" id="sec8">
+        <div class="section-num">Artigo 8</div>
+        <h2>Cookies e Tecnologias Similares</h2>
+        <p>A OLUAP utiliza cookies e tecnologias similares para:</p>
+        <ul>
+          <li><strong>Cookies essenciais:</strong> manter a sessão do usuário autenticado e garantir o funcionamento básico da plataforma. Não podem ser desativados.</li>
+          <li><strong>Cookies de desempenho:</strong> coletar informações anônimas sobre como a plataforma é utilizada, para melhorar a experiência. Podem ser desativados nas configurações do navegador.</li>
+          <li><strong>Cookies de preferências:</strong> lembrar configurações do usuário (ex: idioma, tema). Podem ser desativados.</li>
+        </ul>
+        <p>
+          A OLUAP não utiliza cookies de rastreamento para publicidade de terceiros.
+        </p>
+        <p>
+          Você pode controlar o uso de cookies nas configurações do seu navegador. A desativação de cookies essenciais pode impedir o funcionamento correto da plataforma.
+        </p>
+      </div>
+
+      <div class="section" id="sec9">
+        <div class="section-num">Artigo 9</div>
+        <h2>Menores de Idade</h2>
+        <p>
+          Os serviços da OLUAP são destinados exclusivamente a pessoas jurídicas e seus representantes legais, sendo vedada a utilização por menores de 18 (dezoito) anos. A OLUAP não coleta intencionalmente dados de menores de idade.
+        </p>
+        <p>
+          Se identificarmos que coletamos dados de menores sem autorização legal, procederemos à exclusão imediata dessas informações.
+        </p>
+      </div>
+
+      <div class="section" id="sec10">
+        <div class="section-num">Artigo 10</div>
+        <h2>Transferência Internacional de Dados</h2>
+        <p>
+          Para operação da plataforma, utilizamos provedores de infraestrutura que podem processar dados em servidores localizados fora do Brasil, incluindo nos Estados Unidos. Essas transferências são realizadas em conformidade com a LGPD, adotando salvaguardas adequadas como:
+        </p>
+        <ul>
+          <li>Cláusulas contratuais padrão de proteção de dados;</li>
+          <li>Certificações de conformidade dos provedores (ex: ISO 27001, SOC 2);</li>
+          <li>Adequação reconhecida pelo país destinatário.</li>
+        </ul>
+      </div>
+
+      <div class="section" id="sec11">
+        <div class="section-num">Artigo 11</div>
+        <h2>Alterações nesta Política</h2>
+        <p>
+          Esta Política pode ser atualizada periodicamente para refletir mudanças nos nossos serviços ou na legislação aplicável. Alterações relevantes serão comunicadas com <strong>15 dias de antecedência</strong> por e-mail ou notificação na plataforma.
+        </p>
+        <p>
+          A versão sempre vigente é a disponível nesta página, com a data de atualização indicada no topo.
+        </p>
+      </div>
+
+      <div class="section" id="sec12">
+        <div class="section-num">Artigo 12</div>
+        <h2>Contato e Encarregado (DPO)</h2>
+        <p>Para exercer seus direitos, esclarecer dúvidas ou registrar reclamações sobre o tratamento de dados:</p>
+        <ul>
+          <li><strong>E-mail de privacidade:</strong> privacidade@oluap.com.br</li>
+          <li><strong>E-mail geral:</strong> contato@oluap.com.br</li>
+          <li><strong>Encarregado de Dados (DPO):</strong> privacidade@oluap.com.br</li>
+        </ul>
+        <p>
+          Você também pode apresentar reclamação perante a <strong>Autoridade Nacional de Proteção de Dados (ANPD)</strong>, por meio do portal <em>gov.br/anpd</em>.
+        </p>
+        <div class="info-box">
+          <p><strong>✓ Prazo de resposta:</strong> Respondemos a todas as solicitações de titulares em até 15 (quinze) dias corridos, conforme previsto na LGPD.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>
+      &copy; 2025 OLUAP Tecnologia. Todos os direitos reservados. &nbsp;|&nbsp;
+      <a href="termos.html">Termos de Uso</a> &nbsp;|&nbsp;
+      <a href="privacidade.html">Privacidade</a> &nbsp;|&nbsp;
+      <a href="mailto:privacidade@oluap.com.br">privacidade@oluap.com.br</a>
+    </p>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Termos de Uso — OLUAP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      line-height: 1.7;
+    }
+    /* Topo */
+    .topbar {
+      background: #0b1117;
+      padding: 18px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .topbar-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .logo-circle {
+      width: 32px; height: 32px;
+      background: #ff7b00;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; color: #0b1117; font-size: 14px;
+    }
+    .logo-text { color: #fff; font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
+    .topbar-back {
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .topbar-back:hover { color: #ff7b00; }
+
+    /* Hero */
+    .hero {
+      background: linear-gradient(135deg, #0b1117 0%, #0f1923 100%);
+      padding: 64px 24px 56px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,123,0,0.12);
+      border: 1px solid rgba(255,123,0,0.25);
+      color: #ff7b00;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      color: #fff;
+      font-size: clamp(28px, 5vw, 40px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      margin-bottom: 12px;
+    }
+    .hero p {
+      color: #94a3b8;
+      font-size: 15px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .hero-meta {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .hero-meta span {
+      color: #64748b;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .hero-meta strong { color: #94a3b8; }
+
+    /* Layout principal */
+    .main-layout {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    @media (max-width: 700px) {
+      .main-layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 80px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+    .sidebar a {
+      display: block;
+      font-size: 13px;
+      color: #475569;
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 8px;
+      margin-bottom: 2px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .sidebar a:hover { background: #f1f5f9; color: #ff7b00; }
+
+    /* Conteúdo */
+    .content { min-width: 0; }
+    .section { margin-bottom: 40px; }
+    .section-num {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #ff7b00;
+      margin-bottom: 8px;
+    }
+    .section h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #f1f5f9;
+    }
+    .section p {
+      color: #475569;
+      font-size: 14.5px;
+      margin-bottom: 12px;
+    }
+    .section ul, .section ol {
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+    .section li {
+      color: #475569;
+      font-size: 14.5px;
+      margin-bottom: 6px;
+    }
+    .section strong { color: #1e293b; }
+    .highlight-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-left: 4px solid #f59e0b;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .highlight-box p { color: #92400e; margin: 0; font-size: 13.5px; }
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-left: 4px solid #3b82f6;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 16px 0;
+    }
+    .info-box p { color: #1e40af; margin: 0; font-size: 13.5px; }
+
+    /* Rodapé */
+    .footer {
+      background: #0b1117;
+      padding: 32px 24px;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .footer p { color: #475569; font-size: 13px; }
+    .footer a { color: #ff7b00; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de navegação -->
+  <nav class="topbar">
+    <div class="topbar-inner">
+      <a href="index.html" class="topbar-logo">
+        <div class="logo-circle">O</div>
+        <span class="logo-text">OLUAP</span>
+      </a>
+      <a href="javascript:history.back()" class="topbar-back">← Voltar</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">Documento Legal</div>
+    <h1>Termos de Uso</h1>
+    <p>Leia atentamente antes de utilizar a plataforma OLUAP. Ao se cadastrar, você concorda integralmente com estes termos.</p>
+    <div class="hero-meta">
+      <span>Versão <strong>1.0</strong></span>
+      <span>Última atualização: <strong>Maio de 2025</strong></span>
+      <span>Vigência: <strong>Imediata</strong></span>
+    </div>
+  </div>
+
+  <!-- Conteúdo principal -->
+  <div class="main-layout">
+
+    <!-- Índice lateral -->
+    <aside class="sidebar">
+      <div class="sidebar-title">Índice</div>
+      <a href="#sec1">1. Identificação</a>
+      <a href="#sec2">2. Aceitação</a>
+      <a href="#sec3">3. Descrição dos Serviços</a>
+      <a href="#sec4">4. Cadastro e Conta</a>
+      <a href="#sec5">5. Uso Aceitável</a>
+      <a href="#sec6">6. Planos e Pagamentos</a>
+      <a href="#sec7">7. Dados Financeiros</a>
+      <a href="#sec8">8. Propriedade Intelectual</a>
+      <a href="#sec9">9. Limitação de Responsabilidade</a>
+      <a href="#sec10">10. Suspensão e Rescisão</a>
+      <a href="#sec11">11. Alterações</a>
+      <a href="#sec12">12. Disposições Gerais</a>
+    </aside>
+
+    <!-- Texto -->
+    <div class="content">
+
+      <div class="section" id="sec1">
+        <div class="section-num">Cláusula 1</div>
+        <h2>Identificação da Empresa</h2>
+        <p>
+          A plataforma OLUAP é operada por <strong>OLUAP TECNOLOGIA LTDA</strong> (doravante denominada simplesmente <strong>"OLUAP"</strong>), empresa brasileira prestadora de serviços de tecnologia e gestão financeira para pequenas e médias empresas.
+        </p>
+        <p>
+          Estes Termos de Uso ("Termos") regem o acesso e a utilização de todos os produtos, módulos e funcionalidades disponibilizados por meio da plataforma digital OLUAP, acessível em seus respectivos domínios e aplicações.
+        </p>
+        <p>Para contato: <strong>contato@oluap.com.br</strong></p>
+      </div>
+
+      <div class="section" id="sec2">
+        <div class="section-num">Cláusula 2</div>
+        <h2>Aceitação dos Termos</h2>
+        <p>
+          Ao realizar o cadastro na plataforma OLUAP, clicar em "Finalizar Cadastro" ou utilizar qualquer serviço disponibilizado, o usuário declara ter lido, compreendido e concordado integralmente com estes Termos de Uso e com a <a href="privacidade.html" style="color:#ff7b00;">Política de Privacidade</a>.
+        </p>
+        <div class="highlight-box">
+          <p><strong>⚠ Atenção:</strong> Se você não concordar com qualquer disposição destes Termos, não realize o cadastro e não utilize a plataforma. O uso continuado dos serviços constitui aceitação tácita de eventuais atualizações.</p>
+        </div>
+        <p>
+          Estes Termos aplicam-se a todos os módulos da plataforma: <strong>Diagnóstico Financeiro</strong>, <strong>Crédito Inteligente</strong>, <strong>ERP Financeiro</strong> e <strong>Consultoria Empresarial</strong>, bem como a quaisquer outros serviços futuros oferecidos pela OLUAP.
+        </p>
+      </div>
+
+      <div class="section" id="sec3">
+        <div class="section-num">Cláusula 3</div>
+        <h2>Descrição dos Serviços</h2>
+        <p>A OLUAP oferece uma plataforma integrada de gestão financeira empresarial, composta pelos seguintes módulos:</p>
+        <ul>
+          <li><strong>Diagnóstico Financeiro:</strong> ferramenta de análise e monitoramento da saúde financeira da empresa, incluindo fluxo de caixa, contas a pagar e receber, bancos, investimentos e relatórios gerenciais.</li>
+          <li><strong>Crédito Inteligente:</strong> módulo de avaliação de perfil de crédito, simulação de linhas de financiamento e orientação para acesso a crédito empresarial.</li>
+          <li><strong>ERP Financeiro:</strong> sistema integrado de gestão financeira e operacional, incluindo controle de receitas, despesas, fluxo de caixa e emissão de relatórios.</li>
+          <li><strong>Consultoria Empresarial:</strong> serviço de orientação estratégica e financeira personalizada, realizado por especialistas da OLUAP ou parceiros credenciados.</li>
+        </ul>
+        <p>
+          A OLUAP reserva-se o direito de adicionar, modificar ou descontinuar módulos e funcionalidades a qualquer momento, mediante aviso prévio aos usuários afetados.
+        </p>
+        <div class="info-box">
+          <p><strong>ℹ Importante:</strong> Os serviços da OLUAP têm caráter exclusivamente informativo e de apoio à gestão. As informações e análises fornecidas pela plataforma <strong>não constituem assessoria financeira, contábil, jurídica ou de investimentos</strong>. O usuário é integralmente responsável pelas decisões tomadas com base nas informações da plataforma.</p>
+        </div>
+      </div>
+
+      <div class="section" id="sec4">
+        <div class="section-num">Cláusula 4</div>
+        <h2>Cadastro e Conta do Usuário</h2>
+        <p>Para utilizar os serviços da OLUAP, é obrigatório realizar cadastro informando:</p>
+        <ul>
+          <li>Nome completo do responsável;</li>
+          <li>Endereço de e-mail válido e profissional;</li>
+          <li>CNPJ da empresa;</li>
+          <li>Número de telefone/WhatsApp;</li>
+          <li>Senha pessoal e intransferível.</li>
+        </ul>
+        <p><strong>O usuário declara que:</strong></p>
+        <ol>
+          <li>Todas as informações fornecidas no cadastro são verdadeiras, atualizadas e completas;</li>
+          <li>Possui autorização para representar a pessoa jurídica cujo CNPJ foi informado;</li>
+          <li>Tem capacidade civil plena para firmar contratos;</li>
+          <li>É o único responsável pela guarda e sigilo de suas credenciais de acesso.</li>
+        </ol>
+        <p>
+          Em caso de suspeita de acesso não autorizado à conta, o usuário deve comunicar imediatamente a OLUAP pelo e-mail <strong>contato@oluap.com.br</strong>. A OLUAP não se responsabiliza por danos decorrentes do uso indevido de credenciais por terceiros quando o usuário não comunicar o incidente.
+        </p>
+        <p>É vedado o compartilhamento de credenciais de acesso, a criação de múltiplas contas para o mesmo CNPJ sem autorização expressa, ou a utilização da plataforma em nome de terceiros sem devida procuração.</p>
+      </div>
+
+      <div class="section" id="sec5">
+        <div class="section-num">Cláusula 5</div>
+        <h2>Uso Aceitável da Plataforma</h2>
+        <p>O usuário compromete-se a utilizar a plataforma OLUAP exclusivamente para fins lícitos e em conformidade com estes Termos. É expressamente <strong>proibido</strong>:</p>
+        <ul>
+          <li>Inserir dados falsos, adulterados ou fraudulentos;</li>
+          <li>Tentar acessar sistemas, contas ou dados de outros usuários;</li>
+          <li>Realizar engenharia reversa, descompilar ou copiar o código-fonte da plataforma;</li>
+          <li>Utilizar a plataforma para praticar qualquer atividade ilegal, incluindo lavagem de dinheiro, evasão fiscal ou fraude;</li>
+          <li>Transmitir vírus, malware ou qualquer código malicioso;</li>
+          <li>Sobrecarregar intencionalmente os servidores da OLUAP (ataques de negação de serviço);</li>
+          <li>Revender, licenciar ou transferir o acesso à plataforma a terceiros sem autorização expressa;</li>
+          <li>Utilizar robôs, scrapers ou mecanismos automatizados para coletar dados da plataforma.</li>
+        </ul>
+        <p>A violação destas regras pode resultar em suspensão imediata da conta, sem direito a reembolso, além de responsabilização civil e criminal.</p>
+      </div>
+
+      <div class="section" id="sec6">
+        <div class="section-num">Cláusula 6</div>
+        <h2>Planos, Pagamentos e Cancelamento</h2>
+        <p>
+          A OLUAP disponibiliza diferentes planos de acesso, incluindo versões gratuitas (com funcionalidades limitadas) e planos pagos (com acesso completo). As condições comerciais específicas de cada plano são apresentadas no momento da contratação e integram estes Termos por referência.
+        </p>
+        <p><strong>Condições gerais:</strong></p>
+        <ul>
+          <li>Os valores dos planos pagos são cobrados conforme a periodicidade contratada (mensal ou anual);</li>
+          <li>O pagamento é processado por meio de provedores de pagamento terceirizados, sujeitos aos seus próprios termos;</li>
+          <li>Em caso de inadimplência, o acesso poderá ser suspenso após notificação prévia;</li>
+          <li>O cancelamento pode ser realizado a qualquer momento pelo usuário, sem multa, com efeito a partir do próximo ciclo de cobrança;</li>
+          <li>Não há reembolso por períodos já utilizados, salvo disposição legal em contrário ou acordo expresso com a OLUAP;</li>
+          <li>A OLUAP reserva-se o direito de reajustar os preços dos planos, mediante aviso prévio de 30 (trinta) dias.</li>
+        </ul>
+        <div class="highlight-box">
+          <p><strong>Direito de Arrependimento:</strong> Consumidores que contratarem planos pagos de forma remota têm direito de arrependimento no prazo de 7 (sete) dias corridos após a contratação, conforme art. 49 do Código de Defesa do Consumidor, com reembolso integral.</p>
+        </div>
+      </div>
+
+      <div class="section" id="sec7">
+        <div class="section-num">Cláusula 7</div>
+        <h2>Dados Financeiros e Confidencialidade</h2>
+        <p>
+          O usuário é o único proprietário dos dados financeiros inseridos na plataforma OLUAP. A OLUAP não compartilha, vende ou comercializa dados financeiros individuais de clientes com terceiros, exceto nos casos previstos na Política de Privacidade.
+        </p>
+        <p><strong>O usuário concede à OLUAP:</strong></p>
+        <ul>
+          <li>Licença limitada para processar, armazenar e exibir os dados inseridos, exclusivamente para prestação dos serviços contratados;</li>
+          <li>Autorização para utilizar dados anonimizados e agregados para fins de melhoria dos serviços e análises estatísticas internas.</li>
+        </ul>
+        <p>
+          A OLUAP adota medidas técnicas e organizacionais adequadas para proteger os dados financeiros contra acesso não autorizado, perda ou destruição. Contudo, nenhum sistema é absolutamente seguro, e a OLUAP não garante segurança absoluta.
+        </p>
+        <p>
+          O usuário é responsável pela precisão e integridade dos dados inseridos na plataforma. A OLUAP não verifica a veracidade das informações inseridas e não se responsabiliza por análises baseadas em dados incorretos ou incompletos fornecidos pelo usuário.
+        </p>
+      </div>
+
+      <div class="section" id="sec8">
+        <div class="section-num">Cláusula 8</div>
+        <h2>Propriedade Intelectual</h2>
+        <p>
+          Todos os direitos de propriedade intelectual relativos à plataforma OLUAP, incluindo mas não se limitando a: software, código-fonte, design, interfaces, logotipos, marcas, metodologias, algoritmos e conteúdos editoriais, são de titularidade exclusiva da OLUAP ou de seus licenciantes.
+        </p>
+        <p>
+          Nenhuma disposição destes Termos transfere ao usuário qualquer direito de propriedade intelectual. O usuário recebe apenas uma licença limitada, revogável, intransferível e não exclusiva para utilizar a plataforma conforme estes Termos.
+        </p>
+        <p>
+          Relatórios, dashboards e análises gerados pela plataforma com base nos dados do usuário podem ser utilizados livremente pelo usuário para fins internos de gestão. É vedada a reprodução, publicação ou comercialização desses materiais sem autorização prévia da OLUAP.
+        </p>
+      </div>
+
+      <div class="section" id="sec9">
+        <div class="section-num">Cláusula 9</div>
+        <h2>Limitação de Responsabilidade</h2>
+        <p>
+          Na máxima extensão permitida pela legislação aplicável, a OLUAP não se responsabiliza por:
+        </p>
+        <ul>
+          <li>Perdas financeiras, lucros cessantes ou danos indiretos decorrentes do uso ou impossibilidade de uso da plataforma;</li>
+          <li>Decisões financeiras, comerciais ou de investimento tomadas com base nas análises e informações da plataforma;</li>
+          <li>Interrupções, lentidão ou indisponibilidade temporária dos serviços por motivos de manutenção, força maior ou falhas de terceiros (provedores de internet, infraestrutura de nuvem);</li>
+          <li>Perda de dados decorrente de falhas técnicas não imputáveis à OLUAP;</li>
+          <li>Atos de terceiros, incluindo ataques cibernéticos externos.</li>
+        </ul>
+        <p>
+          A responsabilidade total da OLUAP perante o usuário, em qualquer circunstância, fica limitada ao valor pago pelo usuário nos últimos 3 (três) meses anteriores ao evento causador do dano.
+        </p>
+        <div class="info-box">
+          <p><strong>ℹ Serviço de Consultoria:</strong> A OLUAP e seus consultores parceiros fornecem orientações gerais com base nas informações fornecidas. As orientações não substituem assessoria de contador, advogado ou gestor financeiro habilitado.</p>
+        </div>
+      </div>
+
+      <div class="section" id="sec10">
+        <div class="section-num">Cláusula 10</div>
+        <h2>Suspensão e Rescisão</h2>
+        <p>A OLUAP poderá suspender ou encerrar o acesso do usuário à plataforma, com ou sem aviso prévio, nos seguintes casos:</p>
+        <ul>
+          <li>Violação de qualquer disposição destes Termos;</li>
+          <li>Inadimplência no pagamento do plano contratado;</li>
+          <li>Suspeita de fraude, uso indevido ou atividade ilegal;</li>
+          <li>Solicitação de autoridade competente;</li>
+          <li>Inatividade da conta por período superior a 12 (doze) meses consecutivos.</li>
+        </ul>
+        <p>
+          O usuário pode encerrar sua conta a qualquer momento por meio do painel de configurações ou solicitando via e-mail. Após o encerramento, os dados serão retidos pelo prazo mínimo exigido pela legislação aplicável e então excluídos conforme a Política de Privacidade.
+        </p>
+      </div>
+
+      <div class="section" id="sec11">
+        <div class="section-num">Cláusula 11</div>
+        <h2>Alterações nos Termos</h2>
+        <p>
+          A OLUAP reserva-se o direito de modificar estes Termos a qualquer momento. Alterações relevantes serão comunicadas ao usuário com antecedência mínima de <strong>15 (quinze) dias</strong>, por e-mail ou notificação dentro da plataforma.
+        </p>
+        <p>
+          O uso continuado da plataforma após o prazo de comunicação implica aceitação das alterações. Caso o usuário não concorde com as novas condições, poderá cancelar sua conta antes da entrada em vigor das alterações.
+        </p>
+      </div>
+
+      <div class="section" id="sec12">
+        <div class="section-num">Cláusula 12</div>
+        <h2>Disposições Gerais</h2>
+        <p>
+          <strong>Lei aplicável:</strong> Estes Termos são regidos pelas leis da República Federativa do Brasil, em especial o Código de Defesa do Consumidor (Lei nº 8.078/1990), o Marco Civil da Internet (Lei nº 12.965/2014) e a Lei Geral de Proteção de Dados — LGPD (Lei nº 13.709/2018).
+        </p>
+        <p>
+          <strong>Foro:</strong> As partes elegem o foro da Comarca de São Paulo/SP para dirimir quaisquer controvérsias decorrentes destes Termos, com renúncia expressa a qualquer outro, por mais privilegiado que seja.
+        </p>
+        <p>
+          <strong>Integralidade:</strong> Estes Termos, juntamente com a Política de Privacidade, constituem o acordo integral entre as partes em relação ao uso da plataforma OLUAP, substituindo quaisquer entendimentos anteriores.
+        </p>
+        <p>
+          <strong>Invalidade parcial:</strong> Se qualquer disposição destes Termos for considerada inválida ou inaplicável, as demais permanecerão em pleno vigor e efeito.
+        </p>
+        <p>
+          <strong>Contato:</strong> Dúvidas, reclamações ou solicitações relacionadas a estes Termos devem ser enviadas para <strong>contato@oluap.com.br</strong>.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Rodapé -->
+  <footer class="footer">
+    <p>
+      &copy; 2025 OLUAP Tecnologia. Todos os direitos reservados. &nbsp;|&nbsp;
+      <a href="termos.html">Termos de Uso</a> &nbsp;|&nbsp;
+      <a href="privacidade.html">Privacidade</a> &nbsp;|&nbsp;
+      <a href="mailto:contato@oluap.com.br">contato@oluap.com.br</a>
+    </p>
+  </footer>
+
+</body>
+</html>

@@ -24,6 +24,8 @@ export default defineConfig({
         'produto-diagnostico': resolve(__dirname, 'produto-diagnostico.html'),
         'produto-credito':     resolve(__dirname, 'produto-credito.html'),
         receitas:              resolve(__dirname, 'receitas.html'),
+        'recuperar-senha':     resolve(__dirname, 'recuperar-senha.html'),
+        'nova-senha':          resolve(__dirname, 'nova-senha.html'),
       },
     },
   },

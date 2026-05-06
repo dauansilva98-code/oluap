@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OLUAP - Nova Senha</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #0b1117;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      color: white;
+    }
+    .glow-bg {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100vw; height: 100vh;
+      background: radial-gradient(circle, rgba(255,123,0,0.04) 0%, transparent 60%);
+      pointer-events: none; z-index: 0;
+    }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background-color: #1f2937; border-radius: 10px; }
+  </style>
+</head>
+<body class="m-0 p-0 min-h-screen relative flex flex-col items-center justify-center overflow-x-hidden">
+  <div class="glow-bg"></div>
+  <div id="root" class="w-full relative z-10 px-4 py-10 md:py-16"></div>
+  <script type="module" src="/src/pages/nova-senha/main.jsx"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Loader2, AlertTriangle, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Loader2, AlertTriangle, Eye, EyeOff, CheckCircle, Square, CheckSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 const maskCNPJ = (v) => v.replace(/\D/g,'').replace(/^(\d{2})(\d)/,'$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3').replace(/\.(\d{3})(\d)/,'.$1/$2').replace(/(\d{4})(\d)/,'$1-$2').replace(/(-\d{2})\d+?$/,'$1')
@@ -24,6 +24,7 @@ const Cadastro = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [aceitouTermos, setAceitouTermos] = useState(false)
 
   const handleSignup = async (e) => {
     e.preventDefault()
@@ -32,6 +33,12 @@ const Cadastro = () => {
 
     if (password.length < 6) {
       setError('A senha deve ter pelo menos 6 caracteres.')
+      setLoading(false)
+      return
+    }
+
+    if (!aceitouTermos) {
+      setError('Você precisa aceitar os Termos de Uso e a Política de Privacidade para continuar.')
       setLoading(false)
       return
     }
@@ -143,11 +150,53 @@ const Cadastro = () => {
               </div>
             </div>
 
-            <div className="pt-6 w-full">
-              <button type="submit" disabled={loading}
-                className="bg-[#ff7b00] text-white w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:bg-[#e66a00] hover:scale-[1.01] transition-all flex items-center justify-center gap-2 disabled:opacity-70">
+            {/* Aceite de Termos */}
+            <div className="w-full">
+              <button
+                type="button"
+                onClick={() => setAceitouTermos(!aceitouTermos)}
+                className="flex items-start gap-3 text-left w-full group"
+              >
+                <div className="mt-0.5 shrink-0">
+                  {aceitouTermos
+                    ? <CheckSquare size={18} className="text-[#ff7b00]" />
+                    : <Square size={18} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+                  }
+                </div>
+                <span className="text-xs font-medium text-slate-500 leading-relaxed">
+                  Li e concordo com os{' '}
+                  <a
+                    href="termos.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="text-[#137789] hover:text-[#ff7b00] underline transition-colors"
+                  >
+                    Termos de Uso
+                  </a>
+                  {' '}e a{' '}
+                  <a
+                    href="privacidade.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="text-[#137789] hover:text-[#ff7b00] underline transition-colors"
+                  >
+                    Política de Privacidade
+                  </a>
+                  {' '}da OLUAP, incluindo o tratamento dos meus dados financeiros conforme descrito nesses documentos.
+                </span>
+              </button>
+            </div>
+
+            <div className="pt-4 w-full">
+              <button type="submit" disabled={loading || !aceitouTermos}
+                className="bg-[#ff7b00] text-white w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg shadow-orange-500/20 hover:bg-[#e66a00] hover:scale-[1.01] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:scale-100">
                 {loading ? <Loader2 size={18} className="animate-spin" /> : 'Finalizar Cadastro'}
               </button>
+              {!aceitouTermos && (
+                <p className="text-center text-xs text-slate-400 mt-2">Aceite os termos para continuar</p>
+              )}
             </div>
           </form>
         )}

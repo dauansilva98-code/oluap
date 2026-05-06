@@ -89,11 +89,12 @@ const Login = () => {
               {rememberMe ? <CheckSquare size={16} className="text-[#ff7b00]" /> : <Square size={16} />}
               Lembrar meu e-mail
             </button>
-            <button type="button"
+            <a
+              href="recuperar-senha.html"
               className="text-xs font-bold text-[#137789] hover:text-[#ff7b00] transition-colors uppercase tracking-wider"
-              onClick={() => alert('Para redefinir a senha, entre em contato com o suporte OLUAP.')}>
+            >
               Esqueceu a senha?
-            </button>
+            </a>
           </div>
 
           <div className="pt-6 w-full">
