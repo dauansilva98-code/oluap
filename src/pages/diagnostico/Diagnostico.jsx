@@ -207,7 +207,7 @@ const App = () => {
   const [modalBanco, setModalBanco] = useState(null);
   const [modalReceita, setModalReceita] = useState(null);
   const [modalDespesa, setModalDespesa] = useState(null);
-  const [modalImportDespesas, setModalImportDespesas] = useState(null);
+  const [modalImport, setModalImport] = useState(null);
   const [modalCP, setModalCP] = useState(null);
   const [modalSolicitarAnalise, setModalSolicitarAnalise] = useState(false);
   const [modalCR, setModalCR] = useState(null);
@@ -318,53 +318,90 @@ const App = () => {
     await resetList();
   };
 
-  const handleImportFile=(file)=>{
+  const handleImportFile=(file,tipoImport='despesa')=>{
     if(!file)return;
+    const ext=file.name.split('.').pop().toLowerCase();
+    // PDF / Word → show "received" stage (AI processing placeholder)
+    if(['pdf','doc','docx'].includes(ext)){
+      setModalImport({stage:'pdf_received',tipoImport,fileName:file.name});
+      return;
+    }
     const reader=new FileReader();
     reader.onload=(evt)=>{
       try{
-        const wb=XLSX.read(evt.target.result,{type:'binary'});
-        const ws=wb.Sheets[wb.SheetNames[0]];
-        const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''});
+        let rows;
+        if(ext==='txt'||ext==='tsv'){
+          // Parse as delimited text (tab or semicolon or comma)
+          const text=evt.target.result;
+          const lines=text.split(/\r?\n/).filter(l=>l.trim());
+          const sep=text.includes('\t')?'\t':text.includes(';')?';':',';
+          rows=lines.map(l=>l.split(sep).map(c=>c.replace(/^"|"$/g,'').trim()));
+        } else {
+          const wb=XLSX.read(evt.target.result,{type:'binary'});
+          const ws=wb.Sheets[wb.SheetNames[0]];
+          rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''});
+        }
         if(!rows.length){alert('Arquivo vazio ou sem dados.');return;}
         const headers=rows[0].map(h=>String(h||''));
         const detectCol=(h)=>{
           const l=h.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-          if(/data|date|\bdt\b/.test(l))return'data';
-          if(/descri|histor|memo|lancam|narr|movimento/.test(l))return'descricao';
+          if(/data|date|\bdt\b|vencim/.test(l))return'data';
+          if(/descri|histor|memo|lancam|narr|movimento|fornec/.test(l))return'descricao';
           if(/valor|value|amount|debito|debit|\bvl\b|r\$|saida|credito/.test(l))return'valor';
           if(/categ|tipo|type|class/.test(l))return'categoria';
           return'';
         };
         const mappings={data:'',descricao:'',valor:'',categoria:''};
         headers.forEach((h,i)=>{const f=detectCol(h);if(f&&mappings[f]==='')mappings[f]=String(i);});
-        setModalImportDespesas({stage:'map',headers,rows:rows.slice(1),mappings});
-      }catch(e){alert('Erro ao ler o arquivo. Use .csv ou .xlsx');}
+        setModalImport({stage:'map',tipoImport,headers,rows:rows.slice(1),mappings});
+      }catch(e){alert('Erro ao ler o arquivo. Verifique se é .csv, .xlsx ou .txt');}
     };
-    reader.readAsBinaryString(file);
+    if(ext==='txt'||ext==='tsv') reader.readAsText(file,'UTF-8');
+    else reader.readAsBinaryString(file);
   };
 
   const confirmarImport=async()=>{
-    if(!modalImportDespesas?.rows)return;
-    const{rows,mappings}=modalImportDespesas;
+    if(!modalImport?.rows)return;
+    const{rows,mappings,tipoImport}=modalImport;
     const today2=new Date().toISOString().split('T')[0];
-    const records=rows.filter(r=>r&&r.some(c=>c!=='')).map(r=>{
-      const g=(k)=>mappings[k]!==''&&mappings[k]!==undefined?String(r[parseInt(mappings[k])]||'').trim():'';
-      const rawValor=g('valor').replace(/[^\d,\.]/g,'');
-      const valor=parseFloat(rawValor.includes(',')?rawValor.replace(',','.'):rawValor)||0;
-      if(!valor)return null;
-      let data=today2;
-      const rd=g('data');
-      if(rd){const pts=rd.split(/[\/\-\.]/);if(pts.length===3){if(pts[2]?.length===4)data=`${pts[2]}-${pts[1].padStart(2,'0')}-${pts[0].padStart(2,'0')}`;else if(pts[0]?.length===4)data=rd.slice(0,10);}}
-      return{descricao:g('descricao')||'Importado',valor,data,categoria:g('categoria')||'Outros',tipo:'despesa',user_id:user.id,banco_id:null,meio_pagamento:''};
-    }).filter(Boolean);
-    if(!records.length){alert('Nenhuma despesa válida encontrada. Verifique o mapeamento das colunas.');return;}
+    const parseData=(rd)=>{
+      if(!rd)return today2;
+      const pts=rd.split(/[\/\-\.]/);
+      if(pts.length===3){
+        if(pts[2]?.length===4)return`${pts[2]}-${pts[1].padStart(2,'0')}-${pts[0].padStart(2,'0')}`;
+        if(pts[0]?.length===4)return rd.slice(0,10);
+      }
+      return today2;
+    };
+    const g=(r,k)=>mappings[k]!==''&&mappings[k]!==undefined?String(r[parseInt(mappings[k])]||'').trim():'';
+    const parseValor=(s)=>{const raw=s.replace(/[^\d,\.]/g,'');return parseFloat(raw.includes(',')?raw.replace(',','.'):raw)||0;};
     setSavingItem(true);
     try{
-      await supabase.from('lancamentos').insert(records);
-      await fetchFinanceiro(user.id);
-      setModalImportDespesas(null);
-      alert(`${records.length} despesa(s) importada(s) com sucesso!`);
+      if(tipoImport==='contas_pagar'){
+        const records=rows.filter(r=>r&&r.some(c=>c!=='')).map(r=>{
+          const valor=parseValor(g(r,'valor'));
+          if(!valor)return null;
+          return{descricao:g(r,'descricao')||'Importado',valor,vencimento:parseData(g(r,'data')),categoria:g(r,'categoria')||'Outros',tipo_custo:'variavel',status:'pendente',user_id:user.id};
+        }).filter(Boolean);
+        if(!records.length){alert('Nenhum registro válido encontrado. Verifique o mapeamento.');setSavingItem(false);return;}
+        await supabase.from('contas_pagar').insert(records);
+        await fetchFinanceiro(user.id);
+        setModalImport(null);
+        alert(`${records.length} conta(s) a pagar importada(s) com sucesso!`);
+      } else {
+        const tipo=tipoImport==='receita'?'receita':'despesa';
+        const records=rows.filter(r=>r&&r.some(c=>c!=='')).map(r=>{
+          const valor=parseValor(g(r,'valor'));
+          if(!valor)return null;
+          return{descricao:g(r,'descricao')||'Importado',valor,data:parseData(g(r,'data')),categoria:g(r,'categoria')||'Outros',tipo,user_id:user.id,banco_id:null,meio_pagamento:''};
+        }).filter(Boolean);
+        if(!records.length){alert('Nenhum registro válido encontrado. Verifique o mapeamento.');setSavingItem(false);return;}
+        await supabase.from('lancamentos').insert(records);
+        await fetchFinanceiro(user.id);
+        setModalImport(null);
+        const label=tipo==='receita'?'receita(s)':'despesa(s)';
+        alert(`${records.length} ${label} importada(s) com sucesso!`);
+      }
     }catch(e){console.error(e);alert('Erro ao importar. Verifique os dados e tente novamente.');}
     setSavingItem(false);
   };
@@ -1827,6 +1864,9 @@ const App = () => {
                     </select>
                     <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
                   </div>
+                  <button onClick={()=>setModalImport({stage:'upload',tipoImport:'receita'})} className="border border-slate-200 bg-white text-slate-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+                    <Upload size={14}/>Importar
+                  </button>
                   <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
                     <Plus size={14}/>Lançar receita
                   </button>
@@ -2015,8 +2055,8 @@ const App = () => {
                     </select>
                     <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"/>
                   </div>
-                  <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="border border-slate-200 bg-white text-slate-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5">
-                    <Upload size={14}/>Exportar
+                  <button onClick={()=>setModalImport({stage:'upload',tipoImport:'despesa'})} className="border border-slate-200 bg-white text-slate-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5">
+                    <Upload size={14}/>Importar
                   </button>
                   <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
                     <Plus size={14}/>Lançar despesa
@@ -2211,7 +2251,7 @@ const App = () => {
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                   <span style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 12px',fontSize:12,color:'#64748b'}}>{new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</span>
-                  <button style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer'}}>Exportar</button>
+                  <button onClick={()=>setModalImport({stage:'upload',tipoImport:'contas_pagar'})} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Upload size={12}/>Importar</button>
                   <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo_custo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
                 </div>
               </div>
@@ -2533,6 +2573,7 @@ const App = () => {
               onDeleteBanco={handleDeleteBanco}
               onSaveLancamento={handleSaveLancamentoEspecie}
               onDeleteLancamentos={handleDeleteLancamentos}
+              onImportClick={()=>setModalImport({stage:'upload',tipoImport:'extrato'})}
               savingItem={savingItem}
             />
           </div>
@@ -3244,71 +3285,128 @@ const App = () => {
           </div>
         )}
 
-        {/* Modal Importar Despesas */}
-        {modalImportDespesas&&(
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalImportDespesas(null)}>
+        {/* Modal Importar — genérico para todos os contextos */}
+        {modalImport&&(()=>{
+          const tipo=modalImport.tipoImport||'despesa';
+          const CONF={
+            despesa:   {title:'Importar Despesas',   color:'#D85A30',ring:'focus:ring-red-500',    btn:'bg-red-500 hover:bg-red-600',    dateLabel:'Coluna de Data'},
+            receita:   {title:'Importar Receitas',   color:'#1D9E75',ring:'focus:ring-emerald-500',btn:'bg-emerald-600 hover:bg-emerald-700',dateLabel:'Coluna de Data'},
+            contas_pagar:{title:'Importar Contas a Pagar',color:'#BA7517',ring:'focus:ring-amber-500',btn:'bg-amber-500 hover:bg-amber-600',dateLabel:'Coluna de Vencimento'},
+            extrato:   {title:'Importar Extrato Bancário',color:'#378ADD',ring:'focus:ring-blue-500',btn:'bg-blue-600 hover:bg-blue-700',dateLabel:'Coluna de Data'},
+          };
+          const cfg=CONF[tipo]||CONF.despesa;
+          return(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalImport(null)}>
             <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-black text-[#05121b]">Importar Despesas</h3>
-                <button onClick={()=>setModalImportDespesas(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
+                <h3 className="text-xl font-black text-[#05121b]">{cfg.title}</h3>
+                <button onClick={()=>setModalImport(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
               </div>
-              {modalImportDespesas.stage==='upload'?(
+
+              {/* ── STAGE: upload ── */}
+              {modalImport.stage==='upload'&&(
                 <div className="space-y-5">
-                  <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center">
-                    <FileSpreadsheet size={32} className="text-slate-300 mx-auto mb-3"/>
-                    <p className="text-sm font-bold text-[#05121b] mb-1">Selecione sua planilha ou arquivo CSV</p>
-                    <p className="text-[10px] text-slate-400 mb-4">Formatos aceitos: .xlsx, .xls, .csv</p>
-                    <label className="cursor-pointer bg-red-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-red-600 transition-colors inline-flex items-center gap-2">
-                      <Upload size={13}/>Escolher arquivo
-                      <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={e=>{if(e.target.files[0])handleImportFile(e.target.files[0]);}}/>
-                    </label>
-                  </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest mb-2">Dica de formatação</p>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">Sua planilha deve ter colunas como <strong>Data</strong>, <strong>Descrição</strong>, <strong>Valor</strong> e opcionalmente <strong>Categoria</strong>. O sistema detecta automaticamente as colunas pelo nome do cabeçalho.</p>
-                  </div>
-                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
-                    <p className="text-[10px] font-black text-orange-700 uppercase tracking-widest mb-1">PDF não suportado diretamente</p>
-                    <p className="text-[11px] text-orange-700">Para arquivos PDF (extratos bancários etc.), exporte primeiro para CSV/Excel no seu banco ou use uma ferramenta de conversão.</p>
+                  <label className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center cursor-pointer hover:border-slate-300 hover:bg-slate-100 transition-all group">
+                    <FileSpreadsheet size={36} className="text-slate-300 mb-3 group-hover:text-slate-400 transition-colors"/>
+                    <p className="text-sm font-black text-[#05121b] mb-1">Clique ou arraste o arquivo aqui</p>
+                    <p className="text-[10px] text-slate-400 mb-4 text-center">Planilhas: <strong>.xlsx · .xls · .csv</strong> · Texto: <strong>.txt</strong> · Documentos: <strong>.pdf · .doc · .docx</strong></p>
+                    <span className="text-white text-xs font-black uppercase tracking-widest px-6 py-2.5 rounded-xl transition-colors" style={{background:cfg.color}}>
+                      Selecionar arquivo
+                    </span>
+                    <input type="file" accept=".csv,.xlsx,.xls,.txt,.tsv,.pdf,.doc,.docx" className="hidden"
+                      onChange={e=>{if(e.target.files[0])handleImportFile(e.target.files[0],tipo);}}/>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Planilhas (.xlsx, .csv, .txt)</p>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">Importação automática. O sistema detecta as colunas pelo cabeçalho e você confirma o mapeamento.</p>
+                    </div>
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-3.5">
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1.5">PDF / Word (.pdf, .doc)</p>
+                      <p className="text-[11px] text-blue-700 leading-relaxed">Aceito para extratos e documentos. Após o envio você confirma os dados antes de importar.</p>
+                    </div>
                   </div>
                 </div>
-              ):(
+              )}
+
+              {/* ── STAGE: pdf_received ── */}
+              {modalImport.stage==='pdf_received'&&(
                 <div className="space-y-5">
-                  <p className="text-[11px] text-slate-500 font-medium">{modalImportDespesas.rows?.length||0} linha(s) encontrada(s). Mapeie as colunas abaixo:</p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 flex flex-col items-center text-center">
+                    <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
+                      <FileText size={28} className="text-blue-500"/>
+                    </div>
+                    <p className="font-black text-blue-900 mb-1">Arquivo recebido</p>
+                    <p className="text-[11px] text-blue-700 font-medium mb-0.5">{modalImport.fileName}</p>
+                    <p className="text-[11px] text-blue-600 leading-relaxed mt-3 max-w-sm">
+                      Para PDFs e documentos Word, faça o upload do arquivo e nossa equipe processará os dados manualmente. Você será notificado quando os registros forem importados.
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                    <Info size={14} className="text-amber-500 shrink-0 mt-0.5"/>
+                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                      <strong>Dica:</strong> Para importação imediata e automática, exporte o extrato do seu banco em formato <strong>CSV ou Excel</strong> e reimporte aqui. Normalmente o botão fica em <em>Internet Banking → Extrato → Exportar</em>.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={()=>setModalImport({stage:'upload',tipoImport:tipo})} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Voltar</button>
+                    <button onClick={()=>setModalImport(null)} className={`flex-1 py-3.5 rounded-xl font-black text-xs text-white transition-colors ${cfg.btn}`}>Entendido</button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── STAGE: map ── */}
+              {modalImport.stage==='map'&&(
+                <div className="space-y-5">
+                  <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5">
+                    <CheckCircle size={13} className="text-emerald-500 shrink-0"/>
+                    <p className="text-[11px] text-slate-600 font-medium"><strong>{modalImport.rows?.length||0} linha(s)</strong> encontrada(s). Mapeie as colunas abaixo:</p>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
-                    {[{key:'data',label:'Coluna de Data'},{key:'descricao',label:'Coluna de Descrição'},{key:'valor',label:'Coluna de Valor'},{key:'categoria',label:'Coluna de Categoria (opcional)'}].map(({key,label})=>(
+                    {[
+                      {key:'data',     label:cfg.dateLabel},
+                      {key:'descricao',label:'Coluna de Descrição'},
+                      {key:'valor',    label:'Coluna de Valor'},
+                      {key:'categoria',label:'Coluna de Categoria (opcional)'},
+                    ].map(({key,label})=>(
                       <div key={key} className="space-y-1.5">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">{label}</label>
-                        <select value={modalImportDespesas.mappings[key]} onChange={e=>setModalImportDespesas({...modalImportDespesas,mappings:{...modalImportDespesas.mappings,[key]:e.target.value}})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500">
+                        <select value={modalImport.mappings[key]} onChange={e=>setModalImport({...modalImport,mappings:{...modalImport.mappings,[key]:e.target.value}})}
+                          className={`w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 ${cfg.ring}`}>
                           <option value="">— Não mapear —</option>
-                          {modalImportDespesas.headers.map((h,i)=><option key={i} value={String(i)}>{h||`Coluna ${i+1}`}</option>)}
+                          {modalImport.headers.map((h,i)=><option key={i} value={String(i)}>{h||`Coluna ${i+1}`}</option>)}
                         </select>
                       </div>
                     ))}
                   </div>
-                  {modalImportDespesas.rows?.slice(0,3).filter(r=>r&&r.some(c=>c!=='')).length>0&&(
+                  {modalImport.rows?.slice(0,3).filter(r=>r&&r.some(c=>c!=='')).length>0&&(
                     <div className="bg-slate-50 rounded-2xl p-4">
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Prévia (primeiras linhas)</p>
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-3">Prévia · primeiras linhas</p>
                       <div className="overflow-x-auto">
                         <table className="w-full text-[10px]">
-                          <thead><tr className="border-b border-slate-200">{['Data','Descrição','Valor','Categoria'].map(h=><th key={h} className="px-2 py-1.5 text-left font-black text-slate-400 uppercase tracking-wider">{h}</th>)}</tr></thead>
-                          <tbody>{modalImportDespesas.rows.slice(0,3).filter(r=>r&&r.some(c=>c!=='')).map((r,i)=>{
-                            const g=(k)=>modalImportDespesas.mappings[k]!==''&&modalImportDespesas.mappings[k]!==undefined?String(r[parseInt(modalImportDespesas.mappings[k])]||''):'—';
-                            return(<tr key={i} className="border-b border-slate-100"><td className="px-2 py-1.5 text-slate-500">{g('data')}</td><td className="px-2 py-1.5 font-medium text-[#05121b] max-w-[150px] truncate">{g('descricao')}</td><td className="px-2 py-1.5 text-red-600 font-bold">{g('valor')}</td><td className="px-2 py-1.5 text-slate-500">{g('categoria')}</td></tr>);
+                          <thead><tr className="border-b border-slate-200">{['Data / Vencimento','Descrição','Valor','Categoria'].map(h=><th key={h} className="px-2 py-1.5 text-left font-black text-slate-400 uppercase tracking-wider">{h}</th>)}</tr></thead>
+                          <tbody>{modalImport.rows.slice(0,3).filter(r=>r&&r.some(c=>c!=='')).map((r,i)=>{
+                            const g=(k)=>modalImport.mappings[k]!==''&&modalImport.mappings[k]!==undefined?String(r[parseInt(modalImport.mappings[k])]||''):'—';
+                            return(<tr key={i} className="border-b border-slate-100"><td className="px-2 py-1.5 text-slate-500">{g('data')}</td><td className="px-2 py-1.5 font-medium text-[#05121b] max-w-[150px] truncate">{g('descricao')}</td><td className="px-2 py-1.5 font-bold" style={{color:cfg.color}}>{g('valor')}</td><td className="px-2 py-1.5 text-slate-500">{g('categoria')}</td></tr>);
                           })}</tbody>
                         </table>
                       </div>
                     </div>
                   )}
                   <div className="flex gap-3">
-                    <button onClick={()=>setModalImportDespesas({stage:'upload'})} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Voltar</button>
-                    <button disabled={savingItem||!modalImportDespesas.mappings.valor} onClick={confirmarImport} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Importar {modalImportDespesas.rows?.length||0} registros</button>
+                    <button onClick={()=>setModalImport({stage:'upload',tipoImport:tipo})} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Voltar</button>
+                    <button disabled={savingItem||!modalImport.mappings.valor} onClick={confirmarImport}
+                      className={`flex-1 py-3.5 rounded-xl font-black text-xs text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-2 ${cfg.btn}`}>
+                      {savingItem?<Loader2 size={13} className="animate-spin"/>:null}
+                      Importar {modalImport.rows?.length||0} registros
+                    </button>
                   </div>
                 </div>
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
 
       </main>

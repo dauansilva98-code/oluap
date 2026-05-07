@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import ReactDOM from 'react-dom'
-import { X, Download, Pencil, Trash2 } from 'lucide-react'
+import { X, Upload, Pencil, Trash2 } from 'lucide-react'
 
 const fmtBRL = v => `R$ ${Number(v || 0).toLocaleString('pt-BR')}`
 
@@ -59,6 +59,7 @@ export default function BancosContas({
   onDeleteBanco,
   onSaveLancamento,
   onDeleteLancamentos,
+  onImportClick,
   savingItem = false,
 }) {
   const [filtroBank,    setFiltroBank]    = useState('todos')
@@ -443,8 +444,8 @@ export default function BancosContas({
             <h1 style={{ fontSize: 20, fontWeight: 500, color: '#05121b', margin: 0 }}>Bancos e contas</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors">
-              <Download size={14} /> Exportar
+            <button onClick={onImportClick} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors">
+              <Upload size={14} /> Importar
             </button>
             <button onClick={openNewMov} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors">
               + Mov. espécie
