@@ -729,7 +729,7 @@ const App = () => {
         <div className={`flex items-center ${isSidebarOpen?'justify-start px-1':'justify-center'} mb-6 mt-1`}>
           {isSidebarOpen?<img src="logo2.png" alt="OLUAP" className="h-7 object-contain" onError={e=>{e.target.style.display='none';}}/>:<img src="icone.png" alt="OLUAP" className="w-7 h-7 object-contain" onError={e=>{e.target.style.display='none';}}/>}
         </div>
-        <nav className="flex-1 space-y-1 mt-2">
+        <nav className="flex-1 space-y-1 mt-2 overflow-y-auto min-h-0" style={{scrollbarWidth:'thin',scrollbarColor:'#e2e8f0 transparent'}}>
           {navItems.map(item=>{
             const I=item.icon;
             const active=view===item.id||(item.id==='analises'&&(view==='success'||view==='result'||view==='view_data'));
