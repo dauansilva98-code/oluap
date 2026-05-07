@@ -746,6 +746,54 @@ const App = () => {
   const custVarMensal = lancamentos.filter(l => l.tipo === 'despesa' && (l.tipo_custo || 'variavel') === 'variavel' && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0);
   const margemContribPct = receitaMensal > 0 ? (receitaMensal - custVarMensal) / receitaMensal : 0;
   const pontoEquilibrioReal = margemContribPct > 0 ? custoFixoMensal / margemContribPct : (custoFixoMensal > 0 ? custoFixoMensal : 0);
+
+  // PMR / PMP live: (total pendente / receita ou custo mensal) × 30 dias
+  const totalCRPendente = contasReceber.filter(cr => cr.status !== 'recebido').reduce((a, cr) => a + Number(cr.valor), 0);
+  const totalCPPendente = contasPagar.filter(cp => cp.status !== 'pago').reduce((a, cp) => a + Number(cp.valor), 0);
+  const pmrLive = receitaMensal > 0 ? Math.round((totalCRPendente / receitaMensal) * 30) : 0;
+  const pmpLive = liveMetrics && liveMetrics.totalCust > 0 ? Math.round((totalCPPendente / liveMetrics.totalCust) * 30) : 0;
+
+  // Projeção do próximo mês: média dos últimos 3 meses
+  const getMonthData = (monthsAgo) => {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - monthsAgo);
+    const m = d.toISOString().slice(0, 7);
+    const rec = lancamentos.filter(l => l.tipo === 'receita' && l.data?.startsWith(m)).reduce((a, l) => a + Number(l.valor), 0);
+    const desp = lancamentos.filter(l => l.tipo === 'despesa' && l.data?.startsWith(m)).reduce((a, l) => a + Number(l.valor), 0);
+    return { rec, desp };
+  };
+  const [pm1, pm2, pm3] = [1, 2, 3].map(getMonthData);
+  const projecaoReceita = (pm1.rec + pm2.rec + pm3.rec) / 3;
+  const projecaoDespesa = (pm1.desp + pm2.desp + pm3.desp) / 3;
+  const projecaoLucro = projecaoReceita - projecaoDespesa;
+  const hasProjecao = projecaoReceita > 0 || projecaoDespesa > 0;
+
+  // Inadimplência: aging por faixa
+  const inadVencidas = contasReceber.filter(cr => cr.status !== 'recebido' && cr.vencimento && cr.vencimento < today);
+  const diasAtraso = (venc) => Math.floor((new Date(today) - new Date(venc)) / 86400000);
+  const inad30 = inadVencidas.filter(cr => diasAtraso(cr.vencimento) < 30);
+  const inad60 = inadVencidas.filter(cr => { const d = diasAtraso(cr.vencimento); return d >= 30 && d < 60; });
+  const inad60p = inadVencidas.filter(cr => diasAtraso(cr.vencimento) >= 60);
+  const totalInad = inadVencidas.reduce((a, cr) => a + Number(cr.valor), 0);
+  const totalInad30 = inad30.reduce((a, cr) => a + Number(cr.valor), 0);
+  const totalInad60 = inad60.reduce((a, cr) => a + Number(cr.valor), 0);
+  const totalInad60p = inad60p.reduce((a, cr) => a + Number(cr.valor), 0);
+  const inadIndice = receitaMensal > 0 ? (totalInad / receitaMensal) * 100 : 0;
+
+  // Receita recorrente vs. avulsa: detecta por descrição em múltiplos meses
+  const descMesesMap = {};
+  lancamentos.filter(l => l.tipo === 'receita').forEach(l => {
+    const mes = l.data?.slice(0, 7);
+    const desc = (l.descricao || '').toLowerCase().trim();
+    if (!desc || !mes) return;
+    if (!descMesesMap[desc]) descMesesMap[desc] = new Set();
+    descMesesMap[desc].add(mes);
+  });
+  const descsRecorrentes = new Set(Object.keys(descMesesMap).filter(d => descMesesMap[d].size >= 2));
+  const receitasMesAtualList = lancamentos.filter(l => l.tipo === 'receita' && l.data?.startsWith(mesAtualPE));
+  const receitaRecorrente = receitasMesAtualList.filter(l => descsRecorrentes.has((l.descricao || '').toLowerCase().trim())).reduce((a, l) => a + Number(l.valor), 0);
+  const receitaAvulsa = receitaMensal - receitaRecorrente;
+  const pctRecorrente = receitaMensal > 0 ? (receitaRecorrente / receitaMensal) * 100 : 0;
+
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
 
   const firstName=(profileData.full_name||'Cliente').split(' ')[0];
@@ -1144,6 +1192,31 @@ const App = () => {
               </div>
             ) : (
               <>
+                {/* ── MoM STRIP ── */}
+                {(liveMetrics?.momReceita!=null||liveMetrics?.momDespesa!=null||liveMetrics?.momLucro!=null)&&(
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    {[
+                      {label:'Receita',val:liveMetrics.momReceita,cur:liveMetrics.receita,lowerBetter:false},
+                      {label:'Despesas',val:liveMetrics.momDespesa,cur:liveMetrics.totalCust,lowerBetter:true},
+                      {label:'Resultado',val:liveMetrics.momLucro,cur:liveMetrics.lucro,lowerBetter:false},
+                    ].map((item,i)=>{
+                      if(item.val==null) return null;
+                      const positivo=item.lowerBetter ? item.val<=0 : item.val>=0;
+                      return(
+                        <div key={i} className={`rounded-2xl border px-4 py-3 flex items-center justify-between gap-2 ${positivo?'bg-emerald-50 border-emerald-100':'bg-red-50 border-red-100'}`}>
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{item.label}</p>
+                            <p className="text-sm font-black text-[#05121b]">{formatBRL(item.cur)}</p>
+                          </div>
+                          <span className={`text-[11px] font-black px-2.5 py-1 rounded-full border ${positivo?'bg-emerald-100 text-emerald-700 border-emerald-200':'bg-red-100 text-red-600 border-red-200'}`}>
+                            {item.val>=0?'▲':'▼'} {Math.abs(item.val).toFixed(1)}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* ── SCORE + SEMÁFOROS ── */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                   <div className="bg-[#05121b] rounded-3xl p-8 text-white flex flex-col items-center gap-4">
@@ -1192,6 +1265,31 @@ const App = () => {
                     </ResponsiveContainer>
                   </div>
                 </div>
+
+                {/* ── PROJEÇÃO PRÓXIMO MÊS ── */}
+                {hasProjecao&&(
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <TrendingUp size={14} className="text-[#137789]"/>
+                      <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Projeção · Próximo Mês</h3>
+                      <span className="text-[8px] bg-slate-50 border border-slate-200 text-slate-500 font-black px-2 py-0.5 rounded-full uppercase tracking-widest ml-auto">Média 3 meses</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        {label:'Receita Projetada',val:projecaoReceita,color:'text-emerald-700',bg:'bg-emerald-50',border:'border-emerald-100'},
+                        {label:'Despesas Projetadas',val:projecaoDespesa,color:'text-red-700',bg:'bg-red-50',border:'border-red-100'},
+                        {label:'Resultado Projetado',val:projecaoLucro,color:projecaoLucro>=0?'text-emerald-700':'text-red-700',bg:projecaoLucro>=0?'bg-emerald-50':'bg-red-50',border:projecaoLucro>=0?'border-emerald-100':'border-red-100'},
+                      ].map((item,i)=>(
+                        <div key={i} className={`rounded-xl border px-4 py-3 ${item.bg} ${item.border}`}>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{item.label}</p>
+                          <p className={`text-base font-black ${item.color}`}>{formatBRL(item.val)}</p>
+                          {receitaMensal>0&&i===0&&<p className="text-[9px] text-slate-400 mt-0.5">{projecaoReceita>=receitaMensal?'▲':'▼'} {Math.abs(((projecaoReceita-receitaMensal)/receitaMensal)*100).toFixed(1)}% vs mês atual</p>}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-3">Estimativa baseada na média dos últimos 3 meses. Não considera sazonalidade.</p>
+                  </div>
+                )}
 
                 {/* ── DRE SIMPLIFICADO ── */}
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
@@ -1244,6 +1342,76 @@ const App = () => {
                   </div>
                 </div>
 
+                {/* ── INADIMPLÊNCIA ── */}
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Wallet size={14} className="text-[#ff7b00]"/>
+                      <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Inadimplência</h3>
+                    </div>
+                    {inadIndice>0?(
+                      <span className={`text-[9px] font-black px-3 py-1 rounded-full border uppercase tracking-widest ${inadIndice>=10?'bg-red-50 text-red-600 border-red-100':inadIndice>=5?'bg-amber-50 text-amber-600 border-amber-100':'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                        Índice {inadIndice.toFixed(1)}%
+                      </span>
+                    ):(
+                      <span className="text-[9px] font-black px-3 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 uppercase tracking-widest">Sem atrasos</span>
+                    )}
+                  </div>
+                  {inadVencidas.length===0?(
+                    <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+                      <CheckCircle size={15} className="text-emerald-500 shrink-0"/>
+                      <p className="text-xs font-medium text-emerald-700">Todos os recebíveis estão em dia. Nenhum valor em atraso.</p>
+                    </div>
+                  ):(
+                    <>
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {[
+                          {label:'Até 30 dias',itens:inad30,total:totalInad30,color:'text-amber-700',bg:'bg-amber-50',border:'border-amber-100'},
+                          {label:'30 a 60 dias',itens:inad60,total:totalInad60,color:'text-orange-700',bg:'bg-orange-50',border:'border-orange-100'},
+                          {label:'Acima 60 dias',itens:inad60p,total:totalInad60p,color:'text-red-700',bg:'bg-red-50',border:'border-red-100'},
+                        ].map((faixa,i)=>(
+                          <div key={i} className={`rounded-xl border px-4 py-3 ${faixa.bg} ${faixa.border}`}>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{faixa.label}</p>
+                            <p className={`text-base font-black ${faixa.color}`}>{formatBRL(faixa.total)}</p>
+                            <p className="text-[9px] text-slate-400 mt-0.5">{faixa.itens.length} recebível{faixa.itens.length!==1?'s':''}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-red-50 border border-red-100">
+                        <span className="text-xs font-black text-red-700">Total inadimplente</span>
+                        <span className="text-sm font-black text-red-700">{formatBRL(totalInad)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* ── RECEITA RECORRENTE VS AVULSA ── */}
+                {receitaMensal>0&&(
+                  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Activity size={14} className="text-[#137789]"/>
+                      <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide">Receita Recorrente vs. Avulsa</h3>
+                      <span className="ml-auto text-[9px] text-slate-400 font-bold">{new Date().toLocaleString('pt-BR',{month:'long',year:'numeric'})}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="rounded-xl border bg-emerald-50 border-emerald-100 px-4 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Recorrente</p>
+                        <p className="text-base font-black text-emerald-700">{formatBRL(receitaRecorrente)}</p>
+                        <p className="text-[10px] text-emerald-600 font-medium mt-0.5">{pctRecorrente.toFixed(0)}% do faturamento</p>
+                      </div>
+                      <div className="rounded-xl border bg-slate-50 border-slate-100 px-4 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Avulsa / Pontual</p>
+                        <p className="text-base font-black text-[#05121b]">{formatBRL(receitaAvulsa)}</p>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">{(100-pctRecorrente).toFixed(0)}% do faturamento</p>
+                      </div>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div className="h-full bg-emerald-400 rounded-full transition-all" style={{width:`${Math.min(100,pctRecorrente)}%`}}/>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-2">Receita recorrente = mesma descrição em 2+ meses. Quanto maior, mais previsível é o seu caixa.</p>
+                  </div>
+                )}
+
                 {/* ── INDICADORES COMPLETOS ── */}
                 <div>
                   <div className="flex items-center gap-3 mb-6">
@@ -1263,8 +1431,12 @@ const App = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Total de custos por mês" status="neutral"/>
                     <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
-                    <IndicadorCard titulo="Ticket Médio" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula="Faturamento ÷ Nº de vendas/mês" status="neutral"/>
-                    <IndicadorCard titulo="Prazo Médio Recebimento" valor={metrics.pmr>0?`${metrics.pmr} dias`:'—'} formula="Média de dias até o cliente pagar" status={metrics.pmr>0?(metrics.pmr<=30?'green':metrics.pmr<=60?'yellow':'red'):'neutral'}/>
+                    <IndicadorCard titulo="Ticket Médio" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula={`Faturamento ÷ ${metrics.nVendas||0} lançamentos de receita`} status={metrics.ticketMedio>0?'neutral':'neutral'}/>
+                    <IndicadorCard titulo="Prazo Médio Recebimento" valor={pmrLive>0?`${pmrLive} dias`:'—'} formula="(Recebíveis pendentes ÷ Receita) × 30" status={pmrLive>0?(pmrLive<=30?'green':pmrLive<=60?'yellow':'red'):'neutral'}/>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-6">
+                    <IndicadorCard titulo="Prazo Médio Pagamento" valor={pmpLive>0?`${pmpLive} dias`:'—'} formula="(Contas a pagar pendentes ÷ Custos) × 30" status={pmpLive>0?(pmpLive>=30?'green':pmpLive>=15?'yellow':'red'):'neutral'}/>
+                    <IndicadorCard titulo="Ciclo Financeiro" valor={(pmrLive>0&&pmpLive>0)?`${pmrLive-pmpLive} dias`:'—'} formula="PMR − PMP (negativo = caixa antecipado)" status={(pmrLive>0&&pmpLive>0)?(pmrLive-pmpLive<=0?'green':pmrLive-pmpLive<=30?'yellow':'red'):'neutral'} destaque/>
                   </div>
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Shield size={10}/> Estrutura de Custos</p>
@@ -1273,6 +1445,10 @@ const App = () => {
                     <IndicadorCard titulo="Custos Fixos" valor={formatBRL(metrics.custFix)} formula="Folha + Aluguel + Fixos" status="neutral"/>
                     <IndicadorCard titulo="% Custo sobre Receita" valor={metrics.receita>0?`${(metrics.totalCust/metrics.receita*100).toFixed(1)}%`:'—'} formula="Total custos ÷ Receita" status={metrics.receita>0?(metrics.totalCust/metrics.receita<=0.7?'green':metrics.totalCust/metrics.receita<=0.85?'yellow':'red'):'neutral'} destaque/>
                     <IndicadorCard titulo="Resultado Mensal" valor={formatBRL(metrics.lucro)} formula="Receita − Total de Custos" status={metrics.lucro>0?'green':metrics.lucro===0?'neutral':'red'}/>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-6">
+                    <IndicadorCard titulo="CMV (Custo das Mercadorias)" valor={metrics.cmv>0?formatBRL(metrics.cmv):'—'} formula="Despesas em Fornecedor / Mercadoria / Estoque" status={metrics.cmv>0?(metrics.receita>0&&metrics.cmv/metrics.receita<=0.4?'green':metrics.receita>0&&metrics.cmv/metrics.receita<=0.6?'yellow':'red'):'neutral'}/>
+                    <IndicadorCard titulo="Markup" valor={metrics.markup!=null?`${metrics.markup.toFixed(1)}%`:'—'} formula="(Receita − CMV) ÷ CMV × 100" status={metrics.markup!=null?(metrics.markup>=100?'green':metrics.markup>=50?'yellow':'red'):'neutral'} destaque/>
                   </div>
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>

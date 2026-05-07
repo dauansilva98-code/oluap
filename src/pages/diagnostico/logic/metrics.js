@@ -115,13 +115,31 @@ export const calcLiveMetrics = (lancamentos, bancos, dividas) => {
   },0)
   const runwayMeses = burnRate>0&&saldo>0 ? saldo/burnRate : 0
   const folegoDias = Math.round(runwayMeses*30)
+  // MoM: compare with previous month
+  const mesPrevObj = new Date(); mesPrevObj.setDate(1); mesPrevObj.setMonth(mesPrevObj.getMonth()-1)
+  const mesPrev = mesPrevObj.toISOString().slice(0,7)
+  const srcPrev = lancamentos.filter(l => l.data && l.data.startsWith(mesPrev))
+  const recPrev = srcPrev.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0)
+  const despPrev = srcPrev.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0)
+  const lucroPrev = recPrev - despPrev
+  const momReceita = recPrev > 0 ? ((receita - recPrev) / recPrev) * 100 : null
+  const momDespesa = despPrev > 0 ? ((despTotal - despPrev) / despPrev) * 100 : null
+  const momLucro = Math.abs(lucroPrev) > 0 ? ((lucro - lucroPrev) / Math.abs(lucroPrev)) * 100 : null
+  // CMV: direct product/goods costs (subset of variable costs)
+  const cmvCats = new Set(['Fornecedor','Mercadoria','Matéria-prima','CMV','Estoque'])
+  const cmv = allDesp.filter(l=>cmvCats.has(l.categoria)).reduce((a,l)=>a+Number(l.valor),0) / divisor
+  const markup = cmv > 0 ? ((receita - cmv) / cmv) * 100 : null
+  // Ticket médio: receita / nº de transações de receita
+  const nVendas = src.filter(l=>l.tipo==='receita').length
+  const ticketMedio = nVendas > 0 ? receita / nVendas : 0
   let score=50
   if(margLiq>=15)score+=20; else if(margLiq>=5)score+=10; else if(margLiq<0)score-=25
   if(folegoDias>=90)score+=15; else if(folegoDias>=45)score+=5; else if(folegoDias>0&&folegoDias<20)score-=15
   if(receita>0&&pontoEq<=receita)score+=10; else if(receita>0)score-=10
   if(margemBruta>=40)score+=5; else if(margemBruta<15)score-=5
   score=Math.max(10,Math.min(100,Math.round(score)))
-  return {receita,custDir,custVar,custFix,totalCust,lucro,saldo,margemBruta,margContrib,margLiq,pontoEq,burnRate,runwayMeses,folegoDias,ticketMedio:0,pmr:0,pmp:0,score}
+  return {receita,custDir,custVar,custFix,totalCust,lucro,saldo,margemBruta,margContrib,margLiq,pontoEq,burnRate,runwayMeses,folegoDias,
+    recPrev,despPrev,lucroPrev,momReceita,momDespesa,momLucro,cmv,markup,ticketMedio,nVendas,pmr:0,pmp:0,score}
 }
 
 export const genLiveCashFlowData = (lancamentos) => {
