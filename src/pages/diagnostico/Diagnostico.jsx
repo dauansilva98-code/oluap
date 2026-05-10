@@ -217,10 +217,16 @@ const App = () => {
   const [periodoReceitas, setPeriodoReceitas] = useState(null);
   const [filtroReceitas, setFiltroReceitas] = useState('todos');
   const [periodoDespesas, setPeriodoDespesas] = useState(null);
+  const [cfoPeriodo, setCfoPeriodo] = useState('mensal');
+  const [cfoDataInicio, setCfoDataInicio] = useState('');
+  const [cfoDataFim, setCfoDataFim] = useState('');
   const [filtroDespesas, setFiltroDespesas] = useState('todos');
   const [fluxoTabFilter, setFluxoTabFilter] = useState('todos');
   const [cpFiltro, setCpFiltro] = useState('todos');
+  const [cpMes, setCpMes] = useState(new Date().toISOString().slice(0,7));
   const [cpSelected, setCpSelected] = useState(new Set());
+  const [recSelected, setRecSelected] = useState(new Set());
+  const [despSelected, setDespSelected] = useState(new Set());
   const [modalPagarCP, setModalPagarCP] = useState(null);
   const [modalPagarCR, setModalPagarCR] = useState(null);
 
@@ -406,7 +412,7 @@ const App = () => {
     setSavingItem(false);
   };
 
-  const fmtDate=d=>d?new Date(d+'T00:00:00').toLocaleDateString('pt-BR'):'—';
+  const fmtDate=d=>d&&d.length>=10?`${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`:'—';
   const today=new Date().toISOString().split('T')[0];
 
   // Saldo calculado por banco
@@ -734,6 +740,24 @@ const App = () => {
   const cashFlowData = genLiveCashFlowData(lancamentos);
   const usingLiveData = cashFlowData.some(d=>d.Entradas>0||d.Saidas>0);
   const alertsFeed = liveMetrics ? genLiveAlerts(liveMetrics, contasPagar, contasReceber, dividas, today) : [];
+  const lancamentosParaCFO = (() => {
+    if (cfoPeriodo === 'mensal') return null;
+    const d = new Date();
+    if (cfoPeriodo === 'diaria') return lancamentos.filter(l => l.data === today);
+    if (cfoPeriodo === 'semanal') {
+      const s = new Date(d); s.setDate(s.getDate() - 6);
+      const si = s.toISOString().slice(0,10);
+      return lancamentos.filter(l => l.data && l.data >= si && l.data <= today);
+    }
+    if (cfoPeriodo === 'anual') {
+      const y = d.getFullYear().toString();
+      return lancamentos.filter(l => l.data && l.data.startsWith(y));
+    }
+    if (cfoPeriodo === 'periodo' && cfoDataInicio && cfoDataFim)
+      return lancamentos.filter(l => l.data && l.data >= cfoDataInicio && l.data <= cfoDataFim);
+    return null;
+  })();
+  const cfoMetrics = lancamentosParaCFO != null ? calcLiveMetrics(lancamentos, bancos, dividas, lancamentosParaCFO) : liveMetrics;
 
   // KPIs: Custo Fixo Real & Ponto de Equilíbrio (baseados na classificação fixa/variável)
   const mesAtualPE = new Date().toISOString().slice(0, 7);
@@ -1172,12 +1196,30 @@ const App = () => {
         )}
 
         {/* ── CFO DIGITAL · DIAGNÓSTICO & ALERTAS ───────────────────────── */}
-        {view==='alertas'&&(
+        {view==='alertas'&&(()=>{
+          const metrics = cfoMetrics || liveMetrics;
+          const cfoPeriodoLabel = cfoPeriodo==='diaria'?`Hoje · ${fmtDate(today)}`:cfoPeriodo==='semanal'?'Últimos 7 dias':cfoPeriodo==='anual'?`Ano ${new Date().getFullYear()}`:cfoPeriodo==='periodo'&&cfoDataInicio&&cfoDataFim?`${fmtDate(cfoDataInicio)} – ${fmtDate(cfoDataFim)}`:new Date().toLocaleString('pt-BR',{month:'long',year:'numeric'});
+          return (
           <div className="max-w-7xl mx-auto fade-in">
             <header className="mb-8">
               <p className="text-xs font-medium text-[#ff7b00] mb-1">CFO Digital · Análise Completa</p>
               <h1 className="text-xl font-medium text-[#05121b]">CFO Digital</h1>
               <p className="text-slate-400 text-sm font-medium mt-1">Todos os indicadores financeiros da sua empresa em um único lugar.</p>
+              <div className="flex items-center gap-2 mt-4 flex-wrap">
+                {['diaria','semanal','mensal','anual','periodo'].map(p=>(
+                  <button key={p} onClick={()=>setCfoPeriodo(p)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${cfoPeriodo===p?'bg-[#05121b] text-white border-[#05121b]':'bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-[#05121b]'}`}>
+                    {{diaria:'Hoje',semanal:'Semana',mensal:'Mês',anual:'Ano',periodo:'Período'}[p]}
+                  </button>
+                ))}
+                {cfoPeriodo==='periodo'&&(
+                  <div className="flex items-center gap-2 ml-2 flex-wrap">
+                    <input type="date" value={cfoDataInicio} onChange={e=>setCfoDataInicio(e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-[#05121b] font-medium outline-none focus:border-[#137789]"/>
+                    <span className="text-slate-400 text-xs font-bold">–</span>
+                    <input type="date" value={cfoDataFim} onChange={e=>setCfoDataFim(e.target.value)} className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-[#05121b] font-medium outline-none focus:border-[#137789]"/>
+                  </div>
+                )}
+                <span className="ml-auto text-[10px] text-slate-400 font-medium">{cfoPeriodoLabel}</span>
+              </div>
             </header>
 
             {!metrics ? (
@@ -1193,7 +1235,7 @@ const App = () => {
             ) : (
               <>
                 {/* ── MoM STRIP ── */}
-                {(liveMetrics?.momReceita!=null||liveMetrics?.momDespesa!=null||liveMetrics?.momLucro!=null)&&(
+                {cfoPeriodo==='mensal'&&(liveMetrics?.momReceita!=null||liveMetrics?.momDespesa!=null||liveMetrics?.momLucro!=null)&&(
                   <div className="grid grid-cols-3 gap-3 mb-6">
                     {[
                       {label:'Receita',val:liveMetrics.momReceita,cur:liveMetrics.receita,lowerBetter:false},
@@ -1460,86 +1502,11 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* ── CUSTO MENSAL DO NEGÓCIO ── */}
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 mt-6">
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide flex items-center gap-2"><Target size={14} className="text-[#137789]"/> Custo Mensal do Negócio</h3>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Itens classificados como custo fixo · {new Date().toLocaleString('pt-BR',{month:'long',year:'numeric'})}</p>
-                    </div>
-                    {custoFixoMensal===0&&(
-                      <span className="text-[9px] bg-amber-50 border border-amber-200 text-amber-700 font-black px-3 py-1 rounded-full uppercase tracking-widest">Classifique custos fixos</span>
-                    )}
-                  </div>
-
-                  <div className="rounded-2xl p-5 border mb-5" style={{background:'#EEEDFE',borderColor:'#CECBF6'}}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{color:'#3C3489'}}>Custo Mensal do Negócio</p>
-                        <p className="text-2xl font-black leading-tight" style={{color:'#26215C'}}>{formatBRL(custoFixoMensal)}</p>
-                        <p className="text-[10px] mt-1" style={{color:'#3C3489'}}>{itensFixosCP.length+itensFixosLanc.length} item(ns) classificado(s) como custo fixo</p>
-                      </div>
-                      {margemContribPct>0&&(
-                        <div className="text-right">
-                          <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{color:'#3C3489'}}>Ponto de Equilíbrio</p>
-                          <p className="text-xl font-black" style={{color:'#26215C'}}>{formatBRL(pontoEquilibrioReal)}</p>
-                          <p className="text-[9px] mt-1" style={{color:'#3C3489'}}>= Custo Fixo ÷ {(margemContribPct*100).toFixed(1)}% MC</p>
-                        </div>
-                      )}
-                    </div>
-                    {receitaMensal>0&&pontoEquilibrioReal>0&&(
-                      <div className={`mt-3 pt-3 border-t flex items-center gap-2`} style={{borderColor:'#CECBF6'}}>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${pontoEquilibrioReal<=receitaMensal?'bg-emerald-100 text-emerald-700':'bg-orange-100 text-orange-700'}`}>
-                          {pontoEquilibrioReal<=receitaMensal?`✓ Equilíbrio atingido — sobram ${formatBRL(receitaMensal-pontoEquilibrioReal)}`:`Faltam ${formatBRL(pontoEquilibrioReal-receitaMensal)} para o equilíbrio`}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {custoFixoMensal===0?(
-                    <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 flex items-start gap-3">
-                      <Info size={14} className="text-amber-500 shrink-0 mt-0.5"/>
-                      <div>
-                        <p className="text-xs font-black text-amber-800 mb-0.5">Como classificar o Custo Mensal do Negócio?</p>
-                        <p className="text-[11px] text-amber-700 leading-relaxed">Ao registrar despesas ou contas a pagar, classifique-as como <strong>Custo Fixo</strong> (aluguel, folha, assinaturas) ou <strong>Custo Variável</strong> (comissões, matéria-prima). O sistema calcula automaticamente o faturamento mínimo necessário para cobrir todos os seus custos fixos.</p>
-                      </div>
-                    </div>
-                  ):(
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Itens de custo fixo</p>
-                      <div className="space-y-2">
-                        {itensFixosCP.map(cp=>(
-                          <div key={cp.id} className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                            <div className="flex items-center gap-2.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0"/>
-                              <span className="text-xs font-medium text-[#05121b]">{cp.descricao||cp.nome||'—'}</span>
-                              <span className="text-[9px] bg-purple-50 border border-purple-100 text-purple-600 font-black px-2 py-0.5 rounded-full uppercase">Conta a Pagar</span>
-                            </div>
-                            <span className="text-xs font-black text-[#05121b]">{formatBRL(Number(cp.valor))}</span>
-                          </div>
-                        ))}
-                        {itensFixosLanc.map(l=>(
-                          <div key={l.id} className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                            <div className="flex items-center gap-2.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0"/>
-                              <span className="text-xs font-medium text-[#05121b]">{l.descricao||'—'}</span>
-                              <span className="text-[9px] bg-blue-50 border border-blue-100 text-blue-600 font-black px-2 py-0.5 rounded-full uppercase">Lançamento</span>
-                            </div>
-                            <span className="text-xs font-black text-[#05121b]">{formatBRL(Number(l.valor))}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-purple-50 border border-purple-100 mt-2">
-                        <span className="text-xs font-black text-purple-800">Total Custo Mensal do Negócio</span>
-                        <span className="text-sm font-black text-purple-800">{formatBRL(custoFixoMensal)}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* ── SIMULADOR ─────────────────────────────────────────────────── */}
         {view==='simulador'&&(()=>{
@@ -2110,7 +2077,14 @@ const App = () => {
               {/* Table */}
               <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
                 <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
-                  <h3 className="text-sm font-semibold text-[#05121b]">Lançamentos</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-[#05121b]">Lançamentos</h3>
+                    {recSelected.size>0&&(
+                      <button onClick={async()=>{if(!confirm(`Excluir ${recSelected.size} receita(s)?`))return;setSavingItem(true);await supabase.from('lancamentos').delete().in('id',Array.from(recSelected));await fetchFinanceiro(user.id);setRecSelected(new Set());setSavingItem(false);}} className="px-3 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors">
+                        Excluir {recSelected.size} selecionada(s)
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {[{key:'todos',label:'Todos'},{key:'mensalidade',label:'Mensalidade'},{key:'servico',label:'Serviço'},{key:'avulso',label:'Avulso'}].map(f=>(
                       <button key={f.key} onClick={()=>setFiltroReceitas(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${filtroReceitas===f.key?'bg-[#05121b] text-white border-[#05121b]':'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{f.label}</button>
@@ -2124,6 +2098,7 @@ const App = () => {
                     <table className="w-full text-sm min-w-[520px]">
                       <thead>
                         <tr className="border-b border-slate-100">
+                          <th className="px-4 py-3 w-8"><input type="checkbox" checked={filtrados.length>0&&filtrados.every(l=>recSelected.has(l.id))} onChange={e=>{const ids=filtrados.map(l=>l.id);setRecSelected(e.target.checked?new Set(ids):new Set());}} style={{cursor:'pointer',accentColor:'#137789'}}/></th>
                           {['Descrição','Categoria','Tipo','Data','Banco','Valor',''].map(h=><th key={h} className={`px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide ${h==='Valor'?'text-right':'text-left'}`}>{h}</th>)}
                         </tr>
                       </thead>
@@ -2134,8 +2109,10 @@ const App = () => {
                             :l.categoria==='Venda de Serviço'
                             ?{cls:'bg-emerald-50 text-emerald-700 border-emerald-200',lbl:'Serviço'}
                             :{cls:'bg-amber-50 text-amber-700 border-amber-200',lbl:'Avulso'};
+                          const isSelR=recSelected.has(l.id);
                           return(
-                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtrados.length-1?'border-b border-slate-100':''}`}>
+                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtrados.length-1?'border-b border-slate-100':''}`} style={{background:isSelR?'#f0f9ff':undefined}}>
+                              <td className="px-4 py-3.5"><input type="checkbox" checked={isSelR} onChange={()=>setRecSelected(prev=>{const n=new Set(prev);n.has(l.id)?n.delete(l.id):n.add(l.id);return n;})} style={{cursor:'pointer',accentColor:'#137789'}}/></td>
                               <td className="px-4 py-3.5 font-medium text-[#05121b] text-sm">{l.descricao}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
                               <td className="px-4 py-3.5"><span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${tipoInfo.cls}`}>{tipoInfo.lbl}</span></td>
@@ -2305,7 +2282,14 @@ const App = () => {
               {/* Table */}
               <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
                 <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
-                  <h3 className="text-sm font-semibold text-[#05121b]">Lançamentos</h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-[#05121b]">Lançamentos</h3>
+                    {despSelected.size>0&&(
+                      <button onClick={async()=>{if(!confirm(`Excluir ${despSelected.size} despesa(s)?`))return;setSavingItem(true);await supabase.from('lancamentos').delete().in('id',Array.from(despSelected));await fetchFinanceiro(user.id);setDespSelected(new Set());setSavingItem(false);}} className="px-3 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors">
+                        Excluir {despSelected.size} selecionada(s)
+                      </button>
+                    )}
+                  </div>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {[{key:'todos',label:'Todos'},{key:'fixa',label:'Fixas'},{key:'variavel',label:'Variáveis'},{key:'imposto',label:'Impostos'}].map(f=>(
                       <button key={f.key} onClick={()=>setFiltroDespesas(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${filtroDespesas===f.key?'bg-[#05121b] text-white border-[#05121b]':'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{f.label}</button>
@@ -2319,14 +2303,17 @@ const App = () => {
                     <table className="w-full text-sm min-w-[560px]">
                       <thead>
                         <tr className="border-b border-slate-100">
+                          <th className="px-4 py-3 w-8"><input type="checkbox" checked={filtradosD.length>0&&filtradosD.every(l=>despSelected.has(l.id))} onChange={e=>{const ids=filtradosD.map(l=>l.id);setDespSelected(e.target.checked?new Set(ids):new Set());}} style={{cursor:'pointer',accentColor:'#137789'}}/></th>
                           {['Descrição','Categoria','Data','Tipo','Status','Valor',''].map(h=><th key={h} className={`px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide ${h==='Valor'?'text-right':'text-left'}`}>{h}</th>)}
                         </tr>
                       </thead>
                       <tbody>
                         {filtradosD.map((l,idx)=>{
                           const tipo=tipoFromCat(l.categoria);
+                          const isSelD=despSelected.has(l.id);
                           return(
-                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtradosD.length-1?'border-b border-slate-100':''}`}>
+                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtradosD.length-1?'border-b border-slate-100':''}`} style={{background:isSelD?'#f0f9ff':undefined}}>
+                              <td className="px-4 py-3.5"><input type="checkbox" checked={isSelD} onChange={()=>setDespSelected(prev=>{const n=new Set(prev);n.has(l.id)?n.delete(l.id):n.add(l.id);return n;})} style={{cursor:'pointer',accentColor:'#137789'}}/></td>
                               <td className="px-4 py-3.5 font-medium text-[#05121b] text-sm">{l.descricao}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{fmtDate(l.data)}</td>
@@ -2361,17 +2348,21 @@ const App = () => {
             status:CP_STATUS_MAP[cp.status]||cp.status||'aberto',
             valor:Number(cp.valor)||0,
           }));
-          const mesAtualCP=new Date().toISOString().slice(0,7);
-          const vencidas=cpData.filter(c=>c.status==='atrasado'||(c.status!=='pago'&&c.venc<today));
-          const emAberto=cpData.filter(c=>c.status==='aberto'&&c.venc>=today);
-          const pagas=cpData.filter(c=>c.status==='pago');
+          const mesAtualCP=cpMes;
+          const prevMesCP=(()=>{const[y,m]=cpMes.split('-');const d=new Date(parseInt(y),parseInt(m)-2);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+          const nextMesCP=(()=>{const[y,m]=cpMes.split('-');const d=new Date(parseInt(y),parseInt(m));return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+          const cpMesLabel=(()=>{const[y,m]=cpMes.split('-');const n=new Date(parseInt(y),parseInt(m)-1).toLocaleString('pt-BR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);})();
+          const cpDataFiltradaMes=cpData.filter(c=>c.venc.startsWith(mesAtualCP));
+          const vencidas=cpDataFiltradaMes.filter(c=>c.status==='atrasado'||(c.status!=='pago'&&c.venc<today));
+          const emAberto=cpDataFiltradaMes.filter(c=>c.status==='aberto'&&c.venc>=today);
+          const pagas=cpDataFiltradaMes.filter(c=>c.status==='pago');
           const totalEmAberto=[...vencidas,...emAberto].reduce((a,c)=>a+c.valor,0);
           const totalVencidas=vencidas.reduce((a,c)=>a+c.valor,0);
           const totalVencendo=emAberto.reduce((a,c)=>a+c.valor,0);
           const totalPagas=pagas.reduce((a,c)=>a+c.valor,0);
-          const totalMes=cpData.filter(c=>c.venc.startsWith(mesAtualCP)).reduce((a,c)=>a+c.valor,0);
-          const mediaPorConta=cpData.length>0?cpData.reduce((a,c)=>a+c.valor,0)/cpData.length:0;
-          const filtrados=cpFiltro==='todos'?cpData:cpData.filter(c=>
+          const totalMes=cpDataFiltradaMes.reduce((a,c)=>a+c.valor,0);
+          const mediaPorConta=cpDataFiltradaMes.length>0?totalMes/cpDataFiltradaMes.length:0;
+          const filtrados=cpFiltro==='todos'?cpDataFiltradaMes:cpDataFiltradaMes.filter(c=>
             cpFiltro==='aberto'?c.status==='aberto':
             cpFiltro==='atrasado'?c.status==='atrasado':
             cpFiltro==='pago'?c.status==='pago':
@@ -2426,7 +2417,11 @@ const App = () => {
                   <h1 style={{fontSize:20,fontWeight:500,color:'#05121b',marginTop:2}}>Contas a pagar</h1>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                  <span style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 12px',fontSize:12,color:'#64748b'}}>{new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</span>
+                  <div style={{display:'flex',alignItems:'center',gap:4,background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'4px 8px'}}>
+                    <button onClick={()=>setCpMes(prevMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'#94a3b8',display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
+                    <span style={{fontSize:12,color:'#64748b',minWidth:130,textAlign:'center'}}>{cpMesLabel}</span>
+                    <button onClick={()=>setCpMes(nextMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'#94a3b8',display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
+                  </div>
                   <button onClick={()=>setModalImport({stage:'upload',tipoImport:'contas_pagar'})} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Upload size={12}/>Importar</button>
                   <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo_custo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
                 </div>
@@ -2470,7 +2465,7 @@ const App = () => {
                   <div style={{width:8,height:8,borderRadius:'50%',background:'#D85A30',marginTop:4,flexShrink:0}}/>
                   <p style={{fontSize:12,color:'#791F1F',lineHeight:1.6,margin:0}}>
                     <strong style={{color:'#791F1F'}}>{vencidas.length} contas vencidas: </strong>
-                    {vencidas.map((c,i)=><span key={c.id}>{c.desc} {formatBRL(c.valor)} ({c.venc.substring(5).replace('-','/')}){i<vencidas.length-1?', ':''}</span>)}.{' '}
+                    {vencidas.map((c,i)=><span key={c.id}>{c.desc} {formatBRL(c.valor)} ({c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'-'}){i<vencidas.length-1?', ':''}</span>)}.{' '}
                     Total em atraso: <strong>{formatBRL(totalVencidas)}</strong>.
                   </p>
                 </div>
@@ -2480,14 +2475,14 @@ const App = () => {
                   <div style={{width:8,height:8,borderRadius:'50%',background:'#BA7517',marginTop:4,flexShrink:0}}/>
                   <p style={{fontSize:12,color:'#633806',lineHeight:1.6,margin:0}}>
                     <strong style={{color:'#633806'}}>Vencimentos esta semana: </strong>
-                    {emAberto.map((c,i)=><span key={c.id}>{c.desc} {formatBRL(c.valor)} ({c.venc.substring(5).replace('-','/')}){i<emAberto.length-1?', ':''}</span>)}.{' '}
+                    {emAberto.map((c,i)=><span key={c.id}>{c.desc} {formatBRL(c.valor)} ({c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'-'}){i<emAberto.length-1?', ':''}</span>)}.{' '}
                     Prepare <strong>{formatBRL(totalVencendo)}</strong>.
                   </p>
                 </div>
               )}
               {/* 4. CALENDÁRIO */}
               <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,padding:20}}>
-                <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Calendário de vencimentos — {new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</h3>
+                <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Calendário de vencimentos — {cpMesLabel}</h3>
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                   {calCells.map((c,i)=>{
                     const s=calStyle[c.status]||calStyle.previsto;
@@ -2592,7 +2587,7 @@ const App = () => {
                             </td>
                             <td style={{padding:'10px 16px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,fontWeight:500,color:'#05121b'}}>{c.desc}</td>
                             <td style={{padding:'10px 16px',fontSize:12,color:'#64748b'}}>{c.cat}</td>
-                            <td style={{padding:'10px 16px',fontSize:12,fontWeight:isAtrasado?700:400,color:isAtrasado?'#D85A30':'#64748b',whiteSpace:'nowrap'}}>{c.venc.substring(5).replace('-','/')}</td>
+                            <td style={{padding:'10px 16px',fontSize:12,fontWeight:isAtrasado?700:400,color:isAtrasado?'#D85A30':'#64748b',whiteSpace:'nowrap'}}>{c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'—'}</td>
                             <td style={{padding:'10px 16px'}}><span style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:500,background:tp.bg,color:tp.txt}}>{tp.lbl}</span></td>
                             <td style={{padding:'10px 16px'}}><span style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:500,background:sb.bg,color:sb.txt}}>{sb.lbl}</span></td>
                             <td style={{padding:'10px 16px',textAlign:'right',fontSize:13,fontWeight:500,color:valColor,whiteSpace:'nowrap'}}>{formatBRL(c.valor)}</td>
@@ -2627,6 +2622,7 @@ const App = () => {
             onReceber={handleReceberCR}
             onExcluir={handleExcluirCR}
             onPagamentoParcial={handlePagamentoParcial}
+            onImportClick={()=>setModalImport({stage:'upload',tipoImport:'contas_receber'})}
             savingItem={savingItem}
           />
         )}
@@ -2867,15 +2863,28 @@ const App = () => {
         {/* Modal Conta a Pagar */}
         {modalCP&&(()=>{
           const qtdParc=parseInt(modalCP.parcelas)||1;
-          const isParcelado=!modalCP.id&&qtdParc>1;
+          const modoRepetir=modalCP.modoRepetir||'parcela';
+          const isRepeticao=!modalCP.id&&modoRepetir==='repeticao'&&qtdParc>1;
+          const isParcelado=!modalCP.id&&modoRepetir==='parcela'&&qtdParc>1;
           const handleSaveCP=async()=>{
             setSavingItem(true);
             const valorNum=parseFloat((modalCP.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
+            const catFinal=modalCP.categoria==='Personalizado'?(modalCP.categoriaCustom||'Outros'):modalCP.categoria;
             // strip tipo/tipo_custo: 'tipo' não existe na tabela; 'tipo_custo' aguarda migration SQL
-            const {parcelas:_p,intervalo_dias:_i,tipo:_tp,tipo_custo:_tc,...baseRaw}={...modalCP,valor:valorNum,user_id:user.id};
+            const {parcelas:_p,intervalo_dias:_i,tipo:_tp,tipo_custo:_tc,categoriaCustom:_cc,modoRepetir:_mr,...baseRaw}={...modalCP,valor:valorNum,categoria:catFinal,user_id:user.id};
             const baseCP=cleanPayload(baseRaw);
             try{
-              if(isParcelado&&modalCP.vencimento){
+              if(isRepeticao&&modalCP.vencimento){
+                // Repetição mensal: mesmo valor, repete N meses na mesma data
+                const inserts=[];
+                for(let i=0;i<qtdParc;i++){
+                  const d=new Date(modalCP.vencimento+'T00:00:00');
+                  d.setMonth(d.getMonth()+i);
+                  inserts.push({...baseCP,descricao:`${modalCP.descricao} (${new Date(d).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'})})`,valor:valorNum,vencimento:d.toISOString().split('T')[0],status:'pendente'});
+                }
+                const{error}=await supabase.from('contas_pagar').insert(inserts);
+                if(error)throw error;
+              }else if(isParcelado&&modalCP.vencimento){
                 const interval=parseInt(modalCP.intervalo_dias)||30;
                 const inserts=[];
                 for(let i=0;i<qtdParc;i++){
@@ -2906,26 +2915,41 @@ const App = () => {
                 </div>
                 {!modalCP.id&&(
                   <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
-                    <p className="text-[10px] font-black text-[#05121b]/60 uppercase tracking-widest">Parcelamento</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Nº de Parcelas</label>
-                        <input type="number" min="1" max="120" value={modalCP.parcelas||'1'} onChange={e=>setModalCP({...modalCP,parcelas:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Intervalo (dias)</label>
-                        <select value={modalCP.intervalo_dias||'30'} onChange={e=>setModalCP({...modalCP,intervalo_dias:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">
-                          <option value="15">15 dias (quinzenal)</option>
-                          <option value="30">30 dias (mensal)</option>
-                          <option value="60">60 dias (bimestral)</option>
-                          <option value="90">90 dias (trimestral)</option>
-                        </select>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-black text-[#05121b]/60 uppercase tracking-widest">Recorrência / Parcelamento</p>
+                      <div className="flex gap-1.5">
+                        {[{v:'parcela',l:'Parcelar'},{v:'repeticao',l:'Repetir todo mês'}].map(opt=>(
+                          <button key={opt.v} type="button" onClick={()=>setModalCP({...modalCP,modoRepetir:opt.v})}
+                            className={`px-2.5 py-1 rounded-lg text-[9px] font-black border transition-colors ${modoRepetir===opt.v?'bg-[#05121b] text-white border-[#05121b]':'bg-white text-slate-500 border-slate-200'}`}>
+                            {opt.l}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                    {isParcelado&&modalCP.valor&&modalCP.vencimento&&(
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">{modoRepetir==='repeticao'?'Quantos meses repetir':'Nº de Parcelas'}</label>
+                        <input type="number" min="1" max="120" value={modalCP.parcelas||'1'} onChange={e=>setModalCP({...modalCP,parcelas:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/>
+                      </div>
+                      {modoRepetir==='parcela'&&(
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Intervalo (dias)</label>
+                          <select value={modalCP.intervalo_dias||'30'} onChange={e=>setModalCP({...modalCP,intervalo_dias:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">
+                            <option value="15">15 dias (quinzenal)</option>
+                            <option value="30">30 dias (mensal)</option>
+                            <option value="60">60 dias (bimestral)</option>
+                            <option value="90">90 dias (trimestral)</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                    {(isParcelado||isRepeticao)&&modalCP.valor&&modalCP.vencimento&&(
                       <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                        <p className="text-xs text-amber-700 font-medium mb-1">Prévia do parcelamento</p>
-                        <p className="text-[10px] text-amber-800 font-medium">{qtdParc}× de {formatBRL((parseFloat((modalCP.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0)/qtdParc)} — iniciando em {fmtDate(modalCP.vencimento)}</p>
+                        <p className="text-xs text-amber-700 font-medium mb-1">Prévia</p>
+                        {isRepeticao
+                          ? <p className="text-[10px] text-amber-800 font-medium">{qtdParc} meses × {formatBRL(parseFloat((modalCP.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0)} = {formatBRL((parseFloat((modalCP.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0)*qtdParc)} total — iniciando em {fmtDate(modalCP.vencimento)}</p>
+                          : <p className="text-[10px] text-amber-800 font-medium">{qtdParc}× de {formatBRL((parseFloat((modalCP.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0)/qtdParc)} — iniciando em {fmtDate(modalCP.vencimento)}</p>
+                        }
                       </div>
                     )}
                   </div>
@@ -2933,16 +2957,25 @@ const App = () => {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo de custo</label>
                   <div className="flex gap-2">
-                    {[{v:'fixa',l:'Custo Fixo'},{v:'variavel',l:'Custo Variável'}].map(({v,l})=>(
+                    {[{v:'fixa',l:'Custo Fixo',sel:'bg-red-600 text-white border-red-600',unsel:'bg-white text-red-600 border-red-200 hover:border-red-300'},{v:'variavel',l:'Custo Variável',sel:'bg-amber-500 text-white border-amber-500',unsel:'bg-white text-amber-600 border-amber-200 hover:border-amber-300'}].map(({v,l,sel,unsel})=>(
                       <button key={v} type="button" onClick={()=>setModalCP({...modalCP,tipo_custo:v})}
-                        className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${modalCP.tipo_custo===v?'bg-[#05121b] text-white border-[#05121b]':'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${modalCP.tipo_custo===v?sel:unsel}`}>
                         {l}
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalCP.categoria} onChange={e=>setModalCP({...modalCP,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label>
+                    <select value={modalCP.categoria==='Personalizado'?'Personalizado':(modalCP.categoria||'')} onChange={e=>setModalCP({...modalCP,categoria:e.target.value,categoriaCustom:e.target.value!=='Personalizado'?'':modalCP.categoriaCustom})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">
+                      <option value="">Selecione...</option>
+                      {['Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros','Personalizado'].map(c=><option key={c}>{c}</option>)}
+                    </select>
+                    {modalCP.categoria==='Personalizado'&&(
+                      <input type="text" value={modalCP.categoriaCustom||''} onChange={e=>setModalCP({...modalCP,categoriaCustom:e.target.value})} placeholder="Digite a categoria..." className="w-full mt-1.5 bg-white border border-[#ff7b00] px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/>
+                    )}
+                  </div>
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCP.status} onChange={e=>setModalCP({...modalCP,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="atrasado">Atrasado</option></select></div>
                 </div>
                 <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalCP.meio_pagamento||''} onChange={e=>setModalCP({...modalCP,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalCP.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['PIX','Boleto Bancário','Transferência Bancária','Cartão de Crédito','Cartão de Débito','Dinheiro','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
@@ -2951,7 +2984,7 @@ const App = () => {
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalCP(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalCP.descricao||!modalCP.valor||!modalCP.vencimento} onClick={handleSaveCP} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:isParcelado?`Criar ${qtdParc} Parcelas`:'Salvar'}</button>
+                <button disabled={savingItem||!modalCP.descricao||!modalCP.valor||!modalCP.vencimento} onClick={handleSaveCP} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:isRepeticao?`Repetir ${qtdParc} meses`:isParcelado?`Criar ${qtdParc} Parcelas`:'Salvar'}</button>
               </div>
             </div>
           </div>

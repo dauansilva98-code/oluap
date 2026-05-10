@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { X, AlertTriangle, Clock } from 'lucide-react'
+import { X, AlertTriangle, Clock, Upload, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const fmtBRL = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const fmtDate = d => d ? `${d.substring(8,10)}/${d.substring(5,7)}/${d.substring(0,4)}` : '—'
@@ -30,9 +30,11 @@ export default function ContasReceberView({
   onReceber,
   onPagamentoParcial,
   onExcluir,
+  onImportClick,
   savingItem = false,
 }) {
   const [filtro, setFiltro] = useState('todos')
+  const [crMes, setCrMes] = useState(new Date().toISOString().slice(0,7))
   const [crSelected, setCrSelected] = useState(new Set())
   const [modalForm, setModalForm] = useState(null)
   const [modalReceber, setModalReceber] = useState(null)
@@ -354,7 +356,25 @@ export default function ContasReceberView({
             <p style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Gestão financeira</p>
             <h1 style={{ fontSize: 20, fontWeight: 500, color: '#05121b', margin: 0 }}>Contas a receber</h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {(()=>{
+              const[y,m]=crMes.split('-');
+              const prevM=(()=>{const d=new Date(parseInt(y),parseInt(m)-2);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+              const nextM=(()=>{const d=new Date(parseInt(y),parseInt(m));return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+              const lbl=(()=>{const n=new Date(parseInt(y),parseInt(m)-1).toLocaleString('pt-BR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);})();
+              return(
+                <div style={{display:'flex',alignItems:'center',gap:4,background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'4px 8px'}}>
+                  <button onClick={()=>setCrMes(prevM)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'#94a3b8',display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
+                  <span style={{fontSize:12,color:'#64748b',minWidth:130,textAlign:'center'}}>{lbl}</span>
+                  <button onClick={()=>setCrMes(nextM)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'#94a3b8',display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
+                </div>
+              );
+            })()}
+            {onImportClick&&(
+              <button onClick={onImportClick} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+                <Upload size={12}/>Importar
+              </button>
+            )}
             <button onClick={() => setModalForm({ cliente: '', descricao: '', valor: '', vencimento: todayStr, categoria: 'Mensalidade', status: 'pendente' })}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors">
               + Nova cobrança

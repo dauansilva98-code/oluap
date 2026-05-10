@@ -78,14 +78,20 @@ export const genAlerts = (m) => {
   return alerts
 }
 
-export const calcLiveMetrics = (lancamentos, bancos, dividas) => {
+export const calcLiveMetrics = (lancamentos, bancos, dividas, srcOverride = null) => {
   if (!lancamentos || lancamentos.length === 0) return null
-  const mesAtual = new Date().toISOString().slice(0,7)
-  let src = lancamentos.filter(l => l.data && l.data.startsWith(mesAtual))
-  let divisor = 1
-  if (src.length === 0) {
-    src = lancamentos
-    divisor = Math.max(1, new Set(lancamentos.map(l=>l.data?.slice(0,7)).filter(Boolean)).size)
+  let src, divisor
+  if (srcOverride) {
+    src = srcOverride
+    divisor = 1
+  } else {
+    const mesAtual = new Date().toISOString().slice(0,7)
+    src = lancamentos.filter(l => l.data && l.data.startsWith(mesAtual))
+    divisor = 1
+    if (src.length === 0) {
+      src = lancamentos
+      divisor = Math.max(1, new Set(lancamentos.map(l=>l.data?.slice(0,7)).filter(Boolean)).size)
+    }
   }
   const receita = src.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0) / divisor
   const allDesp = src.filter(l=>l.tipo==='despesa')
