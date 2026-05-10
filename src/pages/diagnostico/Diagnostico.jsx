@@ -1743,7 +1743,7 @@ const App = () => {
               <tr className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                 <td className="px-4 py-3 font-medium text-[#05121b] text-sm max-w-[200px] truncate">{l.descricao}</td>
                 <td className="px-4 py-3 text-slate-500 text-xs">{l.cat}</td>
-                <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{l.data?l.data.substring(5).replace('-','/'):'—'}</td>
+                <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{fmtDate(l.data)}</td>
                 <td className="px-4 py-3 text-slate-500 text-xs">{l.met}</td>
                 <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${ss.cls}`}>{ss.lbl}</span></td>
                 <td className="px-4 py-3 text-right text-xs font-medium whitespace-nowrap" style={{color:showPlus?'#085041':'#791F1F'}}>{showPlus?'+':'-'}{formatBRL(l.valor)}</td>
@@ -1791,9 +1791,10 @@ const App = () => {
                   <p className="text-[11px] font-medium mb-1.5" style={{color:'#791F1F'}}>Total saídas</p>
                   <p className="text-[19px] font-medium leading-tight" style={{color:'#791F1F'}}>{formatBRL(totalSai)}</p>
                 </div>
-                <div className="rounded-2xl p-4 border" style={{background:'#E6F1FB',borderColor:'#B5D4F4'}}>
-                  <p className="text-[11px] font-medium mb-1.5" style={{color:'#0C447C'}}>Saldo período</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:'#0C447C'}}>{formatBRL(saldoPeriodo)}</p>
+                <div className="rounded-2xl p-4 border" style={saldoPeriodo>=0?{background:'#E1F5EE',borderColor:'#1D9E75'}:{background:'#FCEBEB',borderColor:'#D85A30'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:saldoPeriodo>=0?'#085041':'#791F1F'}}>Saldo Operacional</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:saldoPeriodo>=0?'#085041':'#791F1F'}}>{saldoPeriodo>=0?'+':''}{formatBRL(saldoPeriodo)}</p>
+                  <p className="text-[10px] font-bold mt-1" style={{color:saldoPeriodo>=0?'#1D9E75':'#D85A30'}}>{saldoPeriodo>=0?'✓ Mês no verde':'✗ Mês no vermelho'}</p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Saldo final</p>
@@ -1906,6 +1907,14 @@ const App = () => {
                               <tr className="bg-slate-50"><td colSpan={7} className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Saídas</td></tr>
                               {saiFiltered.map((l,i)=><TRow key={l.id||i} l={l} showPlus={false}/>)}
                             </>}
+                            <tr className="border-t border-slate-100" style={{background:saldoPeriodo>=0?'rgba(29,158,117,0.08)':'rgba(216,90,48,0.08)'}}>
+                              <td className="px-4 py-2.5 font-black text-xs" colSpan={5} style={{color:saldoPeriodo>=0?'#085041':'#791F1F'}}>
+                                {saldoPeriodo>=0?'✓':'✗'} Resultado Operacional
+                              </td>
+                              <td className="px-4 py-2.5 text-right text-xs font-black" style={{color:saldoPeriodo>=0?'#085041':'#791F1F'}} colSpan={2}>
+                                {saldoPeriodo>=0?'+':''}{formatBRL(saldoPeriodo)}
+                              </td>
+                            </tr>
                             <tr className="border-t-2 border-slate-200" style={{background:'rgba(5,18,27,0.04)'}}>
                               <td className="px-4 py-2.5 font-bold text-[#05121b] text-xs" colSpan={5}>Saldo final</td>
                               <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoTotal)}</td>
