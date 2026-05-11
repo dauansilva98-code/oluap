@@ -229,6 +229,10 @@ const App = () => {
   const [despSelected, setDespSelected] = useState(new Set());
   const [modalPagarCP, setModalPagarCP] = useState(null);
   const [modalPagarCR, setModalPagarCR] = useState(null);
+  const [lancamentosWindow, setLancamentosWindow] = useState(null); // YYYY-MM-DD: início da janela carregada
+  const [cpCrWindow, setCpCrWindow] = useState(null);
+  const [simDividaIdx, setSimDividaIdx] = useState(0);
+  const [simDividaSlider, setSimDividaSlider] = useState(0);
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -281,11 +285,17 @@ const App = () => {
 
   const fetchFinanceiro=async(userId)=>{
     try{
+      // Janela padrão: 13 meses (mês atual + 12 anteriores)
+      const janela=new Date(); janela.setMonth(janela.getMonth()-12); janela.setDate(1);
+      const dataInicio=janela.toISOString().slice(0,10);
       const[{data:bD},{data:lD},{data:cpD},{data:crD},{data:dD},{data:invD}]=await Promise.all([
         supabase.from('bancos').select('*').eq('user_id',userId).order('created_at'),
-        supabase.from('lancamentos').select('*').eq('user_id',userId).order('data',{ascending:false}),
-        supabase.from('contas_pagar').select('*').eq('user_id',userId).order('vencimento'),
-        supabase.from('contas_receber').select('*').eq('user_id',userId).order('vencimento'),
+        // Lançamentos: apenas últimos 13 meses
+        supabase.from('lancamentos').select('*').eq('user_id',userId).gte('data',dataInicio).order('data',{ascending:false}),
+        // CP: tudo pendente + pagos dos últimos 13 meses
+        supabase.from('contas_pagar').select('*').eq('user_id',userId).or(`status.neq.pago,vencimento.gte.${dataInicio}`).order('vencimento'),
+        // CR: tudo pendente + recebidos dos últimos 13 meses
+        supabase.from('contas_receber').select('*').eq('user_id',userId).or(`status.neq.recebido,vencimento.gte.${dataInicio}`).order('vencimento'),
         supabase.from('dividas').select('*').eq('user_id',userId).order('created_at'),
         supabase.from('investimentos').select('*').eq('user_id',userId).order('created_at'),
       ]);
@@ -295,8 +305,61 @@ const App = () => {
       if(crD)setContasReceber(crD);
       if(dD)setDividas(dD);
       if(invD)setInvestimentos(invD);
+      setLancamentosWindow(dataInicio);
+      setCpCrWindow(dataInicio);
     }catch(e){console.error('fetchFinanceiro',e);}
   };
+
+  // Carrega lançamentos de um mês específico fora da janela padrão
+  const carregarLancamentosMes=async(mesYYYYMM)=>{
+    if(!user)return;
+    const dataIni=`${mesYYYYMM}-01`;
+    const d=new Date(mesYYYYMM+'-01'); d.setMonth(d.getMonth()+1); d.setDate(0);
+    const dataFim=d.toISOString().slice(0,10);
+    const{data:lD}=await supabase.from('lancamentos').select('*').eq('user_id',user.id).gte('data',dataIni).lte('data',dataFim).order('data',{ascending:false});
+    if(lD?.length>0){
+      setLancamentos(prev=>{
+        const ids=new Set(prev.map(l=>l.id));
+        return [...prev,...lD.filter(l=>!ids.has(l.id))].sort((a,b)=>b.data>a.data?1:-1);
+      });
+      setLancamentosWindow(prev=>(!prev||dataIni<prev)?dataIni:prev);
+    }
+  };
+
+  // Carrega CP e CR de um mês específico fora da janela padrão
+  const carregarCPCRMes=async(mesYYYYMM)=>{
+    if(!user)return;
+    const dataIni=`${mesYYYYMM}-01`;
+    const d=new Date(mesYYYYMM+'-01'); d.setMonth(d.getMonth()+1); d.setDate(0);
+    const dataFim=d.toISOString().slice(0,10);
+    const[{data:cpD},{data:crD}]=await Promise.all([
+      supabase.from('contas_pagar').select('*').eq('user_id',user.id).gte('vencimento',dataIni).lte('vencimento',dataFim),
+      supabase.from('contas_receber').select('*').eq('user_id',user.id).gte('vencimento',dataIni).lte('vencimento',dataFim),
+    ]);
+    if(cpD?.length>0) setContasPagar(prev=>{const ids=new Set(prev.map(c=>c.id));return [...prev,...cpD.filter(c=>!ids.has(c.id))].sort((a,b)=>a.vencimento>b.vencimento?1:-1);});
+    if(crD?.length>0) setContasReceber(prev=>{const ids=new Set(prev.map(c=>c.id));return [...prev,...crD.filter(c=>!ids.has(c.id))].sort((a,b)=>a.vencimento>b.vencimento?1:-1);});
+    setCpCrWindow(prev=>(!prev||dataIni<prev)?dataIni:prev);
+  };
+
+  // Auto lazy-load: CFO período personalizado
+  useEffect(()=>{
+    if(!user||!lancamentosWindow)return;
+    if(cfoPeriodo==='periodo'&&cfoDataInicio&&cfoDataInicio<lancamentosWindow)
+      carregarLancamentosMes(cfoDataInicio.slice(0,7));
+  },[cfoPeriodo,cfoDataInicio,lancamentosWindow]);
+
+  // Auto lazy-load: Fluxo de caixa período personalizado
+  useEffect(()=>{
+    if(!user||!lancamentosWindow)return;
+    if(fluxoFiltro==='periodo'&&fluxoDataInicio&&fluxoDataInicio<lancamentosWindow)
+      carregarLancamentosMes(fluxoDataInicio.slice(0,7));
+  },[fluxoFiltro,fluxoDataInicio,lancamentosWindow]);
+
+  // Auto lazy-load: navegação de mês em CP
+  useEffect(()=>{
+    if(!user||!cpCrWindow)return;
+    if(cpMes<cpCrWindow.slice(0,7)) carregarCPCRMes(cpMes);
+  },[cpMes,cpCrWindow]);
 
   const cleanPayload=(obj)=>Object.fromEntries(Object.entries(obj).map(([k,v])=>[k,v===''?null:v]));
 
@@ -1698,16 +1761,28 @@ const App = () => {
           });
           const totalEnt=filteredLanc.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
           const totalSai=filteredLanc.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
-          const saldoPeriodo=totalEnt-totalSai;
-          const saldoTotal=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
-          const saldoInic=saldoTotal-saldoPeriodo;
+          const saldoOperacional=totalEnt-totalSai;
+          // Saldo inicial = base bancária + todos os movimentos ANTES do período
+          const periodoInicio=(()=>{
+            if(fluxoFiltro==='diario')return today;
+            if(fluxoFiltro==='semanal'){const s=new Date(now);s.setDate(now.getDate()-7);return s.toISOString().slice(0,10);}
+            if(fluxoFiltro==='mensal')return`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+            if(fluxoFiltro==='anual')return`${now.getFullYear()}-01-01`;
+            if(fluxoFiltro==='periodo'&&fluxoDataInicio)return fluxoDataInicio;
+            return null;
+          })();
+          const bancosBase=bancos.reduce((a,b)=>a+Number(b.saldo_inicial||0),0);
+          const movAntes=periodoInicio?lancamentos.filter(l=>l.data&&l.data<periodoInicio).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0):0;
+          const saldoInic=bancosBase+movAntes;
+          const saldoFinal=saldoInic+saldoOperacional;
+          const saldoAtual=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
           const daysMap={diario:1,semanal:7,mensal:30,anual:365};
           const periodoDias=fluxoFiltro==='periodo'&&fluxoDataInicio&&fluxoDataFim
             ?Math.max(1,Math.round((new Date(fluxoDataFim)-new Date(fluxoDataInicio))/(1000*60*60*24)))
             :30;
           const dias=daysMap[fluxoFiltro]||periodoDias;
           const burnRate=totalSai>0?totalSai/dias:0;
-          const runway=burnRate>0?Math.floor(saldoTotal/burnRate):0;
+          const runway=burnRate>0?Math.floor(saldoAtual/burnRate):0;
           // Alert: contasPagar due in next 7 days
           const d7=new Date(now);d7.setDate(now.getDate()+7);
           const d7str=d7.toISOString().split('T')[0];
@@ -1791,15 +1866,15 @@ const App = () => {
                   <p className="text-[11px] font-medium mb-1.5" style={{color:'#791F1F'}}>Total saídas</p>
                   <p className="text-[19px] font-medium leading-tight" style={{color:'#791F1F'}}>{formatBRL(totalSai)}</p>
                 </div>
-                <div className="rounded-2xl p-4 border" style={saldoPeriodo>=0?{background:'#E1F5EE',borderColor:'#1D9E75'}:{background:'#FCEBEB',borderColor:'#D85A30'}}>
-                  <p className="text-[11px] font-medium mb-1.5" style={{color:saldoPeriodo>=0?'#085041':'#791F1F'}}>Saldo Operacional</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:saldoPeriodo>=0?'#085041':'#791F1F'}}>{saldoPeriodo>=0?'+':''}{formatBRL(saldoPeriodo)}</p>
-                  <p className="text-[10px] font-bold mt-1" style={{color:saldoPeriodo>=0?'#1D9E75':'#D85A30'}}>{saldoPeriodo>=0?'✓ Mês no verde':'✗ Mês no vermelho'}</p>
+                <div className="rounded-2xl p-4 border" style={saldoOperacional>=0?{background:'#E1F5EE',borderColor:'#1D9E75'}:{background:'#FCEBEB',borderColor:'#D85A30'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:saldoOperacional>=0?'#085041':'#791F1F'}}>Saldo Operacional</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:saldoOperacional>=0?'#085041':'#791F1F'}}>{saldoOperacional>=0?'+':''}{formatBRL(saldoOperacional)}</p>
+                  <p className="text-[10px] font-bold mt-1" style={{color:saldoOperacional>=0?'#1D9E75':'#D85A30'}}>{saldoOperacional>=0?'✓ Mês no verde':'✗ Mês no vermelho'}</p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Saldo final</p>
-                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoTotal)}</p>
-                  <p className="text-[11px] text-slate-400 mt-1">Disponível</p>
+                  <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoFinal)}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Inicial + Operacional</p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Burn rate</p>
@@ -1907,18 +1982,18 @@ const App = () => {
                               <tr className="bg-slate-50"><td colSpan={7} className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Saídas</td></tr>
                               {saiFiltered.map((l,i)=><TRow key={l.id||i} l={l} showPlus={false}/>)}
                             </>}
-                            <tr className="border-t border-slate-100" style={{background:saldoPeriodo>=0?'rgba(29,158,117,0.08)':'rgba(216,90,48,0.08)'}}>
-                              <td className="px-4 py-2.5 font-black text-xs" colSpan={5} style={{color:saldoPeriodo>=0?'#085041':'#791F1F'}}>
-                                {saldoPeriodo>=0?'✓':'✗'} Resultado Operacional
+                            <tr className="border-t border-slate-100" style={{background:saldoOperacional>=0?'rgba(29,158,117,0.08)':'rgba(216,90,48,0.08)'}}>
+                              <td className="px-4 py-2.5 font-black text-xs" colSpan={5} style={{color:saldoOperacional>=0?'#085041':'#791F1F'}}>
+                                {saldoOperacional>=0?'✓':'✗'} Saldo Operacional (FCO)
                               </td>
-                              <td className="px-4 py-2.5 text-right text-xs font-black" style={{color:saldoPeriodo>=0?'#085041':'#791F1F'}} colSpan={2}>
-                                {saldoPeriodo>=0?'+':''}{formatBRL(saldoPeriodo)}
+                              <td className="px-4 py-2.5 text-right text-xs font-black" style={{color:saldoOperacional>=0?'#085041':'#791F1F'}} colSpan={2}>
+                                {saldoOperacional>=0?'+':''}{formatBRL(saldoOperacional)}
                               </td>
                             </tr>
                             <tr className="border-t-2 border-slate-200" style={{background:'rgba(5,18,27,0.04)'}}>
                               <td className="px-4 py-2.5 font-bold text-[#05121b] text-xs" colSpan={5}>Saldo final</td>
-                              <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoTotal)}</td>
-                              <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoTotal)}</td>
+                              <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoFinal)}</td>
+                              <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoFinal)}</td>
                             </tr>
                           </>
                         ):(
@@ -2692,50 +2767,286 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── DÍVIDAS ───────────────────────────────────────────────── */}
         {view==='dividas'&&(()=>{
-          const statusMap={ativa:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',lbl:'Ativa'},quitada:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',lbl:'Quitada'},em_negociacao:{bg:'bg-blue-50',border:'border-blue-200',txt:'text-blue-700',lbl:'Em Negociação'}};
-          const totalAtivas=dividas.filter(d=>d.status==='ativa').reduce((a,d)=>a+Number(d.valor_total),0);
+          const divAtivas=dividas.filter(d=>d.status==='ativa');
+          const divQuitadas=dividas.filter(d=>d.status==='quitada');
+          const totalSaldo=divAtivas.reduce((a,d)=>a+Number(d.saldo_devedor||d.valor_total||0),0);
+          const totalParcelas=divAtivas.reduce((a,d)=>a+Number(d.valor_parcela||0),0);
+          const comprometimento=receitaMensal>0?(totalParcelas/receitaMensal)*100:0;
+          const dMaiorTaxa=divAtivas.length>0?divAtivas.reduce((mx,d)=>Number(d.taxa_juros||0)>Number(mx.taxa_juros||0)?d:mx,divAtivas[0]):null;
+          const maiorTaxa=Number(dMaiorTaxa?.taxa_juros||0);
+          const taxaAnual=maiorTaxa>0?(Math.pow(1+maiorTaxa/100,12)-1)*100:0;
+          const credoresUnicos=new Set(divAtivas.map(d=>d.credor)).size;
+          // Previsão de quitação: mês que a última dívida quita (pelo campo ou proximo_vencimento)
+          const datasQuit=divAtivas.map(d=>d.previsao_quitacao||d.proximo_vencimento).filter(Boolean).sort();
+          const ultimaQuit=datasQuit[datasQuit.length-1]||null;
+
+          // Gráfico de evolução: projeção 12 meses
+          const evoData=(()=>{
+            if(divAtivas.length===0)return[];
+            const result=[];
+            const nowD=new Date();
+            const saldos=divAtivas.map(d=>Math.max(0,Number(d.saldo_devedor||d.valor_total||0)));
+            const taxas=divAtivas.map(d=>Number(d.taxa_juros||0)/100);
+            const pcs=divAtivas.map(d=>Number(d.valor_parcela||0));
+            for(let m=0;m<=12;m++){
+              const dt=new Date(nowD.getFullYear(),nowD.getMonth()+m,1);
+              const lbl=dt.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}).replace('. de ',' ');
+              const total=saldos.reduce((a,s)=>a+Math.max(0,s),0);
+              result.push({lbl,saldo:Math.round(total)});
+              saldos.forEach((s,i)=>{
+                if(s<=0)return;
+                const j=s*taxas[i];
+                const principal=Math.max(0,pcs[i]-j);
+                saldos[i]=Math.max(0,s-principal);
+              });
+            }
+            return result;
+          })();
+
+          // Composição por tipo (donut)
+          const porTipo={};
+          divAtivas.forEach(d=>{const t=d.tipo||'Outros';porTipo[t]=(porTipo[t]||0)+Number(d.saldo_devedor||d.valor_total||0);});
+          const composicaoData=Object.entries(porTipo).map(([name,value])=>({name,value:Math.round(value)}));
+          const donutColors=['#137789','#ff7b00','#05121b','#fbbf24','#a78bfa','#f87171'];
+
+          // Simulator
+          const simDivida=divAtivas[simDividaIdx]||null;
+          const simSaldo=Number(simDivida?.saldo_devedor||simDivida?.valor_total||0);
+          const simTaxa=Number(simDivida?.taxa_juros||0)/100;
+          const simParcela=Number(simDivida?.valor_parcela||0);
+          const calcMeses=(s,t,p)=>{if(s<=0)return 0;if(p<=0)return 0;let sv=s,m=0;while(sv>0.01&&m<360){const j=sv*t;sv=Math.max(0,sv-(p-j));m++;}return m;};
+          const mesesSem=calcMeses(simSaldo,simTaxa,simParcela);
+          const mesesCom=simDividaSlider>0?calcMeses(simSaldo,simTaxa,simParcela+simDividaSlider):mesesSem;
+          const mesesEcon=Math.max(0,mesesSem-mesesCom);
+          const jurosSem=simParcela>0&&mesesSem>0?Math.max(0,simParcela*mesesSem-simSaldo):0;
+          const jurosCom=simParcela>0&&mesesCom>0?Math.max(0,(simParcela+simDividaSlider)*mesesCom-simSaldo):0;
+          const jurosEcon=Math.max(0,jurosSem-jurosCom);
+
+          const statusMap={ativa:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',dot:'bg-amber-400',lbl:'Ativa'},quitada:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',dot:'bg-emerald-400',lbl:'Quitada'},em_negociacao:{bg:'bg-blue-50',border:'border-blue-200',txt:'text-blue-700',dot:'bg-blue-400',lbl:'Em Negociação'}};
+
           return(
             <div className="max-w-7xl mx-auto fade-in">
+              {/* Header */}
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div><p className="text-xs text-slate-500 font-medium">Passivos</p><h1 className="text-xl font-medium text-[#05121b]">Dívidas</h1></div>
-                <button onClick={()=>setModalDivida({credor:'',descricao:'',valor_total:'',valor_parcela:'',parcelas_total:'',parcelas_pagas:0,proximo_vencimento:'',status:'ativa'})} className="bg-[#05121b] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Dívida</button>
+                <button onClick={()=>setModalDivida({credor:'',descricao:'',valor_total:'',valor_parcela:'',parcelas_total:'',parcelas_pagas:0,proximo_vencimento:'',status:'ativa',tipo:'Empréstimo',taxa_juros:'',saldo_devedor:'',data_inicio:'',previsao_quitacao:''})} className="bg-[#05121b] text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-slate-800 transition-colors shadow-md"><Plus size={13}/>Nova Dívida</button>
               </header>
-              {totalAtivas>0&&<div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-6 flex items-center justify-between"><p className="text-[10px] font-black text-red-600 uppercase tracking-widest">Total de Dívidas Ativas</p><p className="text-xl font-medium text-red-800">{formatBRL(totalAtivas)}</p></div>}
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                {dividas.length===0?<div className="py-16 text-center"><AlertOctagon size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma dívida registrada</p></div>:(
-                  <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Credor','Descrição','Valor Total','Parcela','Progresso','Próx. Venc.','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {dividas.map(d=>{
-                        const S=statusMap[d.status]||statusMap.ativa;
-                        const prog=d.parcelas_total>0?Math.round((d.parcelas_pagas/d.parcelas_total)*100):0;
-                        return(
-                          <tr key={d.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-5 py-3 text-xs font-black text-[#05121b]">{d.credor}</td>
-                            <td className="px-5 py-3 text-[10px] text-slate-400">{d.descricao||'—'}</td>
-                            <td className="px-5 py-3 text-sm font-black text-[#05121b] whitespace-nowrap">{formatBRL(d.valor_total)}</td>
-                            <td className="px-5 py-3 text-[10px] text-slate-500 whitespace-nowrap">{d.valor_parcela?formatBRL(d.valor_parcela):'—'}</td>
-                            <td className="px-5 py-3">
-                              {d.parcelas_total>0?(
-                                <div>
-                                  <div className="flex justify-between text-[9px] text-slate-400 mb-1"><span>{d.parcelas_pagas}/{d.parcelas_total}x</span><span>{prog}%</span></div>
-                                  <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{width:`${prog}%`}}></div></div>
-                                </div>
-                              ):(<span className="text-[10px] text-slate-300">—</span>)}
-                            </td>
-                            <td className="px-5 py-3 text-[10px] text-slate-400 whitespace-nowrap">{fmtDate(d.proximo_vencimento)}</td>
-                            <td className="px-5 py-3"><span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}>{S.lbl}</span></td>
-                            <td className="px-5 py-3">
-                              <div className="flex items-center gap-2">
-                                <button onClick={()=>setModalDivida({...d})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
-                                <button onClick={()=>deleteItem('dividas',d.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+
+              {/* 6 KPI Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+                {[
+                  {lbl:'Saldo Total',val:formatBRL(totalSaldo),sub:`${divAtivas.length} ativa${divAtivas.length!==1?'s':''}`,color:'text-red-600',bg:'bg-red-50',border:'border-red-100'},
+                  {lbl:'Parcelas/Mês',val:formatBRL(totalParcelas),sub:'total comprometido',color:'text-amber-600',bg:'bg-amber-50',border:'border-amber-100'},
+                  {lbl:'Comprometimento',val:`${comprometimento.toFixed(1)}%`,sub:'da receita mensal',color:comprometimento>30?'text-red-600':comprometimento>15?'text-amber-600':'text-emerald-600',bg:comprometimento>30?'bg-red-50':comprometimento>15?'bg-amber-50':'bg-emerald-50',border:comprometimento>30?'border-red-100':comprometimento>15?'border-amber-100':'border-emerald-100'},
+                  {lbl:'Maior Taxa',val:maiorTaxa>0?`${maiorTaxa.toFixed(2)}% a.m.`:'—',sub:maiorTaxa>0?`≈${taxaAnual.toFixed(1)}% a.a.`:'nenhuma ativa',color:'text-purple-600',bg:'bg-purple-50',border:'border-purple-100'},
+                  {lbl:'Previsão Quitação',val:ultimaQuit?fmtDate(ultimaQuit):'—',sub:'última parcela',color:'text-[#137789]',bg:'bg-[#137789]/5',border:'border-[#137789]/20'},
+                  {lbl:'Credores',val:String(credoresUnicos||0),sub:`${divQuitadas.length} quitada${divQuitadas.length!==1?'s':''}`,color:'text-slate-600',bg:'bg-slate-50',border:'border-slate-100'},
+                ].map(c=>(
+                  <div key={c.lbl} className={`rounded-2xl p-4 border ${c.bg} ${c.border}`}>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{c.lbl}</p>
+                    <p className={`text-lg font-black ${c.color} leading-none mb-1`}>{c.val}</p>
+                    <p className="text-[9px] text-slate-400">{c.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Alerta de maior taxa */}
+              {dMaiorTaxa&&maiorTaxa>0&&(
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6 flex items-start gap-3">
+                  <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5"/>
+                  <div>
+                    <p className="text-xs font-black text-amber-800">Atenção: dívida com maior custo</p>
+                    <p className="text-[10px] text-amber-700 mt-0.5">
+                      <span className="font-bold">{dMaiorTaxa.credor}</span> cobra {maiorTaxa.toFixed(2)}% a.m. — equivalente a {taxaAnual.toFixed(1)}% ao ano.
+                      {receitaMensal>0&&totalParcelas>0&&<> Suas parcelas comprometem {comprometimento.toFixed(1)}% da receita mensal. Priorize quitar esta dívida primeiro.</>}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Charts row */}
+              {divAtivas.length>0&&(
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                  {/* Evolução do saldo */}
+                  <div className="lg:col-span-2 bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Projeção de Quitação</p>
+                    {evoData.length>0?(
+                      <ResponsiveContainer width="100%" height={180}>
+                        <LineChart data={evoData} margin={{top:4,right:8,left:0,bottom:0}}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+                          <XAxis dataKey="lbl" tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
+                          <YAxis tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`${(v/1000).toFixed(0)}k`:v}/>
+                          <RTooltip formatter={v=>formatBRL(v)} labelStyle={{fontSize:10}} contentStyle={{fontSize:10,borderRadius:8,border:'1px solid #e2e8f0'}}/>
+                          <Line type="monotone" dataKey="saldo" stroke="#ef4444" strokeWidth={2} dot={false} name="Saldo Devedor"/>
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ):<div className="h-44 flex items-center justify-center text-[10px] text-slate-300">Sem dados suficientes</div>}
+                  </div>
+
+                  {/* Composição por tipo */}
+                  <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Composição por Tipo</p>
+                    {composicaoData.length>0?(
+                      <>
+                        <ResponsiveContainer width="100%" height={130}>
+                          <PieChart>
+                            <Pie data={composicaoData} cx="50%" cy="50%" innerRadius={38} outerRadius={60} dataKey="value" paddingAngle={2}>
+                              {composicaoData.map((_,i)=><Cell key={i} fill={donutColors[i%donutColors.length]}/>)}
+                            </Pie>
+                            <RTooltip formatter={v=>formatBRL(v)} contentStyle={{fontSize:10,borderRadius:8,border:'1px solid #e2e8f0'}}/>
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="space-y-1 mt-2">
+                          {composicaoData.map((e,i)=>(
+                            <div key={e.name} className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full shrink-0" style={{background:donutColors[i%donutColors.length]}}></span><span className="text-[9px] text-slate-500 truncate max-w-[90px]">{e.name}</span></div>
+                              <span className="text-[9px] font-bold text-slate-600">{formatBRL(e.value)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ):<div className="h-44 flex items-center justify-center text-[10px] text-slate-300">Nenhuma dívida ativa</div>}
+                  </div>
+                </div>
+              )}
+
+              {/* Cards individuais */}
+              {divAtivas.length>0&&(
+                <div className="mb-6">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Dívidas Ativas</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {divAtivas.map((d,i)=>{
+                      const prog=d.parcelas_total>0?Math.min(100,Math.round((d.parcelas_pagas/d.parcelas_total)*100)):0;
+                      const saldo=Number(d.saldo_devedor||d.valor_total||0);
+                      const taxa=Number(d.taxa_juros||0);
+                      return(
+                        <div key={d.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <p className="text-xs font-black text-[#05121b]">{d.credor}</p>
+                              {d.tipo&&<p className="text-[9px] text-slate-400 mt-0.5">{d.tipo}</p>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button onClick={()=>setModalDivida({...d,valor_total:formatCurrency(String(Math.round(Number(d.valor_total||0)*100))),valor_parcela:d.valor_parcela?formatCurrency(String(Math.round(Number(d.valor_parcela)*100))):'',saldo_devedor:d.saldo_devedor?formatCurrency(String(Math.round(Number(d.saldo_devedor)*100))):'',taxa_juros:d.taxa_juros?String(d.taxa_juros):''})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
+                              <button onClick={()=>deleteItem('dividas',d.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+                            </div>
+                          </div>
+                          <p className="text-xl font-black text-red-600 mb-1">{formatBRL(saldo)}</p>
+                          <p className="text-[9px] text-slate-400 mb-3">{d.valor_parcela?`${formatBRL(d.valor_parcela)}/mês`:''}{taxa>0?` · ${taxa.toFixed(2)}% a.m.`:''}</p>
+                          {d.parcelas_total>0&&(
+                            <div>
+                              <div className="flex justify-between text-[9px] text-slate-400 mb-1"><span>{d.parcelas_pagas}/{d.parcelas_total} parcelas</span><span>{prog}%</span></div>
+                              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{width:`${prog}%`}}></div></div>
+                            </div>
+                          )}
+                          {d.proximo_vencimento&&<p className="text-[9px] text-slate-400 mt-2">Próx. venc.: {fmtDate(d.proximo_vencimento)}</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Simulador de antecipação */}
+              {divAtivas.length>0&&simDivida&&(
+                <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm mb-6">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Simulador de Antecipação</p>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 mb-2">Selecionar dívida</p>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {divAtivas.map((d,i)=>(
+                          <button key={d.id} onClick={()=>{setSimDividaIdx(i);setSimDividaSlider(0);}} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all ${simDividaIdx===i?'bg-[#05121b] text-white border-[#05121b]':'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>{d.credor}</button>
+                        ))}
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                        <div className="grid grid-cols-2 gap-3 text-[10px]">
+                          <div><p className="text-slate-400">Saldo devedor</p><p className="font-black text-[#05121b]">{formatBRL(simSaldo)}</p></div>
+                          <div><p className="text-slate-400">Parcela atual</p><p className="font-black text-[#05121b]">{simParcela>0?formatBRL(simParcela):'—'}</p></div>
+                          <div><p className="text-slate-400">Taxa mensal</p><p className="font-black text-[#05121b]">{simTaxa>0?`${(simTaxa*100).toFixed(2)}% a.m.`:'—'}</p></div>
+                          <div><p className="text-slate-400">Prazo sem extra</p><p className="font-black text-[#05121b]">{mesesSem>0?`${mesesSem} meses`:'—'}</p></div>
+                        </div>
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-500 mb-1">Pagamento extra mensal: <span className="text-[#05121b]">{formatBRL(simDividaSlider)}</span></p>
+                      <input type="range" min={0} max={Math.max(simParcela*3,1000)} step={50} value={simDividaSlider} onChange={e=>setSimDividaSlider(Number(e.target.value))} className="w-full accent-[#137789]"/>
+                      <div className="flex justify-between text-[9px] text-slate-300 mt-1"><span>R$ 0</span><span>{formatBRL(Math.max(simParcela*3,1000))}</span></div>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <p className="text-[10px] font-bold text-slate-500">Resultado da simulação</p>
+                      {simDividaSlider>0&&mesesEcon>0?(
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              {lbl:'Meses economizados',val:`${mesesEcon}`,color:'text-emerald-600',bg:'bg-emerald-50'},
+                              {lbl:'Juros economizados',val:formatBRL(jurosEcon),color:'text-emerald-600',bg:'bg-emerald-50'},
+                              {lbl:'Novo prazo',val:`${mesesCom} meses`,color:'text-[#05121b]',bg:'bg-slate-50'},
+                              {lbl:'Nova parcela total',val:formatBRL(simParcela+simDividaSlider),color:'text-[#05121b]',bg:'bg-slate-50'},
+                            ].map(s=>(
+                              <div key={s.lbl} className={`rounded-xl p-3 ${s.bg}`}>
+                                <p className="text-[9px] text-slate-400 mb-1">{s.lbl}</p>
+                                <p className={`text-sm font-black ${s.color}`}>{s.val}</p>
                               </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            ))}
+                          </div>
+                          <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mt-1">
+                            <p className="text-[10px] text-emerald-700 font-medium">Pagando <span className="font-black">{formatBRL(simDividaSlider)}</span> a mais por mês você quita {mesesEcon} meses mais cedo e economiza <span className="font-black">{formatBRL(jurosEcon)}</span> em juros.</p>
+                          </div>
+                        </>
+                      ):(
+                        <div className="flex-1 flex items-center justify-center text-[10px] text-slate-300 bg-slate-50 rounded-xl p-8 text-center">
+                          {simParcela>0&&simTaxa>0?'Mova o slider para simular um pagamento extra':'Cadastre taxa de juros e valor da parcela para simular'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tabela histórico: todas as dívidas */}
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-50 flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Todas as Dívidas</p>
+                  <span className="text-[9px] text-slate-300">{dividas.length} registro{dividas.length!==1?'s':''}</span>
+                </div>
+                {dividas.length===0?(
+                  <div className="py-16 text-center"><AlertOctagon size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhuma dívida registrada</p></div>
+                ):(
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead><tr className="border-b border-slate-100">{['Credor','Tipo','Saldo Devedor','Parcela','Taxa a.m.','Progresso','Status',''].map(h=><th key={h} className="px-5 py-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">{h}</th>)}</tr></thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {dividas.map(d=>{
+                          const S=statusMap[d.status]||statusMap.ativa;
+                          const prog=d.parcelas_total>0?Math.min(100,Math.round((d.parcelas_pagas/d.parcelas_total)*100)):0;
+                          const saldo=Number(d.saldo_devedor||d.valor_total||0);
+                          return(
+                            <tr key={d.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-5 py-3"><div><p className="text-xs font-black text-[#05121b]">{d.credor}</p>{d.descricao&&<p className="text-[9px] text-slate-400 truncate max-w-[140px]">{d.descricao}</p>}</div></td>
+                              <td className="px-5 py-3 text-[10px] text-slate-400">{d.tipo||'—'}</td>
+                              <td className="px-5 py-3 text-sm font-black text-red-600 whitespace-nowrap">{formatBRL(saldo)}</td>
+                              <td className="px-5 py-3 text-[10px] text-slate-500 whitespace-nowrap">{d.valor_parcela?formatBRL(d.valor_parcela):'—'}</td>
+                              <td className="px-5 py-3 text-[10px] text-slate-500 whitespace-nowrap">{d.taxa_juros?`${Number(d.taxa_juros).toFixed(2)}%`:'—'}</td>
+                              <td className="px-5 py-3">
+                                {d.parcelas_total>0?(
+                                  <div className="min-w-[80px]">
+                                    <div className="flex justify-between text-[9px] text-slate-400 mb-1"><span>{d.parcelas_pagas}/{d.parcelas_total}x</span><span>{prog}%</span></div>
+                                    <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full transition-all" style={{width:`${prog}%`}}></div></div>
+                                  </div>
+                                ):<span className="text-[10px] text-slate-300">—</span>}
+                              </td>
+                              <td className="px-5 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}><span className={`w-1.5 h-1.5 rounded-full ${S.dot}`}></span>{S.lbl}</span></td>
+                              <td className="px-5 py-3">
+                                <div className="flex items-center gap-2">
+                                  <button onClick={()=>setModalDivida({...d,valor_total:formatCurrency(String(Math.round(Number(d.valor_total||0)*100))),valor_parcela:d.valor_parcela?formatCurrency(String(Math.round(Number(d.valor_parcela)*100))):'',saldo_devedor:d.saldo_devedor?formatCurrency(String(Math.round(Number(d.saldo_devedor)*100))):'',taxa_juros:d.taxa_juros?String(d.taxa_juros):''})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
+                                  <button onClick={()=>deleteItem('dividas',d.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
               </div>
             </div>
@@ -3175,20 +3486,29 @@ const App = () => {
         {/* Modal Dívida */}
         {modalDivida&&(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalDivida(null)}>
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 max-h-[92vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalDivida.id?'Editar':'Nova'} Dívida</h3><button onClick={()=>setModalDivida(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <InputField label="Credor" value={modalDivida.credor} onChange={v=>setModalDivida({...modalDivida,credor:v})}/>
-                  <InputField label="Valor Total" value={modalDivida.valor_total} onChange={v=>setModalDivida({...modalDivida,valor_total:v})} maskType="currency"/>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo</label><select value={modalDivida.tipo||'Empréstimo'} onChange={e=>setModalDivida({...modalDivida,tipo:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">{['Empréstimo','Financiamento','Cartão de Crédito','Cheque Especial','Outros'].map(t=><option key={t}>{t}</option>)}</select></div>
                 </div>
                 <InputField label="Descrição (opcional)" value={modalDivida.descricao||''} onChange={v=>setModalDivida({...modalDivida,descricao:v})}/>
                 <div className="grid grid-cols-2 gap-4">
+                  <InputField label="Valor Total" value={modalDivida.valor_total} onChange={v=>setModalDivida({...modalDivida,valor_total:v})} maskType="currency"/>
+                  <InputField label="Saldo Devedor Atual" value={modalDivida.saldo_devedor||''} onChange={v=>setModalDivida({...modalDivida,saldo_devedor:v})} maskType="currency"/>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <InputField label="Valor da Parcela" value={modalDivida.valor_parcela||''} onChange={v=>setModalDivida({...modalDivida,valor_parcela:v})} maskType="currency"/>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Total parcelas</label><input type="number" value={modalDivida.parcelas_total||''} onChange={e=>setModalDivida({...modalDivida,parcelas_total:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
-                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Pagas</label><input type="number" value={modalDivida.parcelas_pagas||0} onChange={e=>setModalDivida({...modalDivida,parcelas_pagas:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
-                  </div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Taxa de Juros (% a.m.)</label><input type="number" step="0.01" min="0" placeholder="Ex: 2.99" value={modalDivida.taxa_juros||''} onChange={e=>setModalDivida({...modalDivida,taxa_juros:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Total parcelas</label><input type="number" value={modalDivida.parcelas_total||''} onChange={e=>setModalDivida({...modalDivida,parcelas_total:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Parcelas Pagas</label><input type="number" value={modalDivida.parcelas_pagas||0} onChange={e=>setModalDivida({...modalDivida,parcelas_pagas:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data de Início</label><input type="date" value={modalDivida.data_inicio||''} onChange={e=>setModalDivida({...modalDivida,data_inicio:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Previsão de Quitação</label><input type="date" value={modalDivida.previsao_quitacao||''} onChange={e=>setModalDivida({...modalDivida,previsao_quitacao:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Próx. Vencimento</label><input type="date" value={modalDivida.proximo_vencimento||''} onChange={e=>setModalDivida({...modalDivida,proximo_vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
@@ -3197,7 +3517,7 @@ const App = () => {
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalDivida(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalDivida.credor||!modalDivida.valor_total} onClick={()=>saveItem('dividas',{...modalDivida,valor_total:parseFloat((modalDivida.valor_total||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,valor_parcela:modalDivida.valor_parcela?parseFloat((modalDivida.valor_parcela||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0:null,parcelas_total:modalDivida.parcelas_total?parseInt(modalDivida.parcelas_total):null,parcelas_pagas:parseInt(modalDivida.parcelas_pagas)||0,user_id:user.id},setModalDivida,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+                <button disabled={savingItem||!modalDivida.credor||!modalDivida.valor_total} onClick={()=>saveItem('dividas',{...modalDivida,valor_total:parseFloat((modalDivida.valor_total||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,saldo_devedor:modalDivida.saldo_devedor?parseFloat((modalDivida.saldo_devedor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||null:null,valor_parcela:modalDivida.valor_parcela?parseFloat((modalDivida.valor_parcela||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0:null,taxa_juros:modalDivida.taxa_juros?parseFloat(modalDivida.taxa_juros)||null:null,parcelas_total:modalDivida.parcelas_total?parseInt(modalDivida.parcelas_total):null,parcelas_pagas:parseInt(modalDivida.parcelas_pagas)||0,user_id:user.id},setModalDivida,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
           </div>
