@@ -117,204 +117,17 @@ const App = () => {
   const [simResult, setSimResult] = useState(null);
   const [simLoading, setSimLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState(null);
-  const [isDark, setIsDark] = useState(()=>{try{return localStorage.getItem('oluap_theme')==='dark';}catch{return false;}});
+  const [isDark, setIsDark] = useState(()=>{try{const d=localStorage.getItem('oluap_theme')==='dark';document.documentElement.setAttribute('data-theme',d?'dark':'light');return d;}catch{return false;}});
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileDropdown, setProfileDropdown] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
 
   useEffect(()=>{
     try{localStorage.setItem('oluap_theme',isDark?'dark':'light');}catch{}
-    let s=document.getElementById('oluap-dark-css');
-    if(!s){s=document.createElement('style');s.id='oluap-dark-css';document.head.appendChild(s);}
-    s.textContent=isDark?`
-      /* ── FUNDAÇÃO ───────────────────────────────────────────────── */
-      .dk{background-color:#0d1117!important;color:#e6edf3!important}
-
-      /* ── BACKGROUNDS ────────────────────────────────────────────── */
-      /* Hierarquia: página #0d1117 → sidebar #141c24 → cards #161b22 → elevated #1e2638 */
-      .dk aside.bg-white{background-color:#141c24!important;border-color:#2d3748!important}
-      .dk .bg-white{background-color:#161b22!important}
-      .dk .bg-slate-50{background-color:#0f1419!important}
-      .dk .bg-slate-100{background-color:#161b22!important}
-      .dk .bg-slate-200{background-color:#1e2638!important}
-      .dk .bg-white\\/95{background-color:rgba(20,28,36,0.97)!important}
-      .dk .bg-\\[#f5f5f0\\]{background-color:#0d1117!important}
-      /* Elementos escuros (botões ativos, nav ativo, score card) ficam levemente elevados */
-      .dk .bg-\\[#05121b\\]{background-color:#1e2638!important}
-
-      /* ── BORDAS – mais visíveis nos cards ───────────────────────── */
-      .dk .border-slate-50{border-color:#1e2638!important}
-      .dk .border-slate-100{border-color:#2d3748!important}
-      .dk .border-slate-200{border-color:#374151!important}
-      .dk .border-slate-300{border-color:#4a5568!important}
-      .dk .border-\\[#05121b\\]{border-color:#4a5568!important}
-
-      /* ── TEXTO – ESCURO VIRA CLARO ──────────────────────────────── */
-      .dk .text-\\[#05121b\\]{color:#e6edf3!important}
-      .dk .text-\\[#05121b\\]\\/50{color:rgba(230,237,243,0.55)!important}
-      .dk .text-\\[#05121b\\]\\/60{color:rgba(230,237,243,0.65)!important}
-      .dk .text-\\[#05121b\\]\\/70{color:rgba(230,237,243,0.75)!important}
-      .dk .text-\\[#05121b\\]\\/80{color:rgba(230,237,243,0.85)!important}
-      .dk .text-slate-900{color:#e6edf3!important}
-      .dk .text-slate-800{color:#cdd9e5!important}
-      .dk .text-slate-700{color:#b8c4d0!important}
-      /* slate-600/500/400 são usados em labels de cards — precisam ser legíveis no escuro */
-      .dk .text-slate-600{color:#a0aec0!important}
-      .dk .text-slate-500{color:#8b97a6!important}
-      .dk .text-slate-400{color:#7a8899!important}
-      .dk .text-slate-300{color:#4a5568!important}
-      .dk .hover\\:text-\\[#05121b\\]:hover{color:#e6edf3!important}
-
-      /* ── COR PRIMÁRIA TEAL – CLAREAR PARA DARK ──────────────────── */
-      .dk .text-\\[#137789\\]{color:#56d3e6!important}
-      .dk .hover\\:text-\\[#137789\\]:hover{color:#56d3e6!important}
-      /* Backgrounds teal (botões primários mantêm a cor da marca) */
-      .dk .bg-\\[#137789\\]\\/5{background-color:rgba(19,119,137,0.2)!important}
-      .dk .bg-\\[#137789\\]\\/10{background-color:rgba(19,119,137,0.25)!important}
-      .dk .border-\\[#137789\\]\\/20{border-color:rgba(86,211,230,0.3)!important}
-      .dk .border-\\[#137789\\]\\/40{border-color:rgba(86,211,230,0.5)!important}
-      .dk .ring-\\[#137789\\]{--tw-ring-color:rgba(86,211,230,0.4)!important}
-
-      /* ── LARANJA ACCENT – CLAREAR LEVEMENTE ─────────────────────── */
-      .dk .text-\\[#ff7b00\\]{color:#ffaa44!important}
-      .dk .hover\\:text-\\[#ff7b00\\]:hover{color:#ffaa44!important}
-
-      /* ── MODAIS – fundo elevado (mais claro que os cards) ──────── */
-      .dk .shadow-2xl.bg-white{background-color:#1a2233!important}
-
-      /* ── INPUTS E FORMULÁRIOS ───────────────────────────────────── */
-      .dk input:not([type=range]):not([type=checkbox]):not([type=radio]),.dk textarea,.dk select{background-color:#0f1419!important;border-color:#2d3748!important;color:#c9d1d9!important}
-      .dk input::placeholder,.dk textarea::placeholder{color:#4a5568!important}
-      .dk .focus\\:border-\\[#137789\\]:focus{border-color:#56d3e6!important}
-      .dk .focus\\:border-\\[#ff7b00\\]:focus{border-color:#ffaa44!important}
-
-      /* ── TABELAS ────────────────────────────────────────────────── */
-      .dk table thead tr{border-color:#2d3748!important}
-      .dk table thead th{color:#7a8899!important}
-      .dk .divide-y>*+*{border-color:#1e2638!important}
-
-      /* ── SOMBRAS ────────────────────────────────────────────────── */
-      .dk .shadow-sm{box-shadow:none!important}
-      .dk .shadow-md{box-shadow:0 2px 8px rgba(0,0,0,.5)!important}
-      .dk .shadow-lg{box-shadow:0 4px 16px rgba(0,0,0,.6)!important}
-      .dk .shadow-xl,.dk .shadow-2xl{box-shadow:0 8px 32px rgba(0,0,0,.8)!important}
-
-      /* ── ESTADOS HOVER ──────────────────────────────────────────── */
-      .dk .hover\\:bg-slate-50:hover{background-color:#1e2638!important}
-      .dk .hover\\:bg-slate-800:hover{background-color:#2d3748!important}
-      .dk .hover\\:bg-\\[#0e6070\\]:hover{background-color:#0e6070!important}
-      .dk .hover\\:bg-\\[#0e5f6b\\]:hover{background-color:#0e5f6b!important}
-      .dk .hover\\:bg-\\[#05121b\\]:hover,.dk .hover\\:bg-slate-900:hover{background-color:#2d3748!important}
-      .dk .hover\\:border-slate-200:hover{border-color:#374151!important}
-      .dk .hover\\:border-slate-300:hover{border-color:#4a5568!important}
-      .dk .hover\\:text-red-400:hover{color:#f85149!important}
-
-      /* ── VERDE (positivo) – MANTER ──────────────────────────────── */
-      .dk .bg-emerald-50{background-color:#0b2318!important}
-      .dk .bg-emerald-100{background-color:#0f2d1e!important}
-      .dk .border-emerald-100{border-color:#1a4228!important}
-      .dk .border-emerald-200{border-color:#2ea043!important}
-      .dk .text-emerald-800{color:#56d364!important}
-      .dk .text-emerald-700{color:#56d364!important}
-      .dk .text-emerald-600{color:#3fb950!important}
-      .dk .text-emerald-500{color:#3fb950!important}
-      .dk .bg-emerald-500{background-color:#238636!important}
-
-      /* ── VERMELHO (negativo) – MANTER ───────────────────────────── */
-      .dk .bg-red-50{background-color:#2d1014!important}
-      .dk .bg-red-100{background-color:#3d1217!important}
-      .dk .border-red-100{border-color:#6e1a1a!important}
-      .dk .border-red-200{border-color:#da3633!important}
-      .dk .text-red-800{color:#f85149!important}
-      .dk .text-red-700{color:#f85149!important}
-      .dk .text-red-600{color:#f85149!important}
-      .dk .text-red-500{color:#ff7b7b!important}
-      .dk .text-red-400{color:#ff9898!important}
-      .dk .hover\\:text-red-400:hover{color:#f85149!important}
-
-      /* ── ÂMBAR (avisos) ─────────────────────────────────────────── */
-      .dk .bg-amber-50{background-color:#2b1d0e!important}
-      .dk .bg-amber-100{background-color:#332210!important}
-      .dk .border-amber-100{border-color:#5a3c10!important}
-      .dk .border-amber-200{border-color:#d29922!important}
-      .dk .text-amber-800{color:#e3b341!important}
-      .dk .text-amber-700{color:#e3b341!important}
-      .dk .text-amber-600{color:#d29922!important}
-      .dk .text-amber-500{color:#d29922!important}
-
-      /* ── AZUL ───────────────────────────────────────────────────── */
-      .dk .bg-blue-50{background-color:#0d1f2b!important}
-      .dk .bg-blue-100{background-color:#0f2335!important}
-      .dk .bg-blue-200{background-color:#1a3a4e!important}
-      .dk .bg-blue-600{background-color:#1f6feb!important}
-      .dk .hover\\:bg-blue-700:hover{background-color:#1a5cc0!important}
-      .dk .border-blue-100{border-color:#1a3a4e!important}
-      .dk .border-blue-200{border-color:#1f6feb!important}
-      .dk .text-blue-800{color:#58a6ff!important}
-      .dk .text-blue-700{color:#58a6ff!important}
-      .dk .text-blue-600{color:#58a6ff!important}
-      .dk .text-blue-500{color:#79c0ff!important}
-
-      /* ── ROXO (Dívidas – comprometimento) ───────────────────────── */
-      .dk .bg-purple-50{background-color:#1e1329!important}
-      .dk .bg-purple-100{background-color:#281a3d!important}
-      .dk .border-purple-100{border-color:#3b2d5e!important}
-      .dk .border-purple-200{border-color:#6e40c9!important}
-      .dk .text-purple-700{color:#c084fc!important}
-      .dk .text-purple-600{color:#c084fc!important}
-      .dk .text-purple-500{color:#d8b4fe!important}
-
-      /* ── INLINE STYLES (attribute selectors) ───────────────────── */
-      /* Cards de resumo verde */
-      .dk [style*="#E1F5EE"]{background-color:#0b2318!important}
-      .dk [style*="#9FE1CB"]{border-color:#2ea043!important}
-      /* Cards de resumo vermelho */
-      .dk [style*="#FCEBEB"]{background-color:#2d1014!important}
-      .dk [style*="#F7C1C1"]{border-color:#da3633!important}
-      /* Box de aviso âmbar */
-      .dk [style*="#FAEEDA"]{background-color:#2b1d0e!important}
-      .dk [style*="#EF9F27"]{border-color:#d29922!important}
-      .dk [style*="#BA7517"]{background-color:#d29922!important}
-      /* Botões inline da tabela fluxo */
-      .dk [style*="#EAF3DE"]{background-color:#0b2318!important}
-      /* Linhas de tabela com fundo */
-      .dk [style*="rgba(5,18,27,0.04)"]{background-color:rgba(255,255,255,0.03)!important}
-      .dk [style*="rgba(29,158,117,0.08)"]{background-color:rgba(29,158,117,0.12)!important}
-      .dk [style*="rgba(216,90,48,0.08)"]{background-color:rgba(216,90,48,0.12)!important}
-      /* Linha selecionada */
-      .dk [style*="#f0f9ff"]{background-color:#0d1f2b!important}
-      /* Tooltip customizado */
-      .dk [style*="background:#fff"]{background-color:#1c2333!important;border-color:#30363d!important}
-      .dk [style*="background: #fff"]{background-color:#1c2333!important;border-color:#30363d!important}
-      /* TEXTOS EM INLINE STYLE */
-      /* Texto escuro principal → branco */
-      .dk [style*="color:#05121b"]{color:#e6edf3!important}
-      .dk [style*="color: #05121b"]{color:#e6edf3!important}
-      /* Verde (receita / positivo) → verde claro */
-      .dk [style*="color:#085041"]{color:#56d364!important}
-      .dk [style*="color: #085041"]{color:#56d364!important}
-      .dk [style*="color:#1D9E75"]{color:#3fb950!important}
-      .dk [style*="color: #1D9E75"]{color:#3fb950!important}
-      .dk [style*="color:#3B6D11"]{color:#56d364!important}
-      .dk [style*="color: #3B6D11"]{color:#56d364!important}
-      /* Vermelho (despesa / negativo) → vermelho claro */
-      .dk [style*="color:#791F1F"]{color:#f85149!important}
-      .dk [style*="color: #791F1F"]{color:#f85149!important}
-      .dk [style*="color:#D85A30"]{color:#f85149!important}
-      .dk [style*="color: #D85A30"]{color:#f85149!important}
-      .dk [style*="color:#A32D2D"]{color:#f85149!important}
-      .dk [style*="color: #A32D2D"]{color:#f85149!important}
-      /* Âmbar (aviso) */
-      .dk [style*="color:#633806"]{color:#e3b341!important}
-      .dk [style*="color: #633806"]{color:#e3b341!important}
-      .dk [style*="color:#412402"]{color:#ffaa44!important}
-      .dk [style*="color: #412402"]{color:#ffaa44!important}
-
-      /* ── RECHARTS ───────────────────────────────────────────────── */
-      .dk .recharts-default-tooltip{background-color:#1c2333!important;border-color:#30363d!important}
-      .dk .recharts-tooltip-label{color:#c9d1d9!important}
-      .dk .recharts-legend-item-text{color:#8b949e!important}
-    `:'';
+    document.documentElement.setAttribute('data-theme',isDark?'dark':'light');
+    // Remove estilo injetado legado, se existir
+    const old=document.getElementById('oluap-dark-css');if(old)old.remove();
+    /* dark mode via theme.css + data-theme */
   },[isDark]);
 
   // ── Estado: módulo financeiro (bancos, lançamentos, contas, modals) ──────────
@@ -922,6 +735,17 @@ const App = () => {
     {id:'profile',         label:'Meu Perfil',            icon:User},
   ];
 
+  // ── Cores de gráficos — reativas ao tema ─────────────────────────────────────
+  const CC = isDark ? {
+    green:'#6FCF97',blue:'#56CCF2',red:'#EB5757',amber:'#F2994A',purple:'#BB87FC',
+    text:'#9B9A96',grid:'rgba(255,255,255,0.06)',
+    greenFill:'rgba(111,207,151,0.15)',blueFill:'rgba(86,204,242,0.15)',redFill:'rgba(235,87,87,0.15)',
+  } : {
+    green:'#1D9E75',blue:'#378ADD',red:'#D85A30',amber:'#BA7517',purple:'#7F77DD',
+    text:'#6B6A66',grid:'rgba(128,128,128,0.08)',
+    greenFill:'rgba(29,158,117,0.12)',blueFill:'rgba(55,138,221,0.12)',redFill:'rgba(216,90,48,0.12)',
+  };
+
   const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas);
   const metrics = liveMetrics;
   const cashFlowData = genLiveCashFlowData(lancamentos);
@@ -1011,7 +835,7 @@ const App = () => {
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   return(
-    <div className={`min-h-screen bg-[#f5f5f0] flex text-[#05121b] overflow-x-hidden${isDark?' dk':''}`}>
+    <div className="min-h-screen bg-[#f5f5f0] flex text-[#05121b] overflow-x-hidden">
 
       {/* Mobile overlay */}
       {mobileOpen&&<div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={()=>setMobileOpen(false)}/>}
@@ -1192,10 +1016,10 @@ const App = () => {
                             <linearGradient id="gE" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#137789" stopOpacity={0.12}/><stop offset="95%" stopColor="#137789" stopOpacity={0}/></linearGradient>
                             <linearGradient id="gS" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ff7b00" stopOpacity={0.12}/><stop offset="95%" stopColor="#ff7b00" stopOpacity={0}/></linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark?"#1e2638":"#f1f5f9"}/>
                           <XAxis dataKey="name" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
                           <YAxis tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v/1000}k`}/>
-                          <RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'none',boxShadow:'0 4px 20px rgba(0,0,0,0.08)',fontSize:'11px',fontWeight:'bold'}}/>
+                          <RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'1px solid',borderColor:'var(--color-border-light)',boxShadow:'0 4px 20px rgba(0,0,0,0.15)',fontSize:'11px',fontWeight:'bold',background:'var(--color-bg-card)',color:'var(--color-text-primary)'}}/>
                           <Area type="monotone" dataKey="Entradas" stroke="#137789" strokeWidth={2.5} fill="url(#gE)" dot={{r:3,fill:'#137789'}}/>
                           <Area type="monotone" dataKey="Saidas" stroke="#ff7b00" strokeWidth={2.5} fill="url(#gS)" dot={{r:3,fill:'#ff7b00'}}/>
                         </AreaChart>
@@ -1484,10 +1308,10 @@ const App = () => {
                           <linearGradient id="gEa" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#137789" stopOpacity={0.15}/><stop offset="95%" stopColor="#137789" stopOpacity={0}/></linearGradient>
                           <linearGradient id="gSa" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ff7b00" stopOpacity={0.15}/><stop offset="95%" stopColor="#ff7b00" stopOpacity={0}/></linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark?"#1e2638":"#f1f5f9"}/>
                         <XAxis dataKey="name" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
                         <YAxis tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${v/1000}k`}/>
-                        <RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'none',boxShadow:'0 4px 20px rgba(0,0,0,0.08)',fontSize:'11px',fontWeight:'bold'}}/>
+                        <RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'1px solid',borderColor:'var(--color-border-light)',boxShadow:'0 4px 20px rgba(0,0,0,0.15)',fontSize:'11px',fontWeight:'bold',background:'var(--color-bg-card)',color:'var(--color-text-primary)'}}/>
                         <Area type="monotone" dataKey="Entradas" stroke="#137789" strokeWidth={2.5} fill="url(#gEa)" dot={{r:3,fill:'#137789'}}/>
                         <Area type="monotone" dataKey="Saidas" stroke="#ff7b00" strokeWidth={2.5} fill="url(#gSa)" dot={{r:3,fill:'#ff7b00'}}/>
                       </AreaChart>
@@ -1926,7 +1750,7 @@ const App = () => {
           const saiFiltered=tableRows.filter(r=>r.tipo_flow==='saida');
           // Evolução real dos últimos 6 meses
           const evolucao=(()=>{const result=[];for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const mes=d.toISOString().slice(0,7);const label=d.toLocaleDateString('pt-BR',{month:'short'});const ent=lancamentos.filter(l=>l.data?.startsWith(mes)&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);const sai=lancamentos.filter(l=>l.data?.startsWith(mes)&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);result.push({name:label.charAt(0).toUpperCase()+label.slice(1).replace('.',''),Entradas:ent,Saídas:sai,Resultado:ent-sai});}return result;})();
-          const flowDonut=[{name:'Entradas',value:totalEnt,color:'#1D9E75'},{name:'Saídas',value:totalSai,color:'#D85A30'}];
+          const flowDonut=[{name:'Entradas',value:totalEnt,color:'var(--color-success-text2)'},{name:'Saídas',value:totalSai,color:'var(--color-danger-text2)'}];
           const statusStyle={
             realizado:{cls:'bg-[#EAF3DE] text-[#3B6D11] border-[#9FE1CB]',lbl:'Realizado'},
             previsto:{cls:'bg-[#E6F1FB] text-[#185FA5] border-[#B5D4F4]',lbl:'Previsto'},
@@ -1982,15 +1806,15 @@ const App = () => {
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoInic)}</p>
                   <p className="text-[11px] text-slate-400 mt-1">1º de {now.toLocaleString('pt-BR',{month:'long'})}</p>
                 </div>
-                <div className="rounded-2xl p-4 border" style={{background:'#E1F5EE',borderColor:'#9FE1CB'}}>
-                  <p className="text-[11px] font-medium mb-1.5" style={{color:'#085041'}}>Total entradas</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:'#085041'}}>{formatBRL(totalEnt)}</p>
+                <div className="rounded-2xl p-4 border" style={{background:'var(--color-success-bg)',borderColor:'var(--color-success-border)'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:'var(--color-success-text)'}}>Total entradas</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'var(--color-success-text)'}}>{formatBRL(totalEnt)}</p>
                 </div>
-                <div className="rounded-2xl p-4 border" style={{background:'#FCEBEB',borderColor:'#F7C1C1'}}>
-                  <p className="text-[11px] font-medium mb-1.5" style={{color:'#791F1F'}}>Total saídas</p>
-                  <p className="text-[19px] font-medium leading-tight" style={{color:'#791F1F'}}>{formatBRL(totalSai)}</p>
+                <div className="rounded-2xl p-4 border" style={{background:'var(--color-danger-bg)',borderColor:'var(--color-danger-border)'}}>
+                  <p className="text-[11px] font-medium mb-1.5" style={{color:'var(--color-danger-text)'}}>Total saídas</p>
+                  <p className="text-[19px] font-medium leading-tight" style={{color:'var(--color-danger-text)'}}>{formatBRL(totalSai)}</p>
                 </div>
-                <div className="rounded-2xl p-4 border" style={saldoOperacional>=0?{background:'#E1F5EE',borderColor:'#1D9E75'}:{background:'#FCEBEB',borderColor:'#D85A30'}}>
+                <div className="rounded-2xl p-4 border" style={saldoOperacional>=0?{background:'var(--color-success-bg)',borderColor:'#1D9E75'}:{background:'var(--color-danger-bg)',borderColor:'#D85A30'}}>
                   <p className="text-[11px] font-medium mb-1.5" style={{color:saldoOperacional>=0?'#085041':'#791F1F'}}>Saldo Operacional</p>
                   <p className="text-[19px] font-medium leading-tight" style={{color:saldoOperacional>=0?'#085041':'#791F1F'}}>{saldoOperacional>=0?'+':''}{formatBRL(saldoOperacional)}</p>
                   <p className="text-[10px] font-bold mt-1" style={{color:saldoOperacional>=0?'#1D9E75':'#D85A30'}}>{saldoOperacional>=0?'✓ Mês no verde':'✗ Mês no vermelho'}</p>
@@ -2013,12 +1837,12 @@ const App = () => {
               </div>
               {/* 3. ALERT */}
               {alertas.length>0&&(
-                <div className="rounded-2xl border px-4 py-3 flex items-start gap-3" style={{background:'#FAEEDA',borderColor:'#EF9F27'}}>
-                  <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{background:'#BA7517'}}/>
-                  <p className="text-xs leading-relaxed" style={{color:'#633806'}}>
-                    <span className="font-bold" style={{color:'#412402'}}>Vencimentos nos próximos 7 dias: </span>
+                <div className="rounded-2xl border px-4 py-3 flex items-start gap-3" style={{background:'var(--color-warning-bg)',borderColor:'var(--color-warning-border)'}}>
+                  <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{background:'var(--color-warning-dot)'}}/>
+                  <p className="text-xs leading-relaxed" style={{color:'var(--color-warning-text)'}}>
+                    <span className="font-bold" style={{color:'var(--color-warning-text2)'}}>Vencimentos nos próximos 7 dias: </span>
                     {alertas.map((cp,i)=><span key={cp.id}>{cp.descricao||cp.nome||'—'} {formatBRL(cp.valor)} ({fmtDate(cp.vencimento)}){i<alertas.length-1?', ':''}</span>)}
-                    {' '} — total <span className="font-bold" style={{color:'#412402'}}>{formatBRL(alertTotal)}</span>
+                    {' '} — total <span className="font-bold" style={{color:'var(--color-warning-text2)'}}>{formatBRL(alertTotal)}</span>
                   </p>
                 </div>
               )}
@@ -2032,15 +1856,15 @@ const App = () => {
                       <XAxis dataKey="name" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
                       <YAxis tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={46}/>
                       <RTooltip content={<Tip/>}/>
-                      <Bar dataKey="Entradas" fill="#1D9E75" radius={[3,3,0,0]} maxBarSize={18}/>
-                      <Bar dataKey="Saídas" fill="#D85A30" radius={[3,3,0,0]} maxBarSize={18}/>
-                      <Line dataKey="Resultado" stroke="#378ADD" type="monotone" dot={{r:3,fill:'#378ADD'}} strokeWidth={2}/>
+                      <Bar dataKey="Entradas" fill={CC.green} radius={[3,3,0,0]} maxBarSize={18}/>
+                      <Bar dataKey="Saídas" fill={CC.red} radius={[3,3,0,0]} maxBarSize={18}/>
+                      <Line dataKey="Resultado" stroke={CC.blue} type="monotone" dot={{r:3,fill:'#378ADD'}} strokeWidth={2}/>
                     </ComposedChart>
                   </ResponsiveContainer>
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:'#1D9E75'}}/>Entradas</span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:'#D85A30'}}/>Saídas</span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background:'#378ADD'}}/>Resultado</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:CC.green}}/>Entradas</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-3 h-2.5 rounded-sm inline-block" style={{background:CC.red}}/>Saídas</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-500"><span className="w-2.5 h-2.5 rounded-full inline-block" style={{background:CC.blue}}/>Resultado</span>
                   </div>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-5">
@@ -2076,8 +1900,8 @@ const App = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'#EAF3DE',color:'#3B6D11',borderColor:'#9FE1CB'}}><Plus size={11}/>Receita</button>
-                    <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'#FCEBEB',color:'#A32D2D',borderColor:'#F7C1C1'}}><Plus size={11}/>Despesa</button>
+                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'var(--color-success-bg)',color:'var(--color-success-text)',borderColor:'var(--color-success-border)'}}><Plus size={11}/>Receita</button>
+                    <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'var(--color-danger-bg)',color:'var(--color-danger-text)',borderColor:'var(--color-danger-border)'}}><Plus size={11}/>Despesa</button>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -2093,7 +1917,7 @@ const App = () => {
                       <tbody>
                         {fluxoTabFilter==='todos'?(
                           <>
-                            <tr className="border-b border-slate-100" style={{background:'rgba(5,18,27,0.04)'}}>
+                            <tr className="border-b border-slate-100" style={{background:'var(--color-row-stripe)'}}>
                               <td className="px-4 py-2.5 font-bold text-[#05121b] text-xs" colSpan={5}>Saldo inicial</td>
                               <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoInic)}</td>
                               <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoInic)}</td>
@@ -2106,7 +1930,7 @@ const App = () => {
                               <tr className="bg-slate-50"><td colSpan={7} className="px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Saídas</td></tr>
                               {saiFiltered.map((l,i)=><TRow key={l.id||i} l={l} showPlus={false}/>)}
                             </>}
-                            <tr className="border-t border-slate-100" style={{background:saldoOperacional>=0?'rgba(29,158,117,0.08)':'rgba(216,90,48,0.08)'}}>
+                            <tr className="border-t border-slate-100" style={{background:saldoOperacional>=0?'var(--color-row-success)':'var(--color-row-danger)'}}>
                               <td className="px-4 py-2.5 font-black text-xs" colSpan={5} style={{color:saldoOperacional>=0?'#085041':'#791F1F'}}>
                                 {saldoOperacional>=0?'✓':'✗'} Saldo Operacional (FCO)
                               </td>
@@ -2114,7 +1938,7 @@ const App = () => {
                                 {saldoOperacional>=0?'+':''}{formatBRL(saldoOperacional)}
                               </td>
                             </tr>
-                            <tr className="border-t-2 border-slate-200" style={{background:'rgba(5,18,27,0.04)'}}>
+                            <tr className="border-t-2 border-slate-200" style={{background:'var(--color-row-stripe)'}}>
                               <td className="px-4 py-2.5 font-bold text-[#05121b] text-xs" colSpan={5}>Saldo final</td>
                               <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoFinal)}</td>
                               <td className="px-4 py-2.5 text-right text-xs font-bold text-[#05121b]">{formatBRL(saldoFinal)}</td>
@@ -2266,18 +2090,18 @@ const App = () => {
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-[#05121b]">Evolução mensal</h3>
                     <div className="flex items-center gap-3 text-xs text-slate-500">
-                      <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5 rounded" style={{background:'#137789'}}/>Total</span>
-                      <span className="flex items-center gap-1.5"><svg width="20" height="4" viewBox="0 0 20 4"><line x1="0" y1="2" x2="20" y2="2" stroke="#34d399" strokeWidth="2" strokeDasharray="4 2"/></svg>Mensalidades</span>
+                      <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5 rounded" style={{background:'var(--color-brand-teal)'}}/>Total</span>
+                      <span className="flex items-center gap-1.5"><svg width="20" height="4" viewBox="0 0 20 4"><line x1="0" y1="2" x2="20" y2="2" stroke={isDark?"#56d364":"#34d399"} strokeWidth="2" strokeDasharray="4 2"/></svg>Mensalidades</span>
                     </div>
                   </div>
                   <ResponsiveContainer width="100%" height={190}>
                     <LineChart data={lineData} margin={{top:4,right:4,bottom:0,left:0}}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
+                      <CartesianGrid strokeDasharray="3 3" stroke={isDark?"#1e2638":"#f1f5f9"} vertical={false}/>
                       <XAxis dataKey="month" tick={{fontSize:11,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
                       <YAxis tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={52}/>
                       <RTooltip content={<LineTip/>}/>
                       <Line type="monotone" dataKey="total" stroke="#137789" strokeWidth={2} dot={{r:3,fill:'#137789',strokeWidth:0}} activeDot={{r:5}}/>
-                      <Line type="monotone" dataKey="recorrente" stroke="#34d399" strokeWidth={2} strokeDasharray="5 3" dot={{r:3,fill:'#34d399',strokeWidth:0}} activeDot={{r:5}}/>
+                      <Line type="monotone" dataKey="recorrente" stroke={isDark?"#56d364":"#34d399"} strokeWidth={2} strokeDasharray="5 3" dot={{r:3,fill:'#34d399',strokeWidth:0}} activeDot={{r:5}}/>
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -2319,7 +2143,7 @@ const App = () => {
                             :{cls:'bg-amber-50 text-amber-700 border-amber-200',lbl:'Avulso'};
                           const isSelR=recSelected.has(l.id);
                           return(
-                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtrados.length-1?'border-b border-slate-100':''}`} style={{background:isSelR?'#f0f9ff':undefined}}>
+                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtrados.length-1?'border-b border-slate-100':''}`} style={{background:isSelR?'var(--color-row-selected)':undefined}}>
                               <td className="px-4 py-3.5"><input type="checkbox" checked={isSelR} onChange={()=>setRecSelected(prev=>{const n=new Set(prev);n.has(l.id)?n.delete(l.id):n.add(l.id);return n;})} style={{cursor:'pointer',accentColor:'#137789'}}/></td>
                               <td className="px-4 py-3.5 font-medium text-[#05121b] text-sm">{l.descricao}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
@@ -2468,17 +2292,17 @@ const App = () => {
                     <h3 className="text-sm font-semibold text-[#05121b]">Mês anterior vs atual</h3>
                     <div className="flex items-center gap-3 text-xs text-slate-500">
                       <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-2.5 rounded-sm bg-slate-200"/>Anterior</span>
-                      <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-2.5 rounded-sm" style={{background:'#137789'}}/>Atual</span>
+                      <span className="flex items-center gap-1.5"><span className="inline-block w-3 h-2.5 rounded-sm" style={{background:'var(--color-brand-teal)'}}/>Atual</span>
                     </div>
                   </div>
                   {barData.length>0?(
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={barData} margin={{top:4,right:4,bottom:0,left:0}} barCategoryGap="35%">
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false}/>
+                        <CartesianGrid strokeDasharray="3 3" stroke={isDark?"#1e2638":"#f1f5f9"} vertical={false}/>
                         <XAxis dataKey="cat" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
                         <YAxis tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={48}/>
                         <RTooltip content={<BarTip/>}/>
-                        <Bar dataKey="anterior" name="Anterior" fill="#e2e8f0" radius={[3,3,0,0]}/>
+                        <Bar dataKey="anterior" name="Anterior" fill={isDark?"#2d3748":"#e2e8f0"} radius={[3,3,0,0]}/>
                         <Bar dataKey="atual" name="Atual" fill="#137789" radius={[3,3,0,0]}/>
                       </BarChart>
                     </ResponsiveContainer>
@@ -2520,7 +2344,7 @@ const App = () => {
                           const tipo=tipoFromCat(l.categoria);
                           const isSelD=despSelected.has(l.id);
                           return(
-                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtradosD.length-1?'border-b border-slate-100':''}`} style={{background:isSelD?'#f0f9ff':undefined}}>
+                            <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtradosD.length-1?'border-b border-slate-100':''}`} style={{background:isSelD?'var(--color-row-selected)':undefined}}>
                               <td className="px-4 py-3.5"><input type="checkbox" checked={isSelD} onChange={()=>setDespSelected(prev=>{const n=new Set(prev);n.has(l.id)?n.delete(l.id):n.add(l.id);return n;})} style={{cursor:'pointer',accentColor:'#137789'}}/></td>
                               <td className="px-4 py-3.5 font-medium text-[#05121b] text-sm">{l.descricao}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
@@ -2611,7 +2435,7 @@ const App = () => {
           };
           const CpTip=({active,payload,label})=>{
             if(!active||!payload?.length)return null;
-            return(<div style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:12,padding:'8px 12px',boxShadow:'0 4px 16px rgba(0,0,0,.1)'}}>
+            return(<div style={{background:'var(--color-bg-card)',border:'1px solid',borderColor:'var(--color-border-light)',borderRadius:12,padding:'8px 12px',boxShadow:'0 4px 16px rgba(0,0,0,.1)'}}>
               <p style={{fontSize:10,fontWeight:700,color:'#64748b',marginBottom:4}}>{label}</p>
               {payload.map(p=><p key={p.dataKey} style={{fontSize:10,color:p.fill}}>{p.name}: {formatBRL(p.value)}</p>)}
             </div>);
@@ -2626,35 +2450,35 @@ const App = () => {
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                   <div style={{display:'flex',alignItems:'center',gap:4,background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'4px 8px'}}>
-                    <button onClick={()=>setCpMes(prevMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'#94a3b8',display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
+                    <button onClick={()=>setCpMes(prevMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:CC.text,display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
                     <span style={{fontSize:12,color:'#64748b',minWidth:130,textAlign:'center'}}>{cpMesLabel}</span>
-                    <button onClick={()=>setCpMes(nextMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'#94a3b8',display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
+                    <button onClick={()=>setCpMes(nextMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:CC.text,display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
                   </div>
-                  <button onClick={()=>setModalImport({stage:'upload',tipoImport:'contas_pagar'})} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Upload size={12}/>Importar</button>
+                  <button onClick={()=>setModalImport({stage:'upload',tipoImport:'contas_pagar'})} style={{background:'var(--color-bg-card)',border:'1px solid',borderColor:'var(--color-border-light)',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Upload size={12}/>Importar</button>
                   <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo_custo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
                 </div>
               </div>
               {/* 2. METRIC CARDS */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:12}}>
-                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #F7C1C1',background:'#FCEBEB'}}>
+                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #F7C1C1',background:'var(--color-danger-bg)'}}>
                   <p style={{fontSize:11,fontWeight:500,color:'#993C1D',marginBottom:6}}>Em aberto</p>
-                  <p style={{fontSize:19,fontWeight:500,color:'#791F1F',lineHeight:1.2}}>{formatBRL(totalEmAberto)}</p>
+                  <p style={{fontSize:19,fontWeight:500,color:'var(--color-danger-text)',lineHeight:1.2}}>{formatBRL(totalEmAberto)}</p>
                   <p style={{fontSize:11,color:'#993C1D',marginTop:4}}>{vencidas.length+emAberto.length} contas</p>
                 </div>
-                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #F7C1C1',background:'#FCEBEB'}}>
+                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #F7C1C1',background:'var(--color-danger-bg)'}}>
                   <p style={{fontSize:11,fontWeight:500,color:'#993C1D',marginBottom:6}}>Vencidas</p>
-                  <p style={{fontSize:19,fontWeight:500,color:'#791F1F',lineHeight:1.2}}>{formatBRL(totalVencidas)}</p>
+                  <p style={{fontSize:19,fontWeight:500,color:'var(--color-danger-text)',lineHeight:1.2}}>{formatBRL(totalVencidas)}</p>
                   <p style={{fontSize:11,color:'#993C1D',marginTop:4}}>{vencidas.length} contas atrasadas</p>
                 </div>
-                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #FAC775',background:'#FAEEDA'}}>
+                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #FAC775',background:'var(--color-warning-bg)'}}>
                   <p style={{fontSize:11,fontWeight:500,color:'#854F0B',marginBottom:6}}>Vencem em 7 dias</p>
-                  <p style={{fontSize:19,fontWeight:500,color:'#633806',lineHeight:1.2}}>{formatBRL(totalVencendo)}</p>
+                  <p style={{fontSize:19,fontWeight:500,color:'var(--color-warning-text)',lineHeight:1.2}}>{formatBRL(totalVencendo)}</p>
                   <p style={{fontSize:11,color:'#854F0B',marginTop:4}}>{emAberto.length} contas</p>
                 </div>
-                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #C0DD97',background:'#EAF3DE'}}>
-                  <p style={{fontSize:11,fontWeight:500,color:'#3B6D11',marginBottom:6}}>Pagas no mês</p>
+                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #C0DD97',background:'var(--color-success-bg)'}}>
+                  <p style={{fontSize:11,fontWeight:500,color:'var(--color-success-text)',marginBottom:6}}>Pagas no mês</p>
                   <p style={{fontSize:19,fontWeight:500,color:'#27500A',lineHeight:1.2}}>{formatBRL(totalPagas)}</p>
-                  <p style={{fontSize:11,color:'#3B6D11',marginTop:4}}>{pagas.length} contas</p>
+                  <p style={{fontSize:11,color:'var(--color-success-text)',marginTop:4}}>{pagas.length} contas</p>
                 </div>
                 <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #B5D4F4',background:'#E6F1FB'}}>
                   <p style={{fontSize:11,fontWeight:500,color:'#185FA5',marginBottom:6}}>Total do mês</p>
@@ -2664,25 +2488,25 @@ const App = () => {
                 <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #e2e8f0',background:'#fff'}}>
                   <p style={{fontSize:11,fontWeight:500,color:'#64748b',marginBottom:6}}>Média por conta</p>
                   <p style={{fontSize:19,fontWeight:500,color:'#05121b',lineHeight:1.2}}>{formatBRL(mediaPorConta)}</p>
-                  <p style={{fontSize:11,color:'#94a3b8',marginTop:4}}>{cpData.length} contas cadastradas</p>
+                  <p style={{fontSize:11,color:CC.text,marginTop:4}}>{cpData.length} contas cadastradas</p>
                 </div>
               </div>
               {/* 3. ALERTAS */}
               {vencidas.length>0&&(
-                <div style={{borderRadius:12,padding:'12px 18px',border:'1px solid #F09595',background:'#FCEBEB',display:'flex',alignItems:'flex-start',gap:12}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:'#D85A30',marginTop:4,flexShrink:0}}/>
-                  <p style={{fontSize:12,color:'#791F1F',lineHeight:1.6,margin:0}}>
-                    <strong style={{color:'#791F1F'}}>{vencidas.length} contas vencidas: </strong>
+                <div style={{borderRadius:12,padding:'12px 18px',border:'1px solid #F09595',background:'var(--color-danger-bg)',display:'flex',alignItems:'flex-start',gap:12}}>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:CC.red,marginTop:4,flexShrink:0}}/>
+                  <p style={{fontSize:12,color:'var(--color-danger-text)',lineHeight:1.6,margin:0}}>
+                    <strong style={{color:'var(--color-danger-text)'}}>{vencidas.length} contas vencidas: </strong>
                     {vencidas.map((c,i)=><span key={c.id}>{c.desc} {formatBRL(c.valor)} ({c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'-'}){i<vencidas.length-1?', ':''}</span>)}.{' '}
                     Total em atraso: <strong>{formatBRL(totalVencidas)}</strong>.
                   </p>
                 </div>
               )}
               {emAberto.length>0&&(
-                <div style={{borderRadius:12,padding:'12px 18px',border:'1px solid #EF9F27',background:'#FAEEDA',display:'flex',alignItems:'flex-start',gap:12}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:'#BA7517',marginTop:4,flexShrink:0}}/>
-                  <p style={{fontSize:12,color:'#633806',lineHeight:1.6,margin:0}}>
-                    <strong style={{color:'#633806'}}>Vencimentos esta semana: </strong>
+                <div style={{borderRadius:12,padding:'12px 18px',border:'1px solid #EF9F27',background:'var(--color-warning-bg)',display:'flex',alignItems:'flex-start',gap:12}}>
+                  <div style={{width:8,height:8,borderRadius:'50%',background:'var(--color-warning-dot)',marginTop:4,flexShrink:0}}/>
+                  <p style={{fontSize:12,color:'var(--color-warning-text)',lineHeight:1.6,margin:0}}>
+                    <strong style={{color:'var(--color-warning-text)'}}>Vencimentos esta semana: </strong>
                     {emAberto.map((c,i)=><span key={c.id}>{c.desc} {formatBRL(c.valor)} ({c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'-'}){i<emAberto.length-1?', ':''}</span>)}.{' '}
                     Prepare <strong>{formatBRL(totalVencendo)}</strong>.
                   </p>
@@ -2696,7 +2520,7 @@ const App = () => {
                     const s=calStyle[c.status]||calStyle.previsto;
                     return(
                       <div key={i} style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:8,padding:'8px 4px',textAlign:'center'}}>
-                        <p style={{fontSize:10,color:'#94a3b8',marginBottom:2}}>{c.dow}</p>
+                        <p style={{fontSize:10,color:CC.text,marginBottom:2}}>{c.dow}</p>
                         <p style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:4}}>{c.dia}</p>
                         <div style={{display:'inline-block',background:s.tagBg,borderRadius:99,padding:'1px 5px'}}>
                           <p style={{fontSize:9,fontWeight:500,color:s.tagTxt,whiteSpace:'nowrap',margin:0}}>
@@ -2740,13 +2564,13 @@ const App = () => {
                       <XAxis dataKey="mes" tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
                       <YAxis tick={{fontSize:10,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>`R$${Math.round(v/1000)}k`} width={40}/>
                       <RTooltip content={<CpTip/>}/>
-                      <Bar dataKey="Previsto" fill="#D3D1C7" radius={[3,3,0,0]} maxBarSize={14}/>
-                      <Bar dataKey="Pago" fill="#378ADD" radius={[3,3,0,0]} maxBarSize={14}/>
+                      <Bar dataKey="Previsto" fill={isDark?"#2d3748":"#D3D1C7"} radius={[3,3,0,0]} maxBarSize={14}/>
+                      <Bar dataKey="Pago" fill={CC.blue} radius={[3,3,0,0]} maxBarSize={14}/>
                     </BarChart>
                   </ResponsiveContainer>
                   <div style={{display:'flex',gap:12,marginTop:8}}>
                     <span style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'#64748b'}}><span style={{width:8,height:8,borderRadius:2,background:'#D3D1C7',display:'inline-block'}}/>Previsto</span>
-                    <span style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'#64748b'}}><span style={{width:8,height:8,borderRadius:2,background:'#378ADD',display:'inline-block'}}/>Pago</span>
+                    <span style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'#64748b'}}><span style={{width:8,height:8,borderRadius:2,background:CC.blue,display:'inline-block'}}/>Pago</span>
                   </div>
                 </div>
               </div>
@@ -2754,7 +2578,7 @@ const App = () => {
               <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,overflow:'hidden'}}>
                 <div style={{padding:'16px 20px',borderBottom:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                    <span style={{fontSize:10,fontWeight:700,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.1em'}}>{filtrados.length} contas</span>
+                    <span style={{fontSize:10,fontWeight:700,color:CC.text,textTransform:'uppercase',letterSpacing:'0.1em'}}>{filtrados.length} contas</span>
                     <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                       {[{k:'todos',l:'Todas'},{k:'aberto',l:'Em aberto'},{k:'atrasado',l:'Vencidas'},{k:'pago',l:'Pagas'},{k:'agendado',l:'Agendadas'}].map(f=>(
                         <button key={f.k} onClick={()=>setCpFiltro(f.k)} style={{padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,border:`1px solid ${cpFiltro===f.k?'#05121b':'#e2e8f0'}`,background:cpFiltro===f.k?'#05121b':'transparent',color:cpFiltro===f.k?'#fff':'#64748b',cursor:'pointer'}}>{f.l}</button>
@@ -2762,7 +2586,7 @@ const App = () => {
                     </div>
                   </div>
                   {cpSelected.size>0&&(
-                    <button onClick={handleBulkDeleteCP} style={{padding:'4px 12px',borderRadius:8,fontSize:11,background:'#FCEBEB',color:'#A32D2D',border:'1px solid #F7C1C1',cursor:'pointer',fontWeight:600}}>
+                    <button onClick={handleBulkDeleteCP} style={{padding:'4px 12px',borderRadius:8,fontSize:11,background:'var(--color-danger-bg)',color:'var(--color-danger-text)',border:'1px solid #F7C1C1',cursor:'pointer',fontWeight:600}}>
                       Excluir {cpSelected.size} selecionada(s)
                     </button>
                   )}
@@ -2773,7 +2597,7 @@ const App = () => {
                       <tr style={{borderBottom:'1px solid #f1f5f9'}}>
                         <th style={{padding:'10px 12px',width:'4%'}}></th>
                         {[{h:'Fornecedor / descrição',w:'24%'},{h:'Categoria',w:'13%'},{h:'Vencimento',w:'10%'},{h:'Tipo',w:'10%'},{h:'Status',w:'11%'},{h:'Valor',w:'10%'},{h:'Ações',w:'18%'}].map(col=>(
-                          <th key={col.h} style={{padding:'10px 16px',fontSize:10,fontWeight:600,color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.06em',textAlign:col.h==='Valor'?'right':'left',width:col.w}}>{col.h}</th>
+                          <th key={col.h} style={{padding:'10px 16px',fontSize:10,fontWeight:600,color:CC.text,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:col.h==='Valor'?'right':'left',width:col.w}}>{col.h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -2802,14 +2626,14 @@ const App = () => {
                             <td style={{padding:'10px 16px'}}>
                               <div style={{display:'flex',gap:6,alignItems:'center'}}>
                                 <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:c.valor,vencimento:c.venc,categoria:c.cat,tipo_custo:c.tipo_custo||'variavel',status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
-                                {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,cat:c.cat,tipo_custo:contasPagar.find(x=>x.id===c.id)?.tipo_custo||'variavel',meioPagamento:'',bancoId:'',dataPagamento:today})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'#EAF3DE',color:'#3B6D11',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
+                                {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,cat:c.cat,tipo_custo:contasPagar.find(x=>x.id===c.id)?.tipo_custo||'variavel',meioPagamento:'',bancoId:'',dataPagamento:today})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'var(--color-success-bg)',color:'var(--color-success-text)',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
                               </div>
                             </td>
                           </tr>
                         );
                       })}
                       {filtrados.length===0&&(
-                        <tr><td colSpan={8} style={{padding:'40px 16px',textAlign:'center',color:'#94a3b8',fontSize:12}}>Nenhuma conta para este filtro</td></tr>
+                        <tr><td colSpan={8} style={{padding:'40px 16px',textAlign:'center',color:CC.text,fontSize:12}}>Nenhuma conta para este filtro</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -2997,11 +2821,11 @@ const App = () => {
                     {evoData.length>0?(
                       <ResponsiveContainer width="100%" height={180}>
                         <LineChart data={evoData} margin={{top:4,right:8,left:0,bottom:0}}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9"/>
+                          <CartesianGrid strokeDasharray="3 3" stroke={isDark?"#1e2638":"#f1f5f9"}/>
                           <XAxis dataKey="lbl" tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/>
                           <YAxis tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`${(v/1000).toFixed(0)}k`:v}/>
-                          <RTooltip formatter={v=>formatBRL(v)} labelStyle={{fontSize:10}} contentStyle={{fontSize:10,borderRadius:8,border:'1px solid #e2e8f0'}}/>
-                          <Line type="monotone" dataKey="saldo" stroke="#ef4444" strokeWidth={2} dot={false} name="Saldo Devedor"/>
+                          <RTooltip formatter={v=>formatBRL(v)} labelStyle={{fontSize:10}} contentStyle={{fontSize:10,borderRadius:8,border:'1px solid',borderColor:'var(--color-border-light)',background:'var(--color-bg-card)',color:'var(--color-text-primary)'}}/>
+                          <Line type="monotone" dataKey="saldo" stroke={CC.red} strokeWidth={2} dot={false} name="Saldo Devedor"/>
                         </LineChart>
                       </ResponsiveContainer>
                     ):<div className="h-44 flex items-center justify-center text-[10px] text-slate-300">Sem dados suficientes</div>}
@@ -3017,7 +2841,7 @@ const App = () => {
                             <Pie data={composicaoData} cx="50%" cy="50%" innerRadius={38} outerRadius={60} dataKey="value" paddingAngle={2}>
                               {composicaoData.map((_,i)=><Cell key={i} fill={donutColors[i%donutColors.length]}/>)}
                             </Pie>
-                            <RTooltip formatter={v=>formatBRL(v)} contentStyle={{fontSize:10,borderRadius:8,border:'1px solid #e2e8f0'}}/>
+                            <RTooltip formatter={v=>formatBRL(v)} contentStyle={{fontSize:10,borderRadius:8,border:'1px solid',borderColor:'var(--color-border-light)',background:'var(--color-bg-card)',color:'var(--color-text-primary)'}}/>
                           </PieChart>
                         </ResponsiveContainer>
                         <div className="space-y-1 mt-2">
@@ -3924,7 +3748,7 @@ const App = () => {
                   <div className="mt-8 mb-8">
                     <h3 className="text-base font-black text-[#05121b] uppercase tracking-tight mb-5 flex items-center gap-2"><BarChart2 size={15} className="text-[#137789]"/> Visão Gráfica</h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      {parsedCharts.estruturaResultado.length>0&&(<div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><h4 className="text-xs font-black uppercase text-[#05121b] mb-4 text-center">Estrutura de Resultado</h4><div className="h-52"><ResponsiveContainer width="100%" height="100%"><BarChart data={parsedCharts.estruturaResultado} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/><XAxis dataKey="name" tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={v=>`R$${v/1000}k`} tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/><RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'none',boxShadow:'0 4px 12px rgba(0,0,0,0.08)',fontSize:'11px',fontWeight:'bold'}}/><Bar dataKey="value" radius={[4,4,0,0]}>{parsedCharts.estruturaResultado.map((e,i)=><Cell key={i} fill={CHART_COLORS[i%CHART_COLORS.length]}/>)}</Bar></BarChart></ResponsiveContainer></div></div>)}
+                      {parsedCharts.estruturaResultado.length>0&&(<div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><h4 className="text-xs font-black uppercase text-[#05121b] mb-4 text-center">Estrutura de Resultado</h4><div className="h-52"><ResponsiveContainer width="100%" height="100%"><BarChart data={parsedCharts.estruturaResultado} margin={{top:5,right:5,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark?"#1e2638":"#f1f5f9"}/><XAxis dataKey="name" tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/><YAxis tickFormatter={v=>`R$${v/1000}k`} tick={{fontSize:9,fill:'#94a3b8'}} axisLine={false} tickLine={false}/><RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'none',boxShadow:'0 4px 12px rgba(0,0,0,0.08)',fontSize:'11px',fontWeight:'bold'}}/><Bar dataKey="value" radius={[4,4,0,0]}>{parsedCharts.estruturaResultado.map((e,i)=><Cell key={i} fill={CHART_COLORS[i%CHART_COLORS.length]}/>)}</Bar></BarChart></ResponsiveContainer></div></div>)}
                       {parsedCharts.despesasOperacionais.length>0&&(<div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col items-center"><h4 className="text-xs font-black uppercase text-[#05121b] mb-2 text-center w-full">Composição das Despesas</h4><div className="h-52 w-full"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={parsedCharts.despesasOperacionais} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="value">{parsedCharts.despesasOperacionais.map((e,i)=><Cell key={i} fill={CHART_COLORS[i%CHART_COLORS.length]}/>)}</Pie><RTooltip formatter={v=>formatBRL(v)} contentStyle={{borderRadius:'10px',border:'none',fontSize:'11px',fontWeight:'bold'}}/><Legend wrapperStyle={{fontSize:'9px'}}/></PieChart></ResponsiveContainer></div></div>)}
                     </div>
                   </div>
@@ -3951,8 +3775,8 @@ const App = () => {
         {modalImport&&(()=>{
           const tipo=modalImport.tipoImport||'despesa';
           const CONF={
-            despesa:   {title:'Importar Despesas',   color:'#D85A30',ring:'focus:ring-red-500',    btn:'bg-red-500 hover:bg-red-600',    dateLabel:'Coluna de Data'},
-            receita:   {title:'Importar Receitas',   color:'#1D9E75',ring:'focus:ring-emerald-500',btn:'bg-emerald-600 hover:bg-emerald-700',dateLabel:'Coluna de Data'},
+            despesa:   {title:'Importar Despesas',   color:'var(--color-danger-text2)',ring:'focus:ring-red-500',    btn:'bg-red-500 hover:bg-red-600',    dateLabel:'Coluna de Data'},
+            receita:   {title:'Importar Receitas',   color:'var(--color-success-text2)',ring:'focus:ring-emerald-500',btn:'bg-emerald-600 hover:bg-emerald-700',dateLabel:'Coluna de Data'},
             contas_pagar:{title:'Importar Contas a Pagar',color:'#BA7517',ring:'focus:ring-amber-500',btn:'bg-amber-500 hover:bg-amber-600',dateLabel:'Coluna de Vencimento'},
             extrato:   {title:'Importar Extrato Bancário',color:'#378ADD',ring:'focus:ring-blue-500',btn:'bg-blue-600 hover:bg-blue-700',dateLabel:'Coluna de Data'},
           };
