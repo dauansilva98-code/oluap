@@ -127,37 +127,83 @@ const App = () => {
     let s=document.getElementById('oluap-dark-css');
     if(!s){s=document.createElement('style');s.id='oluap-dark-css';document.head.appendChild(s);}
     s.textContent=isDark?`
-      .dk{background-color:#0d1117!important;color:#ffffff!important}
+      /* ── FUNDAÇÃO ───────────────────────────────────────────────── */
+      .dk{background-color:#0d1117!important;color:#e6edf3!important}
+
+      /* ── BACKGROUNDS ────────────────────────────────────────────── */
       .dk aside.bg-white{background-color:#161b22!important;border-color:#30363d!important}
       .dk .bg-white{background-color:#1c2333!important}
       .dk .bg-slate-50{background-color:#161b22!important}
       .dk .bg-slate-100{background-color:#21262d!important}
       .dk .bg-slate-200{background-color:#2d333b!important}
+      .dk .bg-white\\/95{background-color:rgba(22,27,34,0.97)!important}
       .dk .bg-\\[#f5f5f0\\]{background-color:#0d1117!important}
-      .dk .bg-\\[#05121b\\]{background-color:#101827!important}
+      /* Elementos intencionalmente escuros (botões ativos, nav, score card) ficam médio-escuro */
+      .dk .bg-\\[#05121b\\]{background-color:#2d333b!important}
+
+      /* ── BORDAS ─────────────────────────────────────────────────── */
+      .dk .border-slate-50{border-color:#21262d!important}
       .dk .border-slate-100{border-color:#30363d!important}
       .dk .border-slate-200{border-color:#374151!important}
       .dk .border-slate-300{border-color:#484f58!important}
-      .dk .text-\\[#05121b\\]{color:#ffffff!important}
-      .dk .text-\\[#05121b\\]\\/50{color:rgba(255,255,255,0.55)!important}
-      .dk .text-\\[#05121b\\]\\/60{color:rgba(255,255,255,0.65)!important}
-      .dk .text-\\[#05121b\\]\\/70{color:rgba(255,255,255,0.75)!important}
-      .dk .text-\\[#05121b\\]\\/80{color:rgba(255,255,255,0.85)!important}
-      .dk .text-slate-900{color:#ffffff!important}
-      .dk .text-slate-800{color:#ffffff!important}
-      .dk .text-slate-700{color:#ffffff!important}
-      .dk .text-slate-600{color:#c9d1d9!important}
-      .dk .text-slate-500{color:#a0aec0!important}
-      .dk .text-slate-400{color:#8b949e!important}
-      .dk .text-slate-300{color:#6e7681!important}
+      .dk .border-\\[#05121b\\]{border-color:#4c5568!important}
+
+      /* ── TEXTO – ESCURO VIRA CLARO ──────────────────────────────── */
+      .dk .text-\\[#05121b\\]{color:#e6edf3!important}
+      .dk .text-\\[#05121b\\]\\/50{color:rgba(230,237,243,0.55)!important}
+      .dk .text-\\[#05121b\\]\\/60{color:rgba(230,237,243,0.65)!important}
+      .dk .text-\\[#05121b\\]\\/70{color:rgba(230,237,243,0.75)!important}
+      .dk .text-\\[#05121b\\]\\/80{color:rgba(230,237,243,0.85)!important}
+      .dk .text-slate-900{color:#e6edf3!important}
+      .dk .text-slate-800{color:#cdd9e5!important}
+      .dk .text-slate-700{color:#c9d1d9!important}
+      .dk .text-slate-600{color:#b1bac4!important}
+      .dk .text-slate-500{color:#8b949e!important}
+      .dk .text-slate-400{color:#6e7681!important}
+      .dk .text-slate-300{color:#484f58!important}
+      .dk .hover\\:text-\\[#05121b\\]:hover{color:#e6edf3!important}
+
+      /* ── COR PRIMÁRIA TEAL – CLAREAR PARA DARK ──────────────────── */
+      .dk .text-\\[#137789\\]{color:#56d3e6!important}
+      .dk .hover\\:text-\\[#137789\\]:hover{color:#56d3e6!important}
+      /* Backgrounds teal (botões primários mantêm a cor da marca) */
+      .dk .bg-\\[#137789\\]\\/5{background-color:rgba(19,119,137,0.2)!important}
+      .dk .bg-\\[#137789\\]\\/10{background-color:rgba(19,119,137,0.25)!important}
+      .dk .border-\\[#137789\\]\\/20{border-color:rgba(86,211,230,0.3)!important}
+      .dk .border-\\[#137789\\]\\/40{border-color:rgba(86,211,230,0.5)!important}
+      .dk .ring-\\[#137789\\]{--tw-ring-color:rgba(86,211,230,0.4)!important}
+
+      /* ── LARANJA ACCENT – CLAREAR LEVEMENTE ─────────────────────── */
+      .dk .text-\\[#ff7b00\\]{color:#ffaa44!important}
+      .dk .hover\\:text-\\[#ff7b00\\]:hover{color:#ffaa44!important}
+
+      /* ── INPUTS E FORMULÁRIOS ───────────────────────────────────── */
       .dk input:not([type=range]):not([type=checkbox]):not([type=radio]),.dk textarea,.dk select{background-color:#161b22!important;border-color:#30363d!important;color:#c9d1d9!important}
       .dk input::placeholder,.dk textarea::placeholder{color:#6e7681!important}
+      .dk .focus\\:border-\\[#137789\\]:focus{border-color:#56d3e6!important}
+      .dk .focus\\:border-\\[#ff7b00\\]:focus{border-color:#ffaa44!important}
+
+      /* ── TABELAS ────────────────────────────────────────────────── */
       .dk table thead tr{border-color:#30363d!important}
       .dk .divide-y>*+*{border-color:#30363d!important}
+
+      /* ── SOMBRAS ────────────────────────────────────────────────── */
       .dk .shadow-sm{box-shadow:0 1px 4px rgba(0,0,0,.6)!important}
+      .dk .shadow-md{box-shadow:0 4px 12px rgba(0,0,0,.7)!important}
+      .dk .shadow-lg{box-shadow:0 4px 20px rgba(0,0,0,.7)!important}
       .dk .shadow-xl,.dk .shadow-2xl{box-shadow:0 8px 32px rgba(0,0,0,.8)!important}
-      .dk .hover\\:bg-slate-50:hover{background-color:#1c2333!important}
-      .dk .bg-white\\/95{background-color:rgba(22,27,34,0.95)!important}
+
+      /* ── ESTADOS HOVER ──────────────────────────────────────────── */
+      .dk .hover\\:bg-slate-50:hover{background-color:#21262d!important}
+      .dk .hover\\:bg-slate-800:hover{background-color:#30363d!important}
+      .dk .hover\\:bg-\\[#0e6070\\]:hover{background-color:#0e6070!important}
+      .dk .hover\\:bg-\\[#0e5f6b\\]:hover{background-color:#0e5f6b!important}
+      .dk .hover\\:bg-\\[#05121b\\]:hover,.dk .hover\\:bg-slate-900:hover{background-color:#30363d!important}
+      .dk .hover\\:border-slate-200:hover{border-color:#484f58!important}
+      .dk .hover\\:border-slate-300:hover{border-color:#4c5568!important}
+      .dk .hover\\:text-red-400:hover{color:#f85149!important}
+
+      /* ── VERDE (positivo) – MANTER ──────────────────────────────── */
       .dk .bg-emerald-50{background-color:#0b2318!important}
       .dk .bg-emerald-100{background-color:#0f2d1e!important}
       .dk .border-emerald-100{border-color:#1a4228!important}
@@ -166,6 +212,9 @@ const App = () => {
       .dk .text-emerald-700{color:#56d364!important}
       .dk .text-emerald-600{color:#3fb950!important}
       .dk .text-emerald-500{color:#3fb950!important}
+      .dk .bg-emerald-500{background-color:#238636!important}
+
+      /* ── VERMELHO (negativo) – MANTER ───────────────────────────── */
       .dk .bg-red-50{background-color:#2d1014!important}
       .dk .bg-red-100{background-color:#3d1217!important}
       .dk .border-red-100{border-color:#6e1a1a!important}
@@ -174,6 +223,10 @@ const App = () => {
       .dk .text-red-700{color:#f85149!important}
       .dk .text-red-600{color:#f85149!important}
       .dk .text-red-500{color:#ff7b7b!important}
+      .dk .text-red-400{color:#ff9898!important}
+      .dk .hover\\:text-red-400:hover{color:#f85149!important}
+
+      /* ── ÂMBAR (avisos) ─────────────────────────────────────────── */
       .dk .bg-amber-50{background-color:#2b1d0e!important}
       .dk .bg-amber-100{background-color:#332210!important}
       .dk .border-amber-100{border-color:#5a3c10!important}
@@ -181,15 +234,80 @@ const App = () => {
       .dk .text-amber-800{color:#e3b341!important}
       .dk .text-amber-700{color:#e3b341!important}
       .dk .text-amber-600{color:#d29922!important}
+      .dk .text-amber-500{color:#d29922!important}
+
+      /* ── AZUL ───────────────────────────────────────────────────── */
       .dk .bg-blue-50{background-color:#0d1f2b!important}
       .dk .bg-blue-100{background-color:#0f2335!important}
       .dk .bg-blue-200{background-color:#1a3a4e!important}
+      .dk .bg-blue-600{background-color:#1f6feb!important}
+      .dk .hover\\:bg-blue-700:hover{background-color:#1a5cc0!important}
       .dk .border-blue-100{border-color:#1a3a4e!important}
       .dk .border-blue-200{border-color:#1f6feb!important}
       .dk .text-blue-800{color:#58a6ff!important}
       .dk .text-blue-700{color:#58a6ff!important}
       .dk .text-blue-600{color:#58a6ff!important}
       .dk .text-blue-500{color:#79c0ff!important}
+
+      /* ── ROXO (Dívidas – comprometimento) ───────────────────────── */
+      .dk .bg-purple-50{background-color:#1e1329!important}
+      .dk .bg-purple-100{background-color:#281a3d!important}
+      .dk .border-purple-100{border-color:#3b2d5e!important}
+      .dk .border-purple-200{border-color:#6e40c9!important}
+      .dk .text-purple-700{color:#c084fc!important}
+      .dk .text-purple-600{color:#c084fc!important}
+      .dk .text-purple-500{color:#d8b4fe!important}
+
+      /* ── INLINE STYLES (attribute selectors) ───────────────────── */
+      /* Cards de resumo verde */
+      .dk [style*="#E1F5EE"]{background-color:#0b2318!important}
+      .dk [style*="#9FE1CB"]{border-color:#2ea043!important}
+      /* Cards de resumo vermelho */
+      .dk [style*="#FCEBEB"]{background-color:#2d1014!important}
+      .dk [style*="#F7C1C1"]{border-color:#da3633!important}
+      /* Box de aviso âmbar */
+      .dk [style*="#FAEEDA"]{background-color:#2b1d0e!important}
+      .dk [style*="#EF9F27"]{border-color:#d29922!important}
+      .dk [style*="#BA7517"]{background-color:#d29922!important}
+      /* Botões inline da tabela fluxo */
+      .dk [style*="#EAF3DE"]{background-color:#0b2318!important}
+      /* Linhas de tabela com fundo */
+      .dk [style*="rgba(5,18,27,0.04)"]{background-color:rgba(255,255,255,0.03)!important}
+      .dk [style*="rgba(29,158,117,0.08)"]{background-color:rgba(29,158,117,0.12)!important}
+      .dk [style*="rgba(216,90,48,0.08)"]{background-color:rgba(216,90,48,0.12)!important}
+      /* Linha selecionada */
+      .dk [style*="#f0f9ff"]{background-color:#0d1f2b!important}
+      /* Tooltip customizado */
+      .dk [style*="background:#fff"]{background-color:#1c2333!important;border-color:#30363d!important}
+      .dk [style*="background: #fff"]{background-color:#1c2333!important;border-color:#30363d!important}
+      /* TEXTOS EM INLINE STYLE */
+      /* Texto escuro principal → branco */
+      .dk [style*="color:#05121b"]{color:#e6edf3!important}
+      .dk [style*="color: #05121b"]{color:#e6edf3!important}
+      /* Verde (receita / positivo) → verde claro */
+      .dk [style*="color:#085041"]{color:#56d364!important}
+      .dk [style*="color: #085041"]{color:#56d364!important}
+      .dk [style*="color:#1D9E75"]{color:#3fb950!important}
+      .dk [style*="color: #1D9E75"]{color:#3fb950!important}
+      .dk [style*="color:#3B6D11"]{color:#56d364!important}
+      .dk [style*="color: #3B6D11"]{color:#56d364!important}
+      /* Vermelho (despesa / negativo) → vermelho claro */
+      .dk [style*="color:#791F1F"]{color:#f85149!important}
+      .dk [style*="color: #791F1F"]{color:#f85149!important}
+      .dk [style*="color:#D85A30"]{color:#f85149!important}
+      .dk [style*="color: #D85A30"]{color:#f85149!important}
+      .dk [style*="color:#A32D2D"]{color:#f85149!important}
+      .dk [style*="color: #A32D2D"]{color:#f85149!important}
+      /* Âmbar (aviso) */
+      .dk [style*="color:#633806"]{color:#e3b341!important}
+      .dk [style*="color: #633806"]{color:#e3b341!important}
+      .dk [style*="color:#412402"]{color:#ffaa44!important}
+      .dk [style*="color: #412402"]{color:#ffaa44!important}
+
+      /* ── RECHARTS ───────────────────────────────────────────────── */
+      .dk .recharts-default-tooltip{background-color:#1c2333!important;border-color:#30363d!important}
+      .dk .recharts-tooltip-label{color:#c9d1d9!important}
+      .dk .recharts-legend-item-text{color:#8b949e!important}
     `:'';
   },[isDark]);
 
