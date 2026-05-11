@@ -131,22 +131,23 @@ const App = () => {
       .dk{background-color:#0d1117!important;color:#e6edf3!important}
 
       /* ── BACKGROUNDS ────────────────────────────────────────────── */
-      .dk aside.bg-white{background-color:#161b22!important;border-color:#30363d!important}
-      .dk .bg-white{background-color:#1c2333!important}
-      .dk .bg-slate-50{background-color:#161b22!important}
-      .dk .bg-slate-100{background-color:#21262d!important}
-      .dk .bg-slate-200{background-color:#2d333b!important}
-      .dk .bg-white\\/95{background-color:rgba(22,27,34,0.97)!important}
+      /* Hierarquia: página #0d1117 → sidebar #141c24 → cards #161b22 → elevated #1e2638 */
+      .dk aside.bg-white{background-color:#141c24!important;border-color:#2d3748!important}
+      .dk .bg-white{background-color:#161b22!important}
+      .dk .bg-slate-50{background-color:#0f1419!important}
+      .dk .bg-slate-100{background-color:#161b22!important}
+      .dk .bg-slate-200{background-color:#1e2638!important}
+      .dk .bg-white\\/95{background-color:rgba(20,28,36,0.97)!important}
       .dk .bg-\\[#f5f5f0\\]{background-color:#0d1117!important}
-      /* Elementos intencionalmente escuros (botões ativos, nav, score card) ficam médio-escuro */
-      .dk .bg-\\[#05121b\\]{background-color:#2d333b!important}
+      /* Elementos escuros (botões ativos, nav ativo, score card) ficam levemente elevados */
+      .dk .bg-\\[#05121b\\]{background-color:#1e2638!important}
 
-      /* ── BORDAS ─────────────────────────────────────────────────── */
-      .dk .border-slate-50{border-color:#21262d!important}
-      .dk .border-slate-100{border-color:#30363d!important}
+      /* ── BORDAS – mais visíveis nos cards ───────────────────────── */
+      .dk .border-slate-50{border-color:#1e2638!important}
+      .dk .border-slate-100{border-color:#2d3748!important}
       .dk .border-slate-200{border-color:#374151!important}
-      .dk .border-slate-300{border-color:#484f58!important}
-      .dk .border-\\[#05121b\\]{border-color:#4c5568!important}
+      .dk .border-slate-300{border-color:#4a5568!important}
+      .dk .border-\\[#05121b\\]{border-color:#4a5568!important}
 
       /* ── TEXTO – ESCURO VIRA CLARO ──────────────────────────────── */
       .dk .text-\\[#05121b\\]{color:#e6edf3!important}
@@ -156,11 +157,12 @@ const App = () => {
       .dk .text-\\[#05121b\\]\\/80{color:rgba(230,237,243,0.85)!important}
       .dk .text-slate-900{color:#e6edf3!important}
       .dk .text-slate-800{color:#cdd9e5!important}
-      .dk .text-slate-700{color:#c9d1d9!important}
-      .dk .text-slate-600{color:#b1bac4!important}
-      .dk .text-slate-500{color:#8b949e!important}
-      .dk .text-slate-400{color:#6e7681!important}
-      .dk .text-slate-300{color:#484f58!important}
+      .dk .text-slate-700{color:#b8c4d0!important}
+      /* slate-600/500/400 são usados em labels de cards — precisam ser legíveis no escuro */
+      .dk .text-slate-600{color:#a0aec0!important}
+      .dk .text-slate-500{color:#8b97a6!important}
+      .dk .text-slate-400{color:#7a8899!important}
+      .dk .text-slate-300{color:#4a5568!important}
       .dk .hover\\:text-\\[#05121b\\]:hover{color:#e6edf3!important}
 
       /* ── COR PRIMÁRIA TEAL – CLAREAR PARA DARK ──────────────────── */
@@ -177,30 +179,34 @@ const App = () => {
       .dk .text-\\[#ff7b00\\]{color:#ffaa44!important}
       .dk .hover\\:text-\\[#ff7b00\\]:hover{color:#ffaa44!important}
 
+      /* ── MODAIS – fundo elevado (mais claro que os cards) ──────── */
+      .dk .shadow-2xl.bg-white{background-color:#1a2233!important}
+
       /* ── INPUTS E FORMULÁRIOS ───────────────────────────────────── */
-      .dk input:not([type=range]):not([type=checkbox]):not([type=radio]),.dk textarea,.dk select{background-color:#161b22!important;border-color:#30363d!important;color:#c9d1d9!important}
-      .dk input::placeholder,.dk textarea::placeholder{color:#6e7681!important}
+      .dk input:not([type=range]):not([type=checkbox]):not([type=radio]),.dk textarea,.dk select{background-color:#0f1419!important;border-color:#2d3748!important;color:#c9d1d9!important}
+      .dk input::placeholder,.dk textarea::placeholder{color:#4a5568!important}
       .dk .focus\\:border-\\[#137789\\]:focus{border-color:#56d3e6!important}
       .dk .focus\\:border-\\[#ff7b00\\]:focus{border-color:#ffaa44!important}
 
       /* ── TABELAS ────────────────────────────────────────────────── */
-      .dk table thead tr{border-color:#30363d!important}
-      .dk .divide-y>*+*{border-color:#30363d!important}
+      .dk table thead tr{border-color:#2d3748!important}
+      .dk table thead th{color:#7a8899!important}
+      .dk .divide-y>*+*{border-color:#1e2638!important}
 
       /* ── SOMBRAS ────────────────────────────────────────────────── */
-      .dk .shadow-sm{box-shadow:0 1px 4px rgba(0,0,0,.6)!important}
-      .dk .shadow-md{box-shadow:0 4px 12px rgba(0,0,0,.7)!important}
-      .dk .shadow-lg{box-shadow:0 4px 20px rgba(0,0,0,.7)!important}
+      .dk .shadow-sm{box-shadow:none!important}
+      .dk .shadow-md{box-shadow:0 2px 8px rgba(0,0,0,.5)!important}
+      .dk .shadow-lg{box-shadow:0 4px 16px rgba(0,0,0,.6)!important}
       .dk .shadow-xl,.dk .shadow-2xl{box-shadow:0 8px 32px rgba(0,0,0,.8)!important}
 
       /* ── ESTADOS HOVER ──────────────────────────────────────────── */
-      .dk .hover\\:bg-slate-50:hover{background-color:#21262d!important}
-      .dk .hover\\:bg-slate-800:hover{background-color:#30363d!important}
+      .dk .hover\\:bg-slate-50:hover{background-color:#1e2638!important}
+      .dk .hover\\:bg-slate-800:hover{background-color:#2d3748!important}
       .dk .hover\\:bg-\\[#0e6070\\]:hover{background-color:#0e6070!important}
       .dk .hover\\:bg-\\[#0e5f6b\\]:hover{background-color:#0e5f6b!important}
-      .dk .hover\\:bg-\\[#05121b\\]:hover,.dk .hover\\:bg-slate-900:hover{background-color:#30363d!important}
-      .dk .hover\\:border-slate-200:hover{border-color:#484f58!important}
-      .dk .hover\\:border-slate-300:hover{border-color:#4c5568!important}
+      .dk .hover\\:bg-\\[#05121b\\]:hover,.dk .hover\\:bg-slate-900:hover{background-color:#2d3748!important}
+      .dk .hover\\:border-slate-200:hover{border-color:#374151!important}
+      .dk .hover\\:border-slate-300:hover{border-color:#4a5568!important}
       .dk .hover\\:text-red-400:hover{color:#f85149!important}
 
       /* ── VERDE (positivo) – MANTER ──────────────────────────────── */
