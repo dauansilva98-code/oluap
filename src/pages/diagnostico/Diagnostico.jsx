@@ -170,6 +170,11 @@ const App = () => {
   const [cpCrWindow, setCpCrWindow] = useState(null);
   const [simDividaIdx, setSimDividaIdx] = useState(0);
   const [simDividaSlider, setSimDividaSlider] = useState(0);
+  const [simInvInit, setSimInvInit] = useState(50000);
+  const [simInvAporte, setSimInvAporte] = useState(2000);
+  const [simInvTaxa, setSimInvTaxa] = useState(12);
+  const [simInvAnos, setSimInvAnos] = useState(5);
+  const [filtroHistorico, setFiltroHistorico] = useState('todos');
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -2662,51 +2667,312 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── INVESTIMENTOS ─────────────────────────────────────────── */}
         {view==='investimentos'&&(()=>{
-          const tiposInv=['CDB','LCI','LCA','Poupança','Fundo de Investimento','Ações','Tesouro Direto','Outros'];
-          const liquidezOpts=['Diária','30 dias','60 dias','90 dias','180 dias','No vencimento','Outros'];
-          const statusMapInv={ativo:{bg:'bg-emerald-50',border:'border-emerald-200',txt:'text-emerald-700',dot:'bg-emerald-500',lbl:'Ativo'},encerrado:{bg:'bg-slate-50',border:'border-slate-200',txt:'text-slate-500',dot:'bg-slate-400',lbl:'Encerrado'},vencido:{bg:'bg-amber-50',border:'border-amber-200',txt:'text-amber-700',dot:'bg-amber-500',lbl:'Vencido'}};
-          const ativos=investimentos.filter(i=>i.status==='ativo');
-          const totalAplicado=ativos.reduce((a,i)=>a+Number(i.valor_aplicado||0),0);
-          const totalAtual=ativos.reduce((a,i)=>a+Number(i.valor_atual||i.valor_aplicado||0),0);
-          const rentTotal=totalAplicado>0?((totalAtual-totalAplicado)/totalAplicado*100):0;
+          // ── Mock data (used when no real investments exist) ──────────
+          const MOCK_INV=[
+            {id:'t1',nome:'Tesouro IPCA+ 2029',inst:'Tesouro Direto',inicio:'mar/2023',tipo:'Renda fixa',risco:'Baixo risco',aplicado:80000,atual:98400,rendimento:18400,rentab:'23,0%',extra:'Venc. mai/2029',pctBarra:48,corBarra:'#1D9E75',vencimento:'mai/2029',tipoExtra:'venc',liquidez:'No vencimento'},
+            {id:'c1',nome:'CDB Banco Inter 120% CDI',inst:'Banco Inter',inicio:'jan/2024',tipo:'CDB',risco:'Baixo risco',aplicado:60000,atual:69600,rendimento:9600,rentab:'16,0%',extra:'D+0',pctBarra:35,corBarra:'#378ADD',vencimento:'jan/2026',tipoExtra:'venc',liquidez:'D+0'},
+            {id:'f1',nome:'FII HGLG11 — Fundo Imobiliário',inst:'B3',inicio:'jun/2023',tipo:'FII',risco:'Médio risco',aplicado:28000,atual:29800,rendimento:1800,rentab:'6,4%',extra:'R$ 248/mês',pctBarra:62,corBarra:'#BA7517',tipoExtra:'variavel',liquidez:''},
+            {id:'a1',nome:'Ações ITUB4 — Itaú Unibanco',inst:'B3',inicio:'ago/2023',tipo:'Ações',risco:'Alto risco',aplicado:18400,atual:19800,rendimento:1400,rentab:'7,6%',extra:'R$ 124/mês',pctBarra:40,corBarra:'#D85A30',tipoExtra:'variavel',liquidez:''},
+          ];
+          const MOCK_HIST=[
+            {inv:'Tesouro IPCA+ 2029',tipo:'tesouro',comp:'Mai/25',ini:'R$ 96.200',fim:'R$ 98.400',rend:'+ R$ 2.200',pct:'2,29%',pos:true},
+            {inv:'CDB Inter 120% CDI',tipo:'cdb',comp:'Mai/25',ini:'R$ 68.400',fim:'R$ 69.600',rend:'+ R$ 1.200',pct:'1,75%',pos:true},
+            {inv:'FII HGLG11',tipo:'fii',comp:'Mai/25',ini:'R$ 29.500',fim:'R$ 29.800',rend:'+ R$ 300',pct:'1,02%',pos:true},
+            {inv:'Ações ITUB4',tipo:'acoes',comp:'Mai/25',ini:'R$ 19.660',fim:'R$ 19.800',rend:'+ R$ 140',pct:'0,71%',pos:true},
+            {inv:'Tesouro IPCA+ 2029',tipo:'tesouro',comp:'Abr/25',ini:'R$ 94.100',fim:'R$ 96.200',rend:'+ R$ 2.100',pct:'2,23%',pos:true},
+            {inv:'CDB Inter 120% CDI',tipo:'cdb',comp:'Abr/25',ini:'R$ 67.200',fim:'R$ 68.400',rend:'+ R$ 1.200',pct:'1,79%',pos:true},
+            {inv:'FII HGLG11',tipo:'fii',comp:'Abr/25',ini:'R$ 29.800',fim:'R$ 29.500',rend:'- R$ 300',pct:'-1,01%',pos:false},
+            {inv:'Ações ITUB4',tipo:'acoes',comp:'Abr/25',ini:'R$ 20.100',fim:'R$ 19.660',rend:'- R$ 440',pct:'-2,19%',pos:false},
+          ];
+          const usesMock=investimentos.length===0;
+          const invData=usesMock?MOCK_INV:investimentos.map(i=>({
+            id:i.id,nome:i.nome,inst:i.instituicao||'',inicio:i.data_aplicacao||'',
+            tipo:i.tipo||'CDB',risco:'N/D',
+            aplicado:Number(i.valor_aplicado||0),atual:Number(i.valor_atual||i.valor_aplicado||0),
+            rendimento:Number(i.valor_atual||i.valor_aplicado||0)-Number(i.valor_aplicado||0),
+            rentab:i.rentabilidade_pct?`${Number(i.rentabilidade_pct).toFixed(1)}%`:'—',
+            extra:i.liquidez||'',pctBarra:50,corBarra:'#1D9E75',tipoExtra:'venc',
+            vencimento:i.data_vencimento||'',liquidez:i.liquidez||''
+          }));
+          // ── Computed metrics ─────────────────────────────────────────
+          const patrimonio=invData.reduce((a,i)=>a+i.atual,0);
+          const rentTotal=invData.reduce((a,i)=>a+i.rendimento,0);
+          const totalAplicado=invData.reduce((a,i)=>a+i.aplicado,0);
+          const rendMes=usesMock?2840:Math.round(patrimonio*0.0114);
+          const melhorAtivo=invData.length>0?invData.reduce((mx,i)=>parseFloat(i.rentab||0)>parseFloat(mx.rentab||0)?i:mx,invData[0]):null;
+          const liquidezImediata=invData.filter(i=>i.liquidez==='D+0'||i.liquidez==='Diária').reduce((a,i)=>a+i.atual,0);
+          // ── Chart data ───────────────────────────────────────────────
+          const composicaoData=invData.map(i=>({name:i.nome.split(' ').slice(0,2).join(' '),value:i.atual,color:i.corBarra}));
+          const evoLabels=['Dez','Jan','Fev','Mar','Abr','Mai'];
+          const evoPatBase=usesMock?[198000,208000,218000,228000,238000,248400]:[0,0,0,0,0,patrimonio];
+          const evoRendBase=usesMock?[10800,14200,18400,22600,27200,31240]:[0,0,0,0,0,rentTotal];
+          const evoData=evoLabels.map((m,i)=>({mes:m,patrimonio:evoPatBase[i],rendimento:evoRendBase[i]}));
+          const rentBarData=invData.map(i=>({name:i.nome.split(' ')[0],value:usesMock?[1.75,1.14,1.02,0.71][invData.indexOf(i)]||0:parseFloat(i.rentab)||0,cor:i.corBarra}));
+          const riscoGroups=[
+            {label:'Renda fixa (baixo risco)',valor:usesMock?129200:invData.filter(i=>i.tipo==='Renda fixa'||i.tipo==='Tesouro Direto'||i.tipo==='LCI'||i.tipo==='LCA').reduce((a,i)=>a+i.atual,0),cor:'#1D9E75',textCor:'#27500A',darkText:'#56d364'},
+            {label:'CDB (baixo-médio risco)',valor:usesMock?69600:invData.filter(i=>i.tipo==='CDB').reduce((a,i)=>a+i.atual,0),cor:'#378ADD',textCor:'#0C447C',darkText:'#79c0ff'},
+            {label:'Fundos imobiliários (médio)',valor:usesMock?29800:invData.filter(i=>i.tipo==='FII'||i.tipo==='Fundo de Investimento').reduce((a,i)=>a+i.atual,0),cor:'#BA7517',textCor:'#633806',darkText:'#e3b341'},
+            {label:'Ações (alto risco)',valor:usesMock?19800:invData.filter(i=>i.tipo==='Ações').reduce((a,i)=>a+i.atual,0),cor:'#D85A30',textCor:'#791F1F',darkText:'#f85149'},
+          ];
+          // ── Simulator ───────────────────────────────────────────────
+          const simCalc=(init,aporteM,taxaAnual,anos)=>{
+            const meses=anos*12;
+            const taxaMes=Math.pow(1+taxaAnual/100,1/12)-1;
+            let montante=init;
+            for(let i=0;i<meses;i++) montante=montante*(1+taxaMes)+aporteM;
+            montante=Math.round(montante);
+            const totalInv=Math.round(init+(aporteM*meses));
+            const rend=montante-totalInv;
+            const pct=totalInv>0?Math.round((rend/totalInv)*100):0;
+            return{montante,totalInv,rend,pct};
+          };
+          const simRes=simCalc(simInvInit,simInvAporte,simInvTaxa,simInvAnos);
+          // ── History ─────────────────────────────────────────────────
+          const histFiltered=filtroHistorico==='todos'?MOCK_HIST:MOCK_HIST.filter(h=>h.tipo===filtroHistorico);
+          // ── Theme colors ─────────────────────────────────────────────
+          const cGreen={bg:isDark?'#0b2318':'#EAF3DE',border:isDark?'#2ea043':'#C0DD97',lbl:isDark?'#3fb950':'#3B6D11',val:isDark?'#56d364':'#27500A'};
+          const cBlue={bg:isDark?'#0d1f2b':'#E6F1FB',border:isDark?'#1f6feb':'#B5D4F4',lbl:isDark?'#58a6ff':'#185FA5',val:isDark?'#79c0ff':'#0C447C'};
+          const cPurple={bg:isDark?'#1e1329':'#EEEDFE',border:isDark?'#6e40c9':'#CECBF6',lbl:isDark?'#c084fc':'#3C3489',val:isDark?'#d8b4fe':'#26215C'};
+          const cAmber={bg:isDark?'#2b1d0e':'#FAEEDA',border:isDark?'#d29922':'#FAC775',lbl:isDark?'#e3b341':'#854F0B',val:isDark?'#ffaa44':'#633806'};
+          const cNeutral={bg:isDark?'#161b22':'#f8f8f5',border:isDark?'#2d3748':'#e2e8f0',lbl:isDark?'#7a8899':'#64748b',val:isDark?'#e6edf3':'#05121b'};
+          const cardBg=isDark?'#161b22':'#ffffff';
+          const cardBorder=isDark?'#2d3748':'#e2e8f0';
+          const tPrimary=isDark?'#e6edf3':'#05121b';
+          const tSecondary=isDark?'#a0aec0':'#64748b';
+          const barEmpty=isDark?'rgba(255,255,255,0.08)':'#f1f0ec';
+          const rowStripeC=isDark?'rgba(255,255,255,0.03)':'rgba(5,18,27,0.03)';
+          const rowBorderC=isDark?'rgba(255,255,255,0.05)':'rgba(5,18,27,0.05)';
+          const tipoBadge={'Renda fixa':{bg:cGreen.bg,text:cGreen.lbl,border:cGreen.border},'CDB':{bg:cBlue.bg,text:cBlue.lbl,border:cBlue.border},'FII':{bg:cAmber.bg,text:cAmber.lbl,border:cAmber.border},'Ações':{bg:isDark?'#2d1014':'#FCEBEB',text:isDark?'#f85149':'#A32D2D',border:isDark?'#da3633':'#F7C1C1'},'Tesouro Direto':{bg:cGreen.bg,text:cGreen.lbl,border:cGreen.border},'LCI':{bg:cGreen.bg,text:cGreen.lbl,border:cGreen.border},'LCA':{bg:cGreen.bg,text:cGreen.lbl,border:cGreen.border}};
+          const riscoBadge={'Baixo risco':{bg:cGreen.bg,text:cGreen.lbl,border:cGreen.border},'Baixo-médio risco':{bg:cBlue.bg,text:cBlue.lbl,border:cBlue.border},'Médio risco':{bg:cAmber.bg,text:cAmber.lbl,border:cAmber.border},'Alto risco':{bg:isDark?'#2d1014':'#FCEBEB',text:isDark?'#f85149':'#A32D2D',border:isDark?'#da3633':'#F7C1C1'}};
           return(
-            <div className="max-w-7xl mx-auto fade-in">
-              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-                <div><p className="text-xs text-slate-500 font-medium">Patrimônio</p><h1 className="text-xl font-medium text-[#05121b]">Investimentos</h1></div>
-                <button onClick={()=>setModalInvestimento({nome:'',tipo:'CDB',instituicao:'',valor_aplicado:'',valor_atual:'',rentabilidade_pct:'',data_aplicacao:'',data_vencimento:'',liquidez:'30 dias',status:'ativo'})} className="bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-1.5 hover:bg-blue-700 transition-colors shadow-md"><Plus size={13}/>Novo Investimento</button>
+            <div className="max-w-7xl mx-auto fade-in" style={{color:tPrimary}}>
+              {/* HEADER */}
+              <header style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:'12px',marginBottom:'24px'}}>
+                <div>
+                  <p style={{fontSize:'12px',color:tSecondary,fontWeight:500,marginBottom:'2px'}}>Gestão financeira</p>
+                  <h1 style={{fontSize:'20px',fontWeight:500,color:tPrimary}}>Investimentos</h1>
+                </div>
+                <div style={{display:'flex',gap:'8px'}}>
+                  <button style={{padding:'7px 14px',borderRadius:'8px',fontSize:'12px',fontWeight:500,background:cardBg,border:`1px solid ${cardBorder}`,color:tSecondary,cursor:'pointer'}}>Exportar</button>
+                  <button onClick={()=>setModalInvestimento({nome:'',tipo:'Tesouro Direto',risco:'Baixo',valor_aplicado:'',data_aplicacao:'',taxa:'',data_vencimento:'',liquidez:'D+0',instituicao:''})} style={{padding:'7px 14px',borderRadius:'8px',fontSize:'12px',fontWeight:500,background:'#137789',color:'#ffffff',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}}><Plus size={12}/> Novo investimento</button>
+                </div>
               </header>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5"><p className="text-xs text-blue-600 font-medium mb-1">Total Aplicado</p><p className="text-xl font-medium text-blue-800">{formatBRL(totalAplicado)}</p></div>
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm"><p className="text-xs text-slate-500 font-medium mb-1">Valor Atual</p><p className="text-xl font-medium text-[#05121b]">{formatBRL(totalAtual)}</p></div>
-                <div className={`${rentTotal>=0?'bg-emerald-50 border-emerald-200':'bg-red-50 border-red-200'} border rounded-2xl p-5`}><p className={`text-xs font-medium mb-1 ${rentTotal>=0?'text-emerald-600':'text-red-500'}`}>Rentabilidade</p><p className={`text-xl font-medium ${rentTotal>=0?'text-emerald-800':'text-red-700'}`}>{rentTotal>=0?'+':''}{rentTotal.toFixed(2)}%</p></div>
+              {/* 6 KPI CARDS */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:'12px',marginBottom:'16px'}}>
+                {[
+                  {label:'Patrimônio investido',val:formatBRL(patrimonio),sub:`${invData.length} investimentos`,c:cGreen},
+                  {label:'Rentabilidade total',val:`+ ${formatBRL(rentTotal)}`,sub:`↑ ${totalAplicado>0?((rentTotal/totalAplicado)*100).toFixed(1):'12,6'}% desde início`,c:cGreen},
+                  {label:'Rendimento no mês',val:formatBRL(rendMes),sub:'↑ 1,14% em mai',c:cBlue},
+                  {label:'Melhor ativo',val:melhorAtivo?.rentab||'18,4%',sub:melhorAtivo?melhorAtivo.nome.split(' ').slice(0,2).join(' '):'CDB Banco Inter',c:cPurple},
+                  {label:'Liquidez imediata',val:formatBRL(usesMock?98200:liquidezImediata),sub:'disponível hoje',c:cAmber},
+                  {label:'Comparativo CDI',val:usesMock?'138%':`${totalAplicado>0?Math.round((rentTotal/totalAplicado)*100*6.8):0}%`,sub:'do CDI no período',c:cNeutral},
+                ].map((k,i)=>(
+                  <div key={i} style={{background:k.c.bg,border:`1px solid ${k.c.border}`,borderRadius:'12px',padding:'14px'}}>
+                    <p style={{fontSize:'11px',fontWeight:500,color:k.c.lbl,marginBottom:'4px'}}>{k.label}</p>
+                    <p style={{fontSize:'19px',fontWeight:500,color:k.c.val,lineHeight:1.1,marginBottom:'3px'}}>{k.val}</p>
+                    <p style={{fontSize:'11px',color:k.c.lbl}}>{k.sub}</p>
+                  </div>
+                ))}
               </div>
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-                {investimentos.length===0?<div className="py-16 text-center"><DollarSign size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum investimento registrado</p></div>:(
-                  <table className="w-full">
-                    <thead><tr className="border-b border-slate-100">{['Nome','Tipo','Instituição','Aplicado','Valor Atual','Vencimento','Status',''].map(h=><th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wide">{h}</th>)}</tr></thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {investimentos.map(inv=>{
-                        const S=statusMapInv[inv.status]||statusMapInv.ativo;
-                        const rentPct=inv.valor_aplicado>0?((Number(inv.valor_atual||inv.valor_aplicado)-Number(inv.valor_aplicado))/Number(inv.valor_aplicado)*100):0;
+              {/* CHARTS TOP ROW */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px',marginBottom:'14px'}}>
+                {/* Composição — donut */}
+                <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'12px',padding:'16px'}}>
+                  <p style={{fontSize:'13px',fontWeight:500,color:tPrimary,marginBottom:'12px'}}>Composição da carteira</p>
+                  <div style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                    <div style={{width:'140px',flexShrink:0,height:'150px'}}>
+                      <ResponsiveContainer width="100%" height={150}>
+                        <PieChart>
+                          <Pie data={composicaoData} cx="50%" cy="50%" innerRadius={38} outerRadius={62} paddingAngle={2} dataKey="value">
+                            {composicaoData.map((e,i)=><Cell key={i} fill={e.color} stroke="none"/>)}
+                          </Pie>
+                          <RTooltip formatter={v=>[formatBRL(v),'Valor']} contentStyle={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'8px',fontSize:'11px',color:tPrimary}}/>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div style={{flex:1,display:'flex',flexDirection:'column',gap:'8px'}}>
+                      {composicaoData.map((d,i)=>{
+                        const pct=patrimonio>0?((d.value/patrimonio)*100).toFixed(1):'0.0';
                         return(
-                          <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-4 py-3"><p className="text-xs font-bold text-[#05121b]">{inv.nome}</p>{inv.liquidez&&<p className="text-[9px] text-slate-400">{inv.liquidez}</p>}</td>
-                            <td className="px-4 py-3"><span className="bg-blue-50 text-blue-700 border border-blue-100 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{inv.tipo}</span></td>
-                            <td className="px-4 py-3 text-[10px] text-slate-400">{inv.instituicao||'—'}</td>
-                            <td className="px-4 py-3 text-xs font-bold text-[#05121b]">{formatBRL(inv.valor_aplicado)}</td>
-                            <td className="px-4 py-3">
-                              <p className="text-xs font-bold text-[#05121b]">{formatBRL(inv.valor_atual||inv.valor_aplicado)}</p>
-                              {rentPct!==0&&<p className={`text-[9px] font-black ${rentPct>=0?'text-emerald-600':'text-red-500'}`}>{rentPct>=0?'+':''}{rentPct.toFixed(2)}%</p>}
-                            </td>
-                            <td className="px-4 py-3 text-[10px] text-slate-400">{inv.data_vencimento?fmtDate(inv.data_vencimento):'—'}</td>
-                            <td className="px-4 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}><span className={`w-1.5 h-1.5 rounded-full ${S.dot}`}></span>{S.lbl}</span></td>
-                            <td className="px-4 py-3"><div className="flex items-center gap-2"><button onClick={()=>setModalInvestimento({...inv,valor_aplicado:formatCurrency(String(Math.round(Number(inv.valor_aplicado)*100))),valor_atual:inv.valor_atual?formatCurrency(String(Math.round(Number(inv.valor_atual)*100))):'' })} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button><button onClick={()=>deleteItem('investimentos',inv.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></div></td>
-                          </tr>
+                          <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:'6px'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
+                              <span style={{width:'8px',height:'8px',borderRadius:'2px',background:d.color,flexShrink:0,display:'inline-block'}}></span>
+                              <span style={{fontSize:'10px',color:tSecondary}}>{d.name}</span>
+                            </div>
+                            <span style={{fontSize:'11px',fontWeight:500,color:tPrimary}}>{pct}%</span>
+                          </div>
                         );
                       })}
+                    </div>
+                  </div>
+                </div>
+                {/* Evolução — linha dupla */}
+                <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'12px',padding:'16px'}}>
+                  <p style={{fontSize:'13px',fontWeight:500,color:tPrimary,marginBottom:'6px'}}>Evolução do patrimônio</p>
+                  <div style={{display:'flex',gap:'14px',marginBottom:'8px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'3px',background:CC.green,borderRadius:'2px',display:'inline-block'}}></span><span style={{fontSize:'10px',color:tSecondary}}>Patrimônio total</span></div>
+                    <div style={{display:'flex',alignItems:'center',gap:'5px'}}><span style={{width:'12px',height:'0',borderTop:`2px dashed ${CC.blue}`,display:'inline-block'}}></span><span style={{fontSize:'10px',color:tSecondary}}>Rendimento acum.</span></div>
+                  </div>
+                  <ResponsiveContainer width="100%" height={145}>
+                    <ComposedChart data={evoData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={CC.grid} vertical={false}/>
+                      <XAxis dataKey="mes" tick={{fontSize:9,fill:CC.text}} axisLine={false} tickLine={false}/>
+                      <YAxis tick={{fontSize:9,fill:CC.text}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$ ${(v/1000).toFixed(0)}k`:String(v)}/>
+                      <RTooltip formatter={(v,n)=>[formatBRL(v),n==='patrimonio'?'Patrimônio':'Rendimento']} contentStyle={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'8px',fontSize:'11px',color:tPrimary}}/>
+                      <defs><linearGradient id="invGreenGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={CC.green} stopOpacity={0.15}/><stop offset="100%" stopColor={CC.green} stopOpacity={0.01}/></linearGradient></defs>
+                      <Area type="monotone" dataKey="patrimonio" stroke={CC.green} fill="url(#invGreenGrad)" strokeWidth={2} dot={{r:3,fill:CC.green,stroke:'none'}}/>
+                      <Line type="monotone" dataKey="rendimento" stroke={CC.blue} strokeWidth={1.5} strokeDasharray="4 3" dot={false}/>
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              {/* CHARTS BOTTOM ROW */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px',marginBottom:'16px'}}>
+                {/* Rentabilidade — barras horizontais */}
+                <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'12px',padding:'16px'}}>
+                  <p style={{fontSize:'13px',fontWeight:500,color:tPrimary,marginBottom:'10px'}}>Rentabilidade por ativo — mês atual</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart layout="vertical" data={rentBarData} margin={{left:0,right:8,top:0,bottom:0}}>
+                      <CartesianGrid strokeDasharray="3 3" stroke={CC.grid} horizontal={false}/>
+                      <XAxis type="number" tick={{fontSize:9,fill:CC.text}} axisLine={false} tickLine={false} tickFormatter={v=>`${v}%`}/>
+                      <YAxis type="category" dataKey="name" tick={{fontSize:9,fill:CC.text}} axisLine={false} tickLine={false} width={55}/>
+                      <RTooltip formatter={v=>[`${Number(v).toFixed(2)}% no mês`]} contentStyle={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'8px',fontSize:'11px',color:tPrimary}}/>
+                      <Bar dataKey="value" radius={[0,4,4,0]} barSize={22}>{rentBarData.map((e,i)=><Cell key={i} fill={e.cor}/>)}</Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Perfil de risco — HTML */}
+                <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'12px',padding:'16px',display:'flex',flexDirection:'column'}}>
+                  <p style={{fontSize:'13px',fontWeight:500,color:tPrimary,marginBottom:'14px'}}>Perfil de risco da carteira</p>
+                  <div style={{flex:1,display:'flex',flexDirection:'column',gap:'14px'}}>
+                    {riscoGroups.map((r,i)=>{
+                      const pct=patrimonio>0?Math.round((r.valor/patrimonio)*100):usesMock?[52,28,12,8][i]:0;
+                      return(
+                        <div key={i}>
+                          <div style={{display:'flex',justifyContent:'space-between',marginBottom:'5px'}}>
+                            <span style={{fontSize:'12px',color:tSecondary}}>{r.label}</span>
+                            <span style={{fontSize:'12px',fontWeight:500,color:isDark?r.darkText:r.textCor}}>{formatBRL(r.valor)} · {pct}%</span>
+                          </div>
+                          <div style={{height:'5px',borderRadius:'999px',background:barEmpty}}>
+                            <div style={{height:'100%',borderRadius:'999px',background:r.cor,width:`${pct}%`}}></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{marginTop:'14px',paddingTop:'12px',borderTop:`1px solid ${cardBorder}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <span style={{fontSize:'11px',color:tSecondary}}>Perfil geral</span>
+                    <span style={{padding:'3px 10px',borderRadius:'999px',fontSize:'10px',fontWeight:500,background:cBlue.bg,color:cBlue.val,border:`1px solid ${cBlue.border}`}}>Moderado conservador</span>
+                  </div>
+                </div>
+              </div>
+              {/* INVESTMENT CARDS */}
+              {invData.map(inv=>{
+                const tBadge=tipoBadge[inv.tipo]||tipoBadge['CDB'];
+                const rBadge=riscoBadge[inv.risco]||riscoBadge['Baixo risco'];
+                return(
+                  <div key={inv.id} style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'12px',padding:'1.1rem 1.25rem',marginBottom:'12px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'12px'}}>
+                      <div>
+                        <p style={{fontSize:'14px',fontWeight:500,color:tPrimary}}>{inv.nome}</p>
+                        <p style={{fontSize:'11px',color:tSecondary,marginTop:'2px'}}>{inv.inst||'—'} · desde {inv.inicio||'—'}</p>
+                      </div>
+                      <div style={{display:'flex',gap:'6px',flexShrink:0}}>
+                        <span style={{padding:'2px 8px',borderRadius:'999px',fontSize:'9px',fontWeight:700,background:tBadge.bg,color:tBadge.text,border:`1px solid ${tBadge.border}`}}>{inv.tipo}</span>
+                        <span style={{padding:'2px 8px',borderRadius:'999px',fontSize:'9px',fontWeight:700,background:rBadge.bg,color:rBadge.text,border:`1px solid ${rBadge.border}`}}>{inv.risco}</span>
+                      </div>
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'10px',marginBottom:'12px'}}>
+                      {[
+                        {label:'Valor aplicado',val:formatBRL(inv.aplicado),color:tSecondary},
+                        {label:'Valor atual',val:formatBRL(inv.atual),color:isDark?'#56d364':'#27500A'},
+                        {label:'Rendimento',val:`+ ${formatBRL(inv.rendimento)}`,color:isDark?'#56d364':'#27500A'},
+                        {label:'Rentabilidade',val:inv.rentab,color:isDark?'#56d364':'#27500A'},
+                        {label:inv.tipoExtra==='variavel'?'Dividendos/mês':'Liquidez',val:inv.extra,color:tPrimary},
+                      ].map((m,i)=>(
+                        <div key={i}>
+                          <p style={{fontSize:'10px',color:tSecondary,marginBottom:'2px'}}>{m.label}</p>
+                          <p style={{fontSize:'13px',fontWeight:500,color:m.color}}>{m.val}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{marginBottom:'5px'}}>
+                      <div style={{height:'5px',borderRadius:'999px',background:barEmpty}}>
+                        <div style={{height:'100%',borderRadius:'999px',background:inv.corBarra,width:`${inv.pctBarra}%`,transition:'width 0.3s'}}></div>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:'11px',color:tSecondary}}>
+                      <span>Início: {inv.inicio||'—'}</span>
+                      <span>{inv.tipoExtra==='variavel'?'Renda variável — sem vencimento':`${inv.pctBarra}% do prazo · vence ${inv.vencimento||'—'}`}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* SIMULATOR */}
+              <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'12px',padding:'16px',marginBottom:'16px'}}>
+                <p style={{fontSize:'13px',fontWeight:500,color:tPrimary,marginBottom:'14px'}}>Simulador de aportes</p>
+                <div style={{display:'flex',flexDirection:'column',gap:'12px',marginBottom:'16px'}}>
+                  {[
+                    {label:'Valor inicial (R$)',min:1000,max:200000,step:1000,val:simInvInit,set:setSimInvInit,fmt:v=>formatBRL(v)},
+                    {label:'Aporte mensal (R$)',min:0,max:10000,step:100,val:simInvAporte,set:setSimInvAporte,fmt:v=>formatBRL(v)},
+                    {label:'Taxa anual (%)',min:5,max:20,step:0.5,val:simInvTaxa,set:setSimInvTaxa,fmt:v=>`${v}%`},
+                    {label:'Período (anos)',min:1,max:20,step:1,val:simInvAnos,set:setSimInvAnos,fmt:v=>`${v} anos`},
+                  ].map((sl,i)=>(
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:'12px'}}>
+                      <span style={{minWidth:'160px',fontSize:'12px',color:tSecondary}}>{sl.label}</span>
+                      <input type="range" min={sl.min} max={sl.max} step={sl.step} value={sl.val} onInput={e=>sl.set(Number(e.target.value))} style={{flex:1,accentColor:'#137789'}}/>
+                      <span style={{minWidth:'80px',textAlign:'right',fontSize:'12px',fontWeight:500,color:tPrimary}}>{sl.fmt(sl.val)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{paddingTop:'14px',borderTop:`1px solid ${cardBorder}`,display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'12px'}}>
+                  {[
+                    {label:'Valor final',val:formatBRL(simRes.montante),color:isDark?'#56d364':'#27500A'},
+                    {label:'Total investido',val:formatBRL(simRes.totalInv),color:isDark?'#79c0ff':'#0C447C'},
+                    {label:'Rendimento total',val:formatBRL(simRes.rend),color:CC.green},
+                    {label:'Rentabilidade',val:`${simRes.pct}%`,color:isDark?'#d8b4fe':'#26215C'},
+                  ].map((r,i)=>(
+                    <div key={i} style={{textAlign:'center'}}>
+                      <p style={{fontSize:'10px',color:tSecondary,marginBottom:'4px'}}>{r.label}</p>
+                      <p style={{fontSize:'17px',fontWeight:500,color:r.color}}>{r.val}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* HISTORY TABLE */}
+              <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'12px',padding:'16px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'8px',marginBottom:'12px'}}>
+                  <p style={{fontSize:'13px',fontWeight:500,color:tPrimary}}>Histórico de rendimentos</p>
+                  <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+                    {[['todos','Todos'],['tesouro','Tesouro'],['cdb','CDB'],['fii','FII'],['acoes','Ações']].map(([k,l])=>(
+                      <button key={k} onClick={()=>setFiltroHistorico(k)} style={{padding:'4px 10px',borderRadius:'999px',fontSize:'11px',fontWeight:500,background:filtroHistorico===k?'#137789':'transparent',color:filtroHistorico===k?'#ffffff':tSecondary,border:`1px solid ${filtroHistorico===k?'#137789':cardBorder}`,cursor:'pointer',transition:'all 0.15s'}}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{overflowX:'auto'}}>
+                  <table style={{width:'100%',tableLayout:'fixed',borderCollapse:'collapse'}}>
+                    <thead>
+                      <tr style={{borderBottom:`1px solid ${cardBorder}`}}>
+                        {[['Investimento','28%'],['Tipo','12%'],['Competência','12%'],['Val. início','13%'],['Val. fim','13%'],['Rendimento','12%'],['% mês','10%']].map(([h,w])=>(
+                          <th key={h} style={{width:w,padding:'8px 10px',textAlign:'left',fontSize:'10px',fontWeight:600,color:tSecondary,textTransform:'uppercase',letterSpacing:'0.04em'}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {histFiltered.map((row,i)=>(
+                        <tr key={i} style={{borderBottom:`1px solid ${rowBorderC}`,background:i%2===1?rowStripeC:'transparent'}}>
+                          <td style={{padding:'8px 10px',fontSize:'12px',color:tPrimary,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{row.inv}</td>
+                          <td style={{padding:'8px 10px',fontSize:'10px',color:tSecondary,textTransform:'uppercase'}}>{row.tipo}</td>
+                          <td style={{padding:'8px 10px',fontSize:'12px',color:tSecondary}}>{row.comp}</td>
+                          <td style={{padding:'8px 10px',fontSize:'12px',color:tSecondary}}>{row.ini}</td>
+                          <td style={{padding:'8px 10px',fontSize:'12px',color:tSecondary}}>{row.fim}</td>
+                          <td style={{padding:'8px 10px',fontSize:'12px',fontWeight:500,color:row.pos?(isDark?'#56d364':'#27500A'):(isDark?'#f85149':'#791F1F')}}>{row.rend}</td>
+                          <td style={{padding:'8px 10px',fontSize:'12px',fontWeight:500,textAlign:'right',color:row.pos?(isDark?'#56d364':'#27500A'):(isDark?'#f85149':'#791F1F')}}>{row.pct}</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
-                )}
+                </div>
               </div>
             </div>
           );
@@ -3493,36 +3759,86 @@ const App = () => {
         )}
 
         {/* Modal Investimento */}
-        {modalInvestimento&&(
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalInvestimento(null)}>
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalInvestimento.id?'Editar':'Novo'} Investimento</h3><button onClick={()=>setModalInvestimento(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Nome / Identificação" value={modalInvestimento.nome} onChange={v=>setModalInvestimento({...modalInvestimento,nome:v})} placeholder="Ex: CDB Itaú 12%"/>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo</label><select value={modalInvestimento.tipo} onChange={e=>setModalInvestimento({...modalInvestimento,tipo:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500">{['CDB','LCI','LCA','Poupança','Fundo de Investimento','Ações','Tesouro Direto','Outros'].map(t=><option key={t}>{t}</option>)}</select></div>
+        {modalInvestimento&&(()=>{
+          const mBg=isDark?'#161b22':'#ffffff';
+          const mBorder=isDark?'#2d3748':'#e2e8f0';
+          const mText=isDark?'#e6edf3':'#05121b';
+          const mSecondary=isDark?'#a0aec0':'#64748b';
+          const mInput={background:isDark?'#0f1419':'#ffffff',border:`1px solid ${mBorder}`,borderRadius:'8px',padding:'9px 12px',fontSize:'12px',color:mText,outline:'none',width:'100%'};
+          const mLabel={display:'block',fontSize:'10px',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em',color:mSecondary,marginBottom:'5px'};
+          const upd=v=>setModalInvestimento({...modalInvestimento,...v});
+          return(
+            <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.4)',backdropFilter:'blur(4px)',padding:'16px'}} onClick={()=>setModalInvestimento(null)}>
+              <div style={{background:mBg,border:`1px solid ${mBorder}`,borderRadius:'16px',width:'100%',maxWidth:'420px',padding:'24px',maxHeight:'90vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={e=>e.stopPropagation()}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
+                  <h3 style={{fontSize:'16px',fontWeight:600,color:mText}}>{modalInvestimento.id?'Editar':'Novo'} investimento</h3>
+                  <button onClick={()=>setModalInvestimento(null)} style={{color:mSecondary,background:'none',border:'none',cursor:'pointer',lineHeight:1}}><X size={18}/></button>
                 </div>
-                <InputField label="Instituição (opcional)" value={modalInvestimento.instituicao||''} onChange={v=>setModalInvestimento({...modalInvestimento,instituicao:v})} placeholder="Ex: Itaú, XP, Nubank..."/>
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Valor Aplicado" value={modalInvestimento.valor_aplicado} onChange={v=>setModalInvestimento({...modalInvestimento,valor_aplicado:v})} maskType="currency"/>
-                  <InputField label="Valor Atual (opcional)" value={modalInvestimento.valor_atual||''} onChange={v=>setModalInvestimento({...modalInvestimento,valor_atual:v})} maskType="currency"/>
+                <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
+                  {/* Nome */}
+                  <div>
+                    <label style={mLabel}>Nome / descrição</label>
+                    <input style={mInput} placeholder="Ex: CDB Banco XP 115% CDI" value={modalInvestimento.nome||''} onChange={e=>upd({nome:e.target.value})}/>
+                  </div>
+                  {/* Tipo + Risco */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div>
+                      <label style={mLabel}>Tipo</label>
+                      <select style={mInput} value={modalInvestimento.tipo||'Tesouro Direto'} onChange={e=>upd({tipo:e.target.value})}>
+                        {['Tesouro Direto','CDB','LCI/LCA','Fundo imobiliário','Ações','Fundo de investimento','Poupança','Criptomoedas','Outros'].map(t=><option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={mLabel}>Perfil de risco</label>
+                      <select style={mInput} value={modalInvestimento.risco||'Baixo'} onChange={e=>upd({risco:e.target.value})}>
+                        {['Baixo','Baixo-médio','Médio','Alto'].map(r=><option key={r}>{r}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  {/* Valor + Data aplicação */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div>
+                      <label style={mLabel}>Valor aplicado (R$)</label>
+                      <InputField label="" value={modalInvestimento.valor_aplicado||''} onChange={v=>upd({valor_aplicado:v})} maskType="currency" placeholder="0,00"/>
+                    </div>
+                    <div>
+                      <label style={mLabel}>Data de aplicação</label>
+                      <input type="date" style={mInput} value={modalInvestimento.data_aplicacao||''} onChange={e=>upd({data_aplicacao:e.target.value})}/>
+                    </div>
+                  </div>
+                  {/* Taxa + Vencimento */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div>
+                      <label style={mLabel}>Taxa / rentabilidade</label>
+                      <input style={mInput} placeholder="Ex: 120% CDI ou 12% a.a." value={modalInvestimento.taxa||''} onChange={e=>upd({taxa:e.target.value})}/>
+                    </div>
+                    <div>
+                      <label style={mLabel}>Vencimento</label>
+                      <input type="date" style={mInput} value={modalInvestimento.data_vencimento||''} onChange={e=>upd({data_vencimento:e.target.value})}/>
+                    </div>
+                  </div>
+                  {/* Liquidez + Instituição */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div>
+                      <label style={mLabel}>Liquidez</label>
+                      <select style={mInput} value={modalInvestimento.liquidez||'D+0'} onChange={e=>upd({liquidez:e.target.value})}>
+                        {['D+0','D+1','D+2','No vencimento'].map(l=><option key={l}>{l}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label style={mLabel}>Instituição</label>
+                      <input style={mInput} placeholder="Ex: Banco Inter" value={modalInvestimento.instituicao||''} onChange={e=>upd({instituicao:e.target.value})}/>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data de Aplicação</label><input type="date" value={modalInvestimento.data_aplicacao||''} onChange={e=>setModalInvestimento({...modalInvestimento,data_aplicacao:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500"/></div>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Vencimento (opcional)</label><input type="date" value={modalInvestimento.data_vencimento||''} onChange={e=>setModalInvestimento({...modalInvestimento,data_vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500"/></div>
+                <div style={{display:'flex',gap:'10px',marginTop:'20px'}}>
+                  <button onClick={()=>setModalInvestimento(null)} style={{flex:1,padding:'11px',borderRadius:'8px',fontSize:'12px',fontWeight:500,background:'transparent',border:`1px solid ${mBorder}`,color:mSecondary,cursor:'pointer'}}>Cancelar</button>
+                  <button disabled={savingItem||!modalInvestimento.nome||!modalInvestimento.valor_aplicado} onClick={()=>saveItem('investimentos',{...modalInvestimento,valor_aplicado:parseFloat((modalInvestimento.valor_aplicado||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,valor_atual:null,rentabilidade_pct:modalInvestimento.taxa?parseFloat(modalInvestimento.taxa)||null:null,user_id:user.id},setModalInvestimento,()=>fetchFinanceiro(user.id))} style={{flex:1,padding:'11px',borderRadius:'8px',fontSize:'12px',fontWeight:600,background:'#137789',color:'#ffffff',border:'none',cursor:'pointer',opacity:savingItem||!modalInvestimento.nome||!modalInvestimento.valor_aplicado?0.5:1,display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>{savingItem&&<Loader2 size={12} className="animate-spin"/>}Salvar</button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Liquidez</label><select value={modalInvestimento.liquidez||'30 dias'} onChange={e=>setModalInvestimento({...modalInvestimento,liquidez:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500">{['Diária','30 dias','60 dias','90 dias','180 dias','No vencimento','Outros'].map(l=><option key={l}>{l}</option>)}</select></div>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalInvestimento.status} onChange={e=>setModalInvestimento({...modalInvestimento,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-blue-500"><option value="ativo">Ativo</option><option value="encerrado">Encerrado</option><option value="vencido">Vencido</option></select></div>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button onClick={()=>setModalInvestimento(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalInvestimento.nome||!modalInvestimento.valor_aplicado} onClick={()=>saveItem('investimentos',{...modalInvestimento,valor_aplicado:parseFloat((modalInvestimento.valor_aplicado||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,valor_atual:modalInvestimento.valor_atual?parseFloat((modalInvestimento.valor_atual||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||null:null,rentabilidade_pct:modalInvestimento.rentabilidade_pct?parseFloat(modalInvestimento.rentabilidade_pct)||null:null,user_id:user.id},setModalInvestimento,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Modal Solicitar Análise */}
         {modalSolicitarAnalise&&(
