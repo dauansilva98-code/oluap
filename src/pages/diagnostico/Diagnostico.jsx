@@ -2873,9 +2873,15 @@ const App = () => {
                         <p style={{fontSize:'14px',fontWeight:500,color:tPrimary}}>{inv.nome}</p>
                         <p style={{fontSize:'11px',color:tSecondary,marginTop:'2px'}}>{inv.inst||'—'} · desde {inv.inicio||'—'}</p>
                       </div>
-                      <div style={{display:'flex',gap:'6px',flexShrink:0}}>
-                        <span style={{padding:'2px 8px',borderRadius:'999px',fontSize:'9px',fontWeight:700,background:tBadge.bg,color:tBadge.text,border:`1px solid ${tBadge.border}`}}>{inv.tipo}</span>
-                        <span style={{padding:'2px 8px',borderRadius:'999px',fontSize:'9px',fontWeight:700,background:rBadge.bg,color:rBadge.text,border:`1px solid ${rBadge.border}`}}>{inv.risco}</span>
+                      <div style={{display:'flex',flexDirection:'column',gap:'6px',alignItems:'flex-end',flexShrink:0}}>
+                        <div style={{display:'flex',gap:'6px'}}>
+                          <span style={{padding:'2px 8px',borderRadius:'999px',fontSize:'9px',fontWeight:700,background:tBadge.bg,color:tBadge.text,border:`1px solid ${tBadge.border}`}}>{inv.tipo}</span>
+                          <span style={{padding:'2px 8px',borderRadius:'999px',fontSize:'9px',fontWeight:700,background:rBadge.bg,color:rBadge.text,border:`1px solid ${rBadge.border}`}}>{inv.risco}</span>
+                        </div>
+                        <div style={{display:'flex',gap:'8px'}}>
+                          <button onClick={()=>{const raw=investimentos.find(i=>i.id===inv.id);if(!raw)return;setModalInvestimento({id:raw.id,nome:raw.nome||'',tipo:raw.tipo||'Tesouro Direto',risco:raw.risco||'Baixo',valor_aplicado:raw.valor_aplicado?formatCurrency(String(Math.round(Number(raw.valor_aplicado)*100))):'',data_aplicacao:raw.data_aplicacao||'',taxa:raw.taxa||'',data_vencimento:raw.data_vencimento||'',liquidez:raw.liquidez||'D+0',instituicao:raw.instituicao||''});}} style={{background:'none',border:'none',cursor:'pointer',padding:'2px',color:isDark?'#4a5568':'#94a3b8',display:'flex',alignItems:'center'}} title="Editar"><Pencil size={13}/></button>
+                          <button onClick={()=>deleteItem('investimentos',inv.id,()=>fetchFinanceiro(user.id))} style={{background:'none',border:'none',cursor:'pointer',padding:'2px',color:isDark?'#4a5568':'#94a3b8',display:'flex',alignItems:'center'}} title="Excluir"><Trash2 size={13}/></button>
+                        </div>
                       </div>
                     </div>
                     <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'10px',marginBottom:'12px'}}>
