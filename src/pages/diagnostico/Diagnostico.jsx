@@ -3859,7 +3859,7 @@ const App = () => {
               </div>
               <p className="text-[11px] text-slate-400 mb-7">Escolha como deseja trazer os dados para esta análise.</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode(null);setFormStep(0);setView('form');}} className="flex flex-col items-start gap-3 bg-[#05121b] text-white p-6 rounded-2xl text-left hover:bg-slate-800 transition-colors group">
+                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode('standard');setFormStep(0);setFormError('');setFieldErrors({});setView('form');}} className="flex flex-col items-start gap-3 bg-[#05121b] text-white p-6 rounded-2xl text-left hover:bg-slate-800 transition-colors group">
                   <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><LayoutDashboard size={18} className="text-white"/></div>
                   <div>
                     <p className="font-black text-sm uppercase tracking-tight mb-1">Dados da Plataforma</p>
@@ -3867,7 +3867,7 @@ const App = () => {
                   </div>
                   {(lancamentos.length>0||bancos.length>0)&&<span className="text-[8px] bg-emerald-500 text-white font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{lancamentos.length} lançamentos disponíveis</span>}
                 </button>
-                <button onClick={()=>{setModalSolicitarAnalise(false);setView('fontes');}} className="flex flex-col items-start gap-3 bg-white border border-slate-200 p-6 rounded-2xl text-left hover:border-[#137789]/50 hover:shadow transition-all group">
+                <button onClick={()=>{setModalSolicitarAnalise(false);setSelectedSource('planilha');setView('fontes');}} className="flex flex-col items-start gap-3 bg-white border border-slate-200 p-6 rounded-2xl text-left hover:border-[#137789]/50 hover:shadow transition-all group">
                   <div className="w-10 h-10 bg-[#137789]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><Upload size={18} className="text-[#137789]"/></div>
                   <div>
                     <p className="font-black text-sm uppercase tracking-tight text-[#05121b] mb-1">Enviar Documentos</p>
@@ -3875,7 +3875,7 @@ const App = () => {
                   </div>
                   <span className="text-[8px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-full uppercase tracking-widest">PDF · XLSX · CSV</span>
                 </button>
-                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode(null);setFormStep(0);setView('form');}} className="flex flex-col items-start gap-3 bg-white border border-slate-200 p-6 rounded-2xl text-left hover:border-[#ff7b00]/50 hover:shadow transition-all group">
+                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode('guided');setFormStep(0);setFormError('');setFieldErrors({});setView('form');}} className="flex flex-col items-start gap-3 bg-white border border-slate-200 p-6 rounded-2xl text-left hover:border-[#ff7b00]/50 hover:shadow transition-all group">
                   <div className="w-10 h-10 bg-[#ff7b00]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><PenLine size={18} className="text-[#ff7b00]"/></div>
                   <div>
                     <p className="font-black text-sm uppercase tracking-tight text-[#05121b] mb-1">Preencher Manualmente</p>
