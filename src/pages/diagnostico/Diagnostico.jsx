@@ -314,7 +314,8 @@ const App = () => {
         const{error}=await supabase.from(table).update(rest).eq('id',id);
         if(error)throw error;
       }else{
-        const{error}=await supabase.from(table).insert(clean);
+        const ins=Object.fromEntries(Object.entries(clean).filter(([,v])=>v!=null));
+        const{error}=await supabase.from(table).insert(ins);
         if(error)throw error;
       }
       await resetList();
@@ -2667,25 +2668,9 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── INVESTIMENTOS ─────────────────────────────────────────── */}
         {view==='investimentos'&&(()=>{
-          // ── Mock data (used when no real investments exist) ──────────
-          const MOCK_INV=[
-            {id:'t1',nome:'Tesouro IPCA+ 2029',inst:'Tesouro Direto',inicio:'mar/2023',tipo:'Renda fixa',risco:'Baixo risco',aplicado:80000,atual:98400,rendimento:18400,rentab:'23,0%',extra:'Venc. mai/2029',pctBarra:48,corBarra:'#1D9E75',vencimento:'mai/2029',tipoExtra:'venc',liquidez:'No vencimento'},
-            {id:'c1',nome:'CDB Banco Inter 120% CDI',inst:'Banco Inter',inicio:'jan/2024',tipo:'CDB',risco:'Baixo risco',aplicado:60000,atual:69600,rendimento:9600,rentab:'16,0%',extra:'D+0',pctBarra:35,corBarra:'#378ADD',vencimento:'jan/2026',tipoExtra:'venc',liquidez:'D+0'},
-            {id:'f1',nome:'FII HGLG11 — Fundo Imobiliário',inst:'B3',inicio:'jun/2023',tipo:'FII',risco:'Médio risco',aplicado:28000,atual:29800,rendimento:1800,rentab:'6,4%',extra:'R$ 248/mês',pctBarra:62,corBarra:'#BA7517',tipoExtra:'variavel',liquidez:''},
-            {id:'a1',nome:'Ações ITUB4 — Itaú Unibanco',inst:'B3',inicio:'ago/2023',tipo:'Ações',risco:'Alto risco',aplicado:18400,atual:19800,rendimento:1400,rentab:'7,6%',extra:'R$ 124/mês',pctBarra:40,corBarra:'#D85A30',tipoExtra:'variavel',liquidez:''},
-          ];
-          const MOCK_HIST=[
-            {inv:'Tesouro IPCA+ 2029',tipo:'tesouro',comp:'Mai/25',ini:'R$ 96.200',fim:'R$ 98.400',rend:'+ R$ 2.200',pct:'2,29%',pos:true},
-            {inv:'CDB Inter 120% CDI',tipo:'cdb',comp:'Mai/25',ini:'R$ 68.400',fim:'R$ 69.600',rend:'+ R$ 1.200',pct:'1,75%',pos:true},
-            {inv:'FII HGLG11',tipo:'fii',comp:'Mai/25',ini:'R$ 29.500',fim:'R$ 29.800',rend:'+ R$ 300',pct:'1,02%',pos:true},
-            {inv:'Ações ITUB4',tipo:'acoes',comp:'Mai/25',ini:'R$ 19.660',fim:'R$ 19.800',rend:'+ R$ 140',pct:'0,71%',pos:true},
-            {inv:'Tesouro IPCA+ 2029',tipo:'tesouro',comp:'Abr/25',ini:'R$ 94.100',fim:'R$ 96.200',rend:'+ R$ 2.100',pct:'2,23%',pos:true},
-            {inv:'CDB Inter 120% CDI',tipo:'cdb',comp:'Abr/25',ini:'R$ 67.200',fim:'R$ 68.400',rend:'+ R$ 1.200',pct:'1,79%',pos:true},
-            {inv:'FII HGLG11',tipo:'fii',comp:'Abr/25',ini:'R$ 29.800',fim:'R$ 29.500',rend:'- R$ 300',pct:'-1,01%',pos:false},
-            {inv:'Ações ITUB4',tipo:'acoes',comp:'Abr/25',ini:'R$ 20.100',fim:'R$ 19.660',rend:'- R$ 440',pct:'-2,19%',pos:false},
-          ];
-          const usesMock=investimentos.length===0;
-          const invData=usesMock?MOCK_INV:investimentos.map(i=>({
+          const MOCK_HIST=[];
+          const usesMock=false;
+          const invData=investimentos.map(i=>({
             id:i.id,nome:i.nome,inst:i.instituicao||'',inicio:i.data_aplicacao||'',
             tipo:i.tipo||'CDB',risco:'N/D',
             aplicado:Number(i.valor_aplicado||0),atual:Number(i.valor_atual||i.valor_aplicado||0),
@@ -2698,21 +2683,19 @@ const App = () => {
           const patrimonio=invData.reduce((a,i)=>a+i.atual,0);
           const rentTotal=invData.reduce((a,i)=>a+i.rendimento,0);
           const totalAplicado=invData.reduce((a,i)=>a+i.aplicado,0);
-          const rendMes=usesMock?2840:Math.round(patrimonio*0.0114);
+          const rendMes=Math.round(patrimonio*0.0114);
           const melhorAtivo=invData.length>0?invData.reduce((mx,i)=>parseFloat(i.rentab||0)>parseFloat(mx.rentab||0)?i:mx,invData[0]):null;
           const liquidezImediata=invData.filter(i=>i.liquidez==='D+0'||i.liquidez==='Diária').reduce((a,i)=>a+i.atual,0);
           // ── Chart data ───────────────────────────────────────────────
           const composicaoData=invData.map(i=>({name:i.nome.split(' ').slice(0,2).join(' '),value:i.atual,color:i.corBarra}));
           const evoLabels=['Dez','Jan','Fev','Mar','Abr','Mai'];
-          const evoPatBase=usesMock?[198000,208000,218000,228000,238000,248400]:[0,0,0,0,0,patrimonio];
-          const evoRendBase=usesMock?[10800,14200,18400,22600,27200,31240]:[0,0,0,0,0,rentTotal];
-          const evoData=evoLabels.map((m,i)=>({mes:m,patrimonio:evoPatBase[i],rendimento:evoRendBase[i]}));
-          const rentBarData=invData.map(i=>({name:i.nome.split(' ')[0],value:usesMock?[1.75,1.14,1.02,0.71][invData.indexOf(i)]||0:parseFloat(i.rentab)||0,cor:i.corBarra}));
+          const evoData=evoLabels.map((m,idx)=>({mes:m,patrimonio:idx===5?patrimonio:0,rendimento:idx===5?rentTotal:0}));
+          const rentBarData=invData.map(i=>({name:i.nome.split(' ')[0],value:parseFloat(i.rentab)||0,cor:i.corBarra}));
           const riscoGroups=[
-            {label:'Renda fixa (baixo risco)',valor:usesMock?129200:invData.filter(i=>i.tipo==='Renda fixa'||i.tipo==='Tesouro Direto'||i.tipo==='LCI'||i.tipo==='LCA').reduce((a,i)=>a+i.atual,0),cor:'#1D9E75',textCor:'#27500A',darkText:'#56d364'},
-            {label:'CDB (baixo-médio risco)',valor:usesMock?69600:invData.filter(i=>i.tipo==='CDB').reduce((a,i)=>a+i.atual,0),cor:'#378ADD',textCor:'#0C447C',darkText:'#79c0ff'},
-            {label:'Fundos imobiliários (médio)',valor:usesMock?29800:invData.filter(i=>i.tipo==='FII'||i.tipo==='Fundo de Investimento').reduce((a,i)=>a+i.atual,0),cor:'#BA7517',textCor:'#633806',darkText:'#e3b341'},
-            {label:'Ações (alto risco)',valor:usesMock?19800:invData.filter(i=>i.tipo==='Ações').reduce((a,i)=>a+i.atual,0),cor:'#D85A30',textCor:'#791F1F',darkText:'#f85149'},
+            {label:'Renda fixa (baixo risco)',valor:invData.filter(i=>i.tipo==='Renda fixa'||i.tipo==='Tesouro Direto'||i.tipo==='LCI'||i.tipo==='LCA').reduce((a,i)=>a+i.atual,0),cor:'#1D9E75',textCor:'#27500A',darkText:'#56d364'},
+            {label:'CDB (baixo-médio risco)',valor:invData.filter(i=>i.tipo==='CDB').reduce((a,i)=>a+i.atual,0),cor:'#378ADD',textCor:'#0C447C',darkText:'#79c0ff'},
+            {label:'Fundos imobiliários (médio)',valor:invData.filter(i=>i.tipo==='FII'||i.tipo==='Fundo de Investimento').reduce((a,i)=>a+i.atual,0),cor:'#BA7517',textCor:'#633806',darkText:'#e3b341'},
+            {label:'Ações (alto risco)',valor:invData.filter(i=>i.tipo==='Ações').reduce((a,i)=>a+i.atual,0),cor:'#D85A30',textCor:'#791F1F',darkText:'#f85149'},
           ];
           // ── Simulator ───────────────────────────────────────────────
           const simCalc=(init,aporteM,taxaAnual,anos)=>{
@@ -2757,15 +2740,27 @@ const App = () => {
                   <button onClick={()=>setModalInvestimento({nome:'',tipo:'Tesouro Direto',risco:'Baixo',valor_aplicado:'',data_aplicacao:'',taxa:'',data_vencimento:'',liquidez:'D+0',instituicao:''})} style={{padding:'7px 14px',borderRadius:'8px',fontSize:'12px',fontWeight:500,background:'#137789',color:'#ffffff',border:'none',cursor:'pointer',display:'flex',alignItems:'center',gap:'6px'}}><Plus size={12}/> Novo investimento</button>
                 </div>
               </header>
+              {/* EMPTY STATE */}
+              {invData.length===0&&(
+                <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:'12px',padding:'48px 24px',textAlign:'center',marginBottom:'16px'}}>
+                  <div style={{width:'48px',height:'48px',borderRadius:'12px',background:cGreen.bg,border:`1px solid ${cGreen.border}`,display:'inline-flex',alignItems:'center',justifyContent:'center',marginBottom:'12px'}}>
+                    <TrendingUp size={22} color={cGreen.lbl}/>
+                  </div>
+                  <p style={{fontSize:'15px',fontWeight:500,color:tPrimary,marginBottom:'6px'}}>Nenhum investimento cadastrado</p>
+                  <p style={{fontSize:'12px',color:tSecondary,marginBottom:'16px'}}>Cadastre seus investimentos para visualizar sua carteira, rentabilidade e análises.</p>
+                  <button onClick={()=>setModalInvestimento({nome:'',tipo:'Tesouro Direto',risco:'Baixo',valor_aplicado:'',data_aplicacao:'',taxa:'',data_vencimento:'',liquidez:'D+0',instituicao:''})} style={{padding:'9px 18px',borderRadius:'8px',fontSize:'12px',fontWeight:600,background:'#137789',color:'#ffffff',border:'none',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:'6px'}}><Plus size={13}/> Adicionar primeiro investimento</button>
+                </div>
+              )}
               {/* 6 KPI CARDS */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:'12px',marginBottom:'16px'}}>
+              {invData.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:'12px',marginBottom:'16px'}}>
+
                 {[
-                  {label:'Patrimônio investido',val:formatBRL(patrimonio),sub:`${invData.length} investimentos`,c:cGreen},
-                  {label:'Rentabilidade total',val:`+ ${formatBRL(rentTotal)}`,sub:`↑ ${totalAplicado>0?((rentTotal/totalAplicado)*100).toFixed(1):'12,6'}% desde início`,c:cGreen},
-                  {label:'Rendimento no mês',val:formatBRL(rendMes),sub:'↑ 1,14% em mai',c:cBlue},
-                  {label:'Melhor ativo',val:melhorAtivo?.rentab||'18,4%',sub:melhorAtivo?melhorAtivo.nome.split(' ').slice(0,2).join(' '):'CDB Banco Inter',c:cPurple},
-                  {label:'Liquidez imediata',val:formatBRL(usesMock?98200:liquidezImediata),sub:'disponível hoje',c:cAmber},
-                  {label:'Comparativo CDI',val:usesMock?'138%':`${totalAplicado>0?Math.round((rentTotal/totalAplicado)*100*6.8):0}%`,sub:'do CDI no período',c:cNeutral},
+                  {label:'Patrimônio investido',val:formatBRL(patrimonio),sub:`${invData.length} investimento${invData.length!==1?'s':''}`,c:cGreen},
+                  {label:'Rentabilidade total',val:rentTotal>0?`+ ${formatBRL(rentTotal)}`:'R$ 0,00',sub:totalAplicado>0?`↑ ${((rentTotal/totalAplicado)*100).toFixed(1)}% desde início`:'—',c:cGreen},
+                  {label:'Rendimento no mês',val:formatBRL(rendMes),sub:'estimativa 1,14% a.m.',c:cBlue},
+                  {label:'Melhor ativo',val:melhorAtivo?.rentab||'—',sub:melhorAtivo?melhorAtivo.nome.split(' ').slice(0,2).join(' '):'—',c:cPurple},
+                  {label:'Liquidez imediata',val:formatBRL(liquidezImediata),sub:'disponível hoje',c:cAmber},
+                  {label:'Comparativo CDI',val:`${totalAplicado>0?Math.round((rentTotal/totalAplicado)*100*6.8):0}%`,sub:'do CDI no período',c:cNeutral},
                 ].map((k,i)=>(
                   <div key={i} style={{background:k.c.bg,border:`1px solid ${k.c.border}`,borderRadius:'12px',padding:'14px'}}>
                     <p style={{fontSize:'11px',fontWeight:500,color:k.c.lbl,marginBottom:'4px'}}>{k.label}</p>
@@ -2773,7 +2768,8 @@ const App = () => {
                     <p style={{fontSize:'11px',color:k.c.lbl}}>{k.sub}</p>
                   </div>
                 ))}
-              </div>
+              </div>}
+              {invData.length>0&&<>
               {/* CHARTS TOP ROW */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'14px',marginBottom:'14px'}}>
                 {/* Composição — donut */}
@@ -2846,7 +2842,7 @@ const App = () => {
                   <p style={{fontSize:'13px',fontWeight:500,color:tPrimary,marginBottom:'14px'}}>Perfil de risco da carteira</p>
                   <div style={{flex:1,display:'flex',flexDirection:'column',gap:'14px'}}>
                     {riscoGroups.map((r,i)=>{
-                      const pct=patrimonio>0?Math.round((r.valor/patrimonio)*100):usesMock?[52,28,12,8][i]:0;
+                      const pct=patrimonio>0?Math.round((r.valor/patrimonio)*100):0;
                       return(
                         <div key={i}>
                           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'5px'}}>
@@ -2974,6 +2970,7 @@ const App = () => {
                   </table>
                 </div>
               </div>
+              </>}
             </div>
           );
         })()}
@@ -3698,44 +3695,56 @@ const App = () => {
         })()}
 
         {/* Modal Dívida */}
-        {modalDivida&&(
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalDivida(null)}>
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 max-h-[92vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">{modalDivida.id?'Editar':'Nova'} Dívida</h3><button onClick={()=>setModalDivida(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Credor" value={modalDivida.credor} onChange={v=>setModalDivida({...modalDivida,credor:v})}/>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo</label><select value={modalDivida.tipo||'Empréstimo'} onChange={e=>setModalDivida({...modalDivida,tipo:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">{['Empréstimo','Financiamento','Cartão de Crédito','Cheque Especial','Outros'].map(t=><option key={t}>{t}</option>)}</select></div>
+        {modalDivida&&(()=>{
+          const mBg=isDark?'#161b22':'#ffffff';
+          const mBorder=isDark?'#2d3748':'#e2e8f0';
+          const mText=isDark?'#e6edf3':'#05121b';
+          const mSub=isDark?'#a0aec0':'rgba(5,18,27,0.5)';
+          const mInput={background:isDark?'#0f1419':'#ffffff',border:`1px solid ${mBorder}`,borderRadius:'10px',padding:'9px 12px',fontSize:'12px',color:mText,outline:'none',width:'100%',fontWeight:500};
+          const mLbl={fontSize:'10px',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.05em',color:mSub,marginBottom:'5px',display:'block'};
+          const parseCur=s=>parseFloat((s||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
+          return(
+            <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.35)',backdropFilter:'blur(4px)',padding:'16px'}} onClick={()=>setModalDivida(null)}>
+              <div style={{background:mBg,border:`1px solid ${mBorder}`,borderRadius:'20px',width:'100%',maxWidth:'520px',padding:'28px',maxHeight:'92vh',overflowY:'auto',boxShadow:'0 20px 60px rgba(0,0,0,0.4)'}} onClick={e=>e.stopPropagation()}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'20px'}}>
+                  <h3 style={{fontSize:'17px',fontWeight:700,color:mText}}>{modalDivida.id?'Editar':'Nova'} Dívida</h3>
+                  <button onClick={()=>setModalDivida(null)} style={{color:mSub,background:'none',border:'none',cursor:'pointer'}}><X size={18}/></button>
                 </div>
-                <InputField label="Descrição (opcional)" value={modalDivida.descricao||''} onChange={v=>setModalDivida({...modalDivida,descricao:v})}/>
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Valor Total" value={modalDivida.valor_total} onChange={v=>setModalDivida({...modalDivida,valor_total:v})} maskType="currency"/>
-                  <InputField label="Saldo Devedor Atual" value={modalDivida.saldo_devedor||''} onChange={v=>setModalDivida({...modalDivida,saldo_devedor:v})} maskType="currency"/>
+                <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div><label style={mLbl}>Credor</label><input style={mInput} value={modalDivida.credor||''} onChange={e=>setModalDivida({...modalDivida,credor:e.target.value})} placeholder="Ex: Banco Itaú"/></div>
+                    <div><label style={mLbl}>Tipo</label><select style={mInput} value={modalDivida.tipo||'Empréstimo'} onChange={e=>setModalDivida({...modalDivida,tipo:e.target.value})}>{['Empréstimo','Financiamento','Cartão de Crédito','Cheque Especial','Outros'].map(t=><option key={t}>{t}</option>)}</select></div>
+                  </div>
+                  <div><label style={mLbl}>Descrição (opcional)</label><input style={mInput} value={modalDivida.descricao||''} onChange={e=>setModalDivida({...modalDivida,descricao:e.target.value})} placeholder="Ex: Financiamento veículo"/></div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div><label style={mLbl}>Valor Total</label><InputField label="" value={modalDivida.valor_total||''} onChange={v=>setModalDivida({...modalDivida,valor_total:v})} maskType="currency"/></div>
+                    <div><label style={mLbl}>Saldo Devedor Atual</label><InputField label="" value={modalDivida.saldo_devedor||''} onChange={v=>setModalDivida({...modalDivida,saldo_devedor:v})} maskType="currency"/></div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div><label style={mLbl}>Valor da Parcela</label><InputField label="" value={modalDivida.valor_parcela||''} onChange={v=>setModalDivida({...modalDivida,valor_parcela:v})} maskType="currency"/></div>
+                    <div><label style={mLbl}>Taxa de Juros (% a.m.)</label><input type="number" step="0.01" min="0" placeholder="Ex: 2.99" style={mInput} value={modalDivida.taxa_juros||''} onChange={e=>setModalDivida({...modalDivida,taxa_juros:e.target.value})}/></div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div><label style={mLbl}>Total de Parcelas</label><input type="number" style={mInput} value={modalDivida.parcelas_total||''} onChange={e=>setModalDivida({...modalDivida,parcelas_total:e.target.value})}/></div>
+                    <div><label style={mLbl}>Parcelas Pagas</label><input type="number" style={mInput} value={modalDivida.parcelas_pagas||0} onChange={e=>setModalDivida({...modalDivida,parcelas_pagas:e.target.value})}/></div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div><label style={mLbl}>Data de Início</label><input type="date" style={mInput} value={modalDivida.data_inicio||''} onChange={e=>setModalDivida({...modalDivida,data_inicio:e.target.value})}/></div>
+                    <div><label style={mLbl}>Previsão de Quitação</label><input type="date" style={mInput} value={modalDivida.previsao_quitacao||''} onChange={e=>setModalDivida({...modalDivida,previsao_quitacao:e.target.value})}/></div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}}>
+                    <div><label style={mLbl}>Próx. Vencimento</label><input type="date" style={mInput} value={modalDivida.proximo_vencimento||''} onChange={e=>setModalDivida({...modalDivida,proximo_vencimento:e.target.value})}/></div>
+                    <div><label style={mLbl}>Status</label><select style={mInput} value={modalDivida.status||'ativa'} onChange={e=>setModalDivida({...modalDivida,status:e.target.value})}><option value="ativa">Ativa</option><option value="quitada">Quitada</option><option value="em_negociacao">Em Negociação</option></select></div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Valor da Parcela" value={modalDivida.valor_parcela||''} onChange={v=>setModalDivida({...modalDivida,valor_parcela:v})} maskType="currency"/>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Taxa de Juros (% a.m.)</label><input type="number" step="0.01" min="0" placeholder="Ex: 2.99" value={modalDivida.taxa_juros||''} onChange={e=>setModalDivida({...modalDivida,taxa_juros:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
+                <div style={{display:'flex',gap:'10px',marginTop:'20px'}}>
+                  <button onClick={()=>setModalDivida(null)} style={{flex:1,padding:'11px',borderRadius:'10px',fontSize:'12px',fontWeight:500,background:'transparent',border:`1px solid ${mBorder}`,color:mSub,cursor:'pointer'}}>Cancelar</button>
+                  <button disabled={savingItem||!modalDivida.credor||!modalDivida.valor_total} onClick={()=>saveItem('dividas',{...modalDivida,valor_total:parseCur(modalDivida.valor_total),saldo_devedor:modalDivida.saldo_devedor?parseCur(modalDivida.saldo_devedor):null,valor_parcela:modalDivida.valor_parcela?parseCur(modalDivida.valor_parcela):null,taxa_juros:modalDivida.taxa_juros?parseFloat(modalDivida.taxa_juros)||null:null,parcelas_total:modalDivida.parcelas_total?parseInt(modalDivida.parcelas_total):null,parcelas_pagas:parseInt(modalDivida.parcelas_pagas)||0,user_id:user.id},setModalDivida,()=>fetchFinanceiro(user.id))} style={{flex:1,padding:'11px',borderRadius:'10px',fontSize:'12px',fontWeight:700,background:'#137789',color:'#ffffff',border:'none',cursor:'pointer',opacity:savingItem||!modalDivida.credor||!modalDivida.valor_total?0.5:1,display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>{savingItem&&<Loader2 size={12} className="animate-spin"/>}Salvar</button>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Total parcelas</label><input type="number" value={modalDivida.parcelas_total||''} onChange={e=>setModalDivida({...modalDivida,parcelas_total:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Parcelas Pagas</label><input type="number" value={modalDivida.parcelas_pagas||0} onChange={e=>setModalDivida({...modalDivida,parcelas_pagas:e.target.value})} className="w-full bg-white border border-slate-200 px-3 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data de Início</label><input type="date" value={modalDivida.data_inicio||''} onChange={e=>setModalDivida({...modalDivida,data_inicio:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Previsão de Quitação</label><input type="date" value={modalDivida.previsao_quitacao||''} onChange={e=>setModalDivida({...modalDivida,previsao_quitacao:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Próx. Vencimento</label><input type="date" value={modalDivida.proximo_vencimento||''} onChange={e=>setModalDivida({...modalDivida,proximo_vencimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/></div>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalDivida.status} onChange={e=>setModalDivida({...modalDivida,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="ativa">Ativa</option><option value="quitada">Quitada</option><option value="em_negociacao">Em Negociação</option></select></div>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button onClick={()=>setModalDivida(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalDivida.credor||!modalDivida.valor_total} onClick={()=>saveItem('dividas',{...modalDivida,valor_total:parseFloat((modalDivida.valor_total||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,saldo_devedor:modalDivida.saldo_devedor?parseFloat((modalDivida.saldo_devedor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||null:null,valor_parcela:modalDivida.valor_parcela?parseFloat((modalDivida.valor_parcela||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0:null,taxa_juros:modalDivida.taxa_juros?parseFloat(modalDivida.taxa_juros)||null:null,parcelas_total:modalDivida.parcelas_total?parseInt(modalDivida.parcelas_total):null,parcelas_pagas:parseInt(modalDivida.parcelas_pagas)||0,user_id:user.id},setModalDivida,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Modal Banco */}
         {modalBanco&&(
