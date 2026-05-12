@@ -175,6 +175,7 @@ const App = () => {
   const [simInvTaxa, setSimInvTaxa] = useState(12);
   const [simInvAnos, setSimInvAnos] = useState(5);
   const [filtroHistorico, setFiltroHistorico] = useState('todos');
+  const [tipoNegocio, setTipoNegocio] = useState(null); // 'produto' | 'servico' | 'ambos' | null
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -202,6 +203,7 @@ const App = () => {
           setProfileData({full_name:m.full_name||'',email:cu.email||'',phone:m.phone||'',cnpj:m.cnpj||'',razao_social:m.razao_social||''});
           setAvatarUrl(m.avatar_url||'');
           setProfileFilledForm(!!(m.full_name||m.cnpj||m.razao_social));
+          setTipoNegocio(m.tipo_negocio||null);
           setFormData(prev=>({...prev,
             v1_responsavel:m.full_name||prev.v1_responsavel,v1_email:cu.email||prev.v1_email,v1_phone:m.phone||prev.v1_phone,v1_cnpj:m.cnpj||prev.v1_cnpj,v1_razao:m.razao_social||prev.v1_razao,
             g_responsavel:m.full_name||prev.g_responsavel,g_email:cu.email||prev.g_email,g_phone:m.phone||prev.g_phone,g_cnpj:m.cnpj||prev.g_cnpj,g_razao:m.razao_social||prev.g_razao,
@@ -587,13 +589,18 @@ const App = () => {
 
   const handleUpdateProfile=async(e)=>{
     e.preventDefault();setIsUpdatingProfile(true);setProfileSuccess("");
-    const{error}=await supabase.auth.updateUser({data:{full_name:profileData.full_name,phone:profileData.phone,cnpj:profileData.cnpj,razao_social:profileData.razao_social}});
+    const{error}=await supabase.auth.updateUser({data:{full_name:profileData.full_name,phone:profileData.phone,cnpj:profileData.cnpj,razao_social:profileData.razao_social,tipo_negocio:tipoNegocio}});
     setIsUpdatingProfile(false);
     if(!error){
       setProfileSuccess("Perfil atualizado!");
       setFormData(prev=>({...prev,v1_responsavel:profileData.full_name,v1_phone:profileData.phone,v1_cnpj:profileData.cnpj,v1_razao:profileData.razao_social,g_responsavel:profileData.full_name,g_phone:profileData.phone,g_cnpj:profileData.cnpj,g_razao:profileData.razao_social}));
       setProfileFilledForm(true);setTimeout(()=>setProfileSuccess(""),4000);
     }
+  };
+
+  const saveTipoNegocio=async(tipo)=>{
+    setTipoNegocio(tipo);
+    await supabase.auth.updateUser({data:{tipo_negocio:tipo}});
   };
 
   const handleAvatarUpload=(e)=>{
@@ -681,7 +688,7 @@ const App = () => {
   const handleSimulate=async()=>{
     setSimLoading(true);setSimResult(null);
     await new Promise(r=>setTimeout(r,1000));
-    const sc=SCENARIOS.find(s=>s.id===simType)||SCENARIOS[0];
+    const sc=SCENARIOS.find(s=>s.id===simType)||SCENARIOS.find(s=>tipoNegocio!=='servico'||!['perda_cliente','novo_contrato'].includes(s.id))||SCENARIOS[0];
     const raw=sc.tipo==='pct'
       ?parseFloat(simPct||'0')
       :parseFloat((simValue.replace(/\D/g,'')||'0'))/100;
@@ -838,6 +845,8 @@ const App = () => {
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
 
   const firstName=(profileData.full_name||'Cliente').split(' ')[0];
+  const isProduto = tipoNegocio==='produto'||tipoNegocio==='ambos';
+  const isServico = tipoNegocio==='servico'||tipoNegocio==='ambos';
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   return(
@@ -1490,13 +1499,15 @@ const App = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Total de custos por mês" status="neutral"/>
                     <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
-                    <IndicadorCard titulo="Ticket Médio" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula={`Faturamento ÷ ${metrics.nVendas||0} lançamentos de receita`} status={metrics.ticketMedio>0?'neutral':'neutral'}/>
+                    <IndicadorCard titulo={isServico&&!isProduto?'Valor Médio por Contrato':'Ticket Médio'} valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula={`Faturamento ÷ ${metrics.nVendas||0} receitas no período`} status={metrics.ticketMedio>0?'neutral':'neutral'}/>
                     <IndicadorCard titulo="Prazo Médio Recebimento" valor={pmrLive>0?`${pmrLive} dias`:'—'} formula="(Recebíveis pendentes ÷ Receita) × 30" status={pmrLive>0?(pmrLive<=30?'green':pmrLive<=60?'yellow':'red'):'neutral'}/>
                   </div>
+                  {isProduto&&(
                   <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-6">
                     <IndicadorCard titulo="Prazo Médio Pagamento" valor={pmpLive>0?`${pmpLive} dias`:'—'} formula="(Contas a pagar pendentes ÷ Custos) × 30" status={pmpLive>0?(pmpLive>=30?'green':pmpLive>=15?'yellow':'red'):'neutral'}/>
                     <IndicadorCard titulo="Ciclo Financeiro" valor={(pmrLive>0&&pmpLive>0)?`${pmrLive-pmpLive} dias`:'—'} formula="PMR − PMP (negativo = caixa antecipado)" status={(pmrLive>0&&pmpLive>0)?(pmrLive-pmpLive<=0?'green':pmrLive-pmpLive<=30?'yellow':'red'):'neutral'} destaque/>
                   </div>
+                  )}
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Shield size={10}/> Estrutura de Custos</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -1505,10 +1516,12 @@ const App = () => {
                     <IndicadorCard titulo="% Custo sobre Receita" valor={metrics.receita>0?`${(metrics.totalCust/metrics.receita*100).toFixed(1)}%`:'—'} formula="Total custos ÷ Receita" status={metrics.receita>0?(metrics.totalCust/metrics.receita<=0.7?'green':metrics.totalCust/metrics.receita<=0.85?'yellow':'red'):'neutral'} destaque/>
                     <IndicadorCard titulo="Resultado Mensal" valor={formatBRL(metrics.lucro)} formula="Receita − Total de Custos" status={metrics.lucro>0?'green':metrics.lucro===0?'neutral':'red'}/>
                   </div>
+                  {isProduto&&(
                   <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-6">
                     <IndicadorCard titulo="CMV (Custo das Mercadorias)" valor={metrics.cmv>0?formatBRL(metrics.cmv):'—'} formula="Despesas em Fornecedor / Mercadoria / Estoque" status={metrics.cmv>0?(metrics.receita>0&&metrics.cmv/metrics.receita<=0.4?'green':metrics.receita>0&&metrics.cmv/metrics.receita<=0.6?'yellow':'red'):'neutral'}/>
                     <IndicadorCard titulo="Markup" valor={metrics.markup!=null?`${metrics.markup.toFixed(1)}%`:'—'} formula="(Receita − CMV) ÷ CMV × 100" status={metrics.markup!=null?(metrics.markup>=100?'green':metrics.markup>=50?'yellow':'red'):'neutral'} destaque/>
                   </div>
+                  )}
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1527,9 +1540,16 @@ const App = () => {
 
         {/* ── SIMULADOR ─────────────────────────────────────────────────── */}
         {view==='simulador'&&(()=>{
-          const sc=SCENARIOS.find(s=>s.id===simType)||SCENARIOS[0];
+          const SCEN_PRODUTO_ONLY=['perda_cliente','novo_contrato'];
+          const SCEN_SERVICO_ONLY=[];
+          const scenariosVisiveis=SCENARIOS.filter(s=>{
+            if(tipoNegocio==='produto'&&SCEN_SERVICO_ONLY.includes(s.id))return false;
+            if(tipoNegocio==='servico'&&SCEN_PRODUTO_ONLY.includes(s.id))return false;
+            return true;
+          });
+          const sc=scenariosVisiveis.find(s=>s.id===simType)||scenariosVisiveis[0];
           const grupos=['Todos','Receita','Custo','Investimento','Dívida'];
-          const scFiltrados=simGroup==='Todos'?SCENARIOS:SCENARIOS.filter(s=>s.group===simGroup);
+          const scFiltrados=simGroup==='Todos'?scenariosVisiveis:scenariosVisiveis.filter(s=>s.group===simGroup);
           const canCalc=sc.tipo==='pct'?!!simPct:!!simValue;
           return(
           <div className="max-w-7xl mx-auto fade-in">
@@ -3932,6 +3952,21 @@ const App = () => {
               </form>
             </div>
 
+            {/* Tipo de Negócio */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mb-5">
+              <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide mb-1 flex items-center gap-2"><Building2 size={14} className="text-[#ff7b00]"/> Tipo de Negócio</h3>
+              <p className="text-[10px] text-slate-400 mb-4">Define quais indicadores e métricas aparecem no CFO Digital.</p>
+              <div className="grid grid-cols-3 gap-3">
+                {[{tipo:'produto',emoji:'📦',label:'Produtos'},{tipo:'servico',emoji:'🛠️',label:'Serviços'},{tipo:'ambos',emoji:'🔀',label:'Ambos'}].map(({tipo,emoji,label})=>(
+                  <button key={tipo} onClick={()=>saveTipoNegocio(tipo)}
+                    className={`flex flex-col items-center gap-2 py-4 px-3 rounded-2xl border text-center transition-all ${tipoNegocio===tipo?'bg-[#ff7b00] border-[#ff7b00] text-white shadow-md':'bg-slate-50 border-slate-200 text-[#05121b] hover:border-[#ff7b00] hover:bg-orange-50'}`}>
+                    <span className="text-2xl">{emoji}</span>
+                    <span className="text-[10px] font-black uppercase tracking-wide">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Aparência */}
             <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
               <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide mb-5 flex items-center gap-2">
@@ -4003,7 +4038,7 @@ const App = () => {
                 <StepBar steps={currentSteps} currentStep={formStep} isV1={isV1}/>
                 {formError&&(<div className={`mb-5 p-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${formError==='Salvando...'?'bg-blue-50 text-blue-600 border-blue-100':'bg-red-50 text-red-600 border-red-100'}`}><AlertTriangle size={13} className="shrink-0"/><span>{formError}</span></div>)}
                 <div className="min-h-[300px]">
-                  {isV1?<FormStepV1 step={formStep} formData={formData} setFormData={setFormData} fieldErrors={fieldErrors}/>:<FormStepG step={formStep} formData={formData} setFormData={setFormData} fieldErrors={fieldErrors}/>}
+                  {isV1?<FormStepV1 step={formStep} formData={formData} setFormData={setFormData} fieldErrors={fieldErrors} tipoNegocio={tipoNegocio}/>:<FormStepG step={formStep} formData={formData} setFormData={setFormData} fieldErrors={fieldErrors}/>}
                 </div>
                 <div className="flex justify-between items-center pt-8 mt-8 border-t border-slate-100">
                   <button onClick={handlePrevStep} disabled={formStep===0} className="flex items-center gap-2 text-slate-400 font-black text-[10px] uppercase tracking-widest disabled:opacity-30 hover:text-[#05121b] transition-colors"><ArrowLeft size={14}/> Anterior</button>
@@ -4225,6 +4260,38 @@ const App = () => {
           );
         })()}
 
+
+        {/* ── ONBOARDING: tipo de negócio ─────────────────────────────────── */}
+        {user&&tipoNegocio===null&&(
+          <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(5,18,27,0.85)',backdropFilter:'blur(8px)',padding:'16px'}}>
+            <div style={{background:isDark?'#161b22':'#ffffff',borderRadius:'24px',width:'100%',maxWidth:'520px',padding:'40px 32px',boxShadow:'0 32px 80px rgba(0,0,0,0.5)',textAlign:'center'}}>
+              <div style={{width:'52px',height:'52px',borderRadius:'16px',background:'#ff7b00',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
+                <Building2 size={24} color="#ffffff"/>
+              </div>
+              <h2 style={{fontSize:'20px',fontWeight:700,color:isDark?'#e6edf3':'#05121b',marginBottom:'8px'}}>Bem-vindo ao CFO Digital!</h2>
+              <p style={{fontSize:'13px',color:isDark?'#8b949e':'#64748b',marginBottom:'32px',lineHeight:1.6}}>Para personalizar seus indicadores financeiros, <strong>o que sua empresa vende?</strong></p>
+              <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+                {[
+                  {tipo:'produto',emoji:'📦',titulo:'Produtos',desc:'Comércio, indústria, revenda — vende itens físicos ou digitais com estoque e CMV'},
+                  {tipo:'servico',emoji:'🛠️',titulo:'Serviços',desc:'Consultoria, prestação de serviços, agência — cobra por hora, projeto ou contrato'},
+                  {tipo:'ambos',emoji:'🔀',titulo:'Produtos e Serviços',desc:'Combina venda de produtos com prestação de serviços'},
+                ].map(({tipo,emoji,titulo,desc})=>(
+                  <button key={tipo} onClick={()=>saveTipoNegocio(tipo)}
+                    style={{display:'flex',alignItems:'center',gap:'16px',padding:'16px 20px',borderRadius:'14px',border:`1px solid ${isDark?'#2d3748':'#e2e8f0'}`,background:isDark?'#0f1419':'#f8fafc',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor='#ff7b00';e.currentTarget.style.background=isDark?'#1a2030':'#fff7ed';}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor=isDark?'#2d3748':'#e2e8f0';e.currentTarget.style.background=isDark?'#0f1419':'#f8fafc';}}>
+                    <span style={{fontSize:'28px',flexShrink:0}}>{emoji}</span>
+                    <div>
+                      <p style={{fontSize:'14px',fontWeight:700,color:isDark?'#e6edf3':'#05121b',marginBottom:'3px'}}>{titulo}</p>
+                      <p style={{fontSize:'11px',color:isDark?'#8b949e':'#64748b',lineHeight:1.4}}>{desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p style={{fontSize:'10px',color:isDark?'#4a5568':'#94a3b8',marginTop:'20px'}}>Você pode alterar isso a qualquer momento no seu perfil.</p>
+            </div>
+          </div>
+        )}
 
       </main>
       </div>
