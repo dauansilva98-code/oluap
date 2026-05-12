@@ -2366,7 +2366,7 @@ const App = () => {
                 <button disabled={savingItem||!modalReceita.descricao||!modalReceita.valor} onClick={async()=>{
                   const valorNum=parseFloat((modalReceita.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
                   const taxaNum=parseFloat((modalReceita.taxa_valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
-                  const{taxa_valor:_tv,...recPayload}={...modalReceita,valor:valorNum,tipo:'receita',user_id:user.id};
+                  const{taxa_valor:_tv,...recPayload}={...modalReceita,valor:valorNum,tipo:'receita',user_id:user.id,banco_id:modalReceita.banco_id||null,meio_pagamento:modalReceita.meio_pagamento||null};
                   setSavingItem(true);
                   try{
                     const{error}=await supabase.from('lancamentos').insert(recPayload);
@@ -2452,7 +2452,7 @@ const App = () => {
             setSavingItem(true);
             const valorNum=parseFloat((modalCP.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
             const taxaNum=parseFloat((modalCP.taxa_valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
-            const {parcelas:_p,intervalo_dias:_i,modoRepetir:_mr,taxa_valor:_tv,...baseCP}={...modalCP,valor:valorNum,tipo_custo:modalCP.tipo_custo||'variavel',user_id:user.id};
+            const {parcelas:_p,intervalo_dias:_i,modoRepetir:_mr,taxa_valor:_tv,...baseCP}={...modalCP,valor:valorNum,tipo_custo:modalCP.tipo_custo||'variavel',user_id:user.id,banco_id:modalCP.banco_id||null,meio_pagamento:modalCP.meio_pagamento||null};
             try{
               if(isRepeticao&&modalCP.vencimento){
                 const inserts=[];
@@ -2577,7 +2577,7 @@ const App = () => {
             setSavingItem(true);
             const valorNum=parseFloat((modalCR.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
             const taxaNum=parseFloat((modalCR.taxa_valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
-            const {parcelas:_p,intervalo_dias:_i,taxa_valor:_tv,...baseCR}={...modalCR,valor:valorNum,user_id:user.id};
+            const {parcelas:_p,intervalo_dias:_i,taxa_valor:_tv,...baseCR}={...modalCR,valor:valorNum,user_id:user.id,banco_id:modalCR.banco_id||null,meio_pagamento:modalCR.meio_pagamento||null};
             try{
               if(isParcelado&&modalCR.vencimento){
                 const interval=parseInt(modalCR.intervalo_dias)||30;
