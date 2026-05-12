@@ -851,8 +851,8 @@ const App = () => {
   const deducoesMensal = lancamentos.filter(l => l.tipo === 'despesa' && impostosCats.has(l.categoria) && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0)
   const financeiroCats = new Set(['Juros', 'IOF', 'Encargos Financeiros', 'Empréstimo', 'Financiamento'])
   const despFinanceirasMensal = lancamentos.filter(l => l.tipo === 'despesa' && financeiroCats.has(l.categoria) && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0)
-  const receitaLiquidaDRE = metrics.receita - deducoesMensal
-  const resultadoOperacionalDRE = receitaLiquidaDRE - metrics.custVar - metrics.custFix
+  const receitaLiquidaDRE = (metrics?.receita ?? 0) - deducoesMensal
+  const resultadoOperacionalDRE = receitaLiquidaDRE - (metrics?.custVar ?? 0) - (metrics?.custFix ?? 0)
   const resultadoLiquidoDRE = resultadoOperacionalDRE - despFinanceirasMensal
 
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
