@@ -61,14 +61,19 @@ export default function BancosContas({
   onDeleteLancamentos,
   onImportClick,
   savingItem = false,
+  saldoInicialDinheiro = 0,
+  onSaveSaldoInicialDinheiro,
 }) {
-  const [filtroBank,    setFiltroBank]    = useState('todos')
-  const [modalConta,    setModalConta]    = useState(false)
-  const [modalEspecie,  setModalEspecie]  = useState(false)
-  const [modalEditMov,  setModalEditMov]  = useState(null)
-  const [formConta,     setFormConta]     = useState(EMPTY_CONTA)
-  const [formMov,       setFormMov]       = useState(EMPTY_MOV)
-  const [selectedLancs, setSelectedLancs] = useState(new Set())
+  const [filtroBank,          setFiltroBank]          = useState('todos')
+  const [modalConta,          setModalConta]          = useState(false)
+  const [modalEspecie,        setModalEspecie]        = useState(false)
+  const [modalEditMov,        setModalEditMov]        = useState(null)
+  const [formConta,           setFormConta]           = useState(EMPTY_CONTA)
+  const [formMov,             setFormMov]             = useState(EMPTY_MOV)
+  const [selectedLancs,       setSelectedLancs]       = useState(new Set())
+  const [modalSaldoDinheiro,  setModalSaldoDinheiro]  = useState(false)
+  const [saldoDinheiroInput,  setSaldoDinheiroInput]  = useState('')
+  const [savingSaldoDinheiro, setSavingSaldoDinheiro] = useState(false)
 
   const donutRef   = useRef(null)
   const lineRef    = useRef(null)
@@ -97,7 +102,7 @@ export default function BancosContas({
       valor: Number(l.valor),
     }))
 
-  const especieSaldo = especieMov.reduce((a, m) => m.tipo === 'entrada' ? a + m.valor : a - m.valor, 0)
+  const especieSaldo = saldoInicialDinheiro + especieMov.reduce((a, m) => m.tipo === 'entrada' ? a + m.valor : a - m.valor, 0)
   const saldoBancario = bancosComSaldo.reduce((a, b) => a + b.saldoCalc, 0)
   const saldoTotal    = saldoBancario + especieSaldo
 
@@ -429,11 +434,50 @@ export default function BancosContas({
     document.body
   ) : null
 
+  const modalSaldoDinheiroEl = modalSaldoDinheiro ? ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.4)' }}
+      onClick={e => { if (e.target === e.currentTarget) setModalSaldoDinheiro(false) }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[380px]">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span style={{ fontSize: 20 }}>💵</span>
+            <h3 className="text-sm font-semibold text-[#05121b]">Saldo inicial — Dinheiro em espécie</h3>
+          </div>
+          <button onClick={() => setModalSaldoDinheiro(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50"><X size={16} /></button>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          <p className="text-xs text-slate-500 leading-relaxed">Informe o valor em espécie que você já tinha antes de começar a registrar os lançamentos. Esse valor será somado às movimentações.</p>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Saldo inicial (R$)</span>
+            <input className={inputCls} type="number" min="0" step="0.01" placeholder="0,00"
+              value={saldoDinheiroInput}
+              onChange={e => setSaldoDinheiroInput(e.target.value)}
+            />
+          </label>
+        </div>
+        <div className="flex justify-end gap-3 px-6 pb-5">
+          <button onClick={() => setModalSaldoDinheiro(false)} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+          <button disabled={savingSaldoDinheiro} onClick={async () => {
+            setSavingSaldoDinheiro(true)
+            const val = parseFloat(saldoDinheiroInput) || 0
+            if (onSaveSaldoInicialDinheiro) await onSaveSaldoInicialDinheiro(val)
+            setSavingSaldoDinheiro(false)
+            setModalSaldoDinheiro(false)
+          }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: '#854F0B' }}>
+            {savingSaldoDinheiro ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null
+
   return (
     <>
       {modalContaEl}
       {modalEspecieEl}
       {modalEditMovEl}
+      {modalSaldoDinheiroEl}
 
       <div className="max-w-7xl mx-auto w-full" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
@@ -539,8 +583,24 @@ export default function BancosContas({
               <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: 0 }}>Dinheiro em espécie</p>
               <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Caixa físico da empresa</p>
             </div>
-            <p style={{ fontSize: 22, fontWeight: 500, color: especieSaldo >= 0 ? '#27500A' : '#791F1F', margin: 0 }}>{fmtBRL(especieSaldo)}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <p style={{ fontSize: 22, fontWeight: 500, color: especieSaldo >= 0 ? '#27500A' : '#791F1F', margin: 0 }}>{fmtBRL(especieSaldo)}</p>
+              {onSaveSaldoInicialDinheiro && (
+                <>
+                  <button title="Editar saldo inicial" onClick={() => { setSaldoDinheiroInput(saldoInicialDinheiro > 0 ? String(saldoInicialDinheiro) : ''); setModalSaldoDinheiro(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4, lineHeight: 0 }}><Pencil size={15} /></button>
+                  {saldoInicialDinheiro > 0 && (
+                    <button title="Zerar saldo inicial" onClick={async () => { if(window.confirm('Zerar o saldo inicial do dinheiro em espécie?')){ await onSaveSaldoInicialDinheiro(0); } }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4, lineHeight: 0 }}><Trash2 size={15} /></button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
+          {saldoInicialDinheiro > 0 && (
+            <div style={{ background: '#fefce8', border: '0.5px solid #fde68a', borderRadius: 8, padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ fontSize: 11, color: '#92400e', margin: 0 }}>Saldo inicial cadastrado</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#92400e', margin: 0 }}>{fmtBRL(saldoInicialDinheiro)}</p>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
             {[
               { label: 'Entradas do mês', valor: `+ ${fmtBRL(especieMov.filter(m => m.tipo === 'entrada' && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`, cor: '#27500A' },

@@ -142,6 +142,7 @@ const App = () => {
   const [savingItem, setSavingItem] = useState(false);
   // Modal forms (null = closed, {} = new, {id:...} = editing)
   const [modalBanco, setModalBanco] = useState(null);
+  const [saldoInicialDinheiro, setSaldoInicialDinheiro] = useState(0);
   const [modalReceita, setModalReceita] = useState(null);
   const [modalDespesa, setModalDespesa] = useState(null);
   const [modalImport, setModalImport] = useState(null);
@@ -201,6 +202,7 @@ const App = () => {
         if(cu.user_metadata){
           const m=cu.user_metadata;
           setProfileData({full_name:m.full_name||'',email:cu.email||'',phone:m.phone||'',cnpj:m.cnpj||'',razao_social:m.razao_social||''});
+          setSaldoInicialDinheiro(parseFloat(m.saldo_inicial_dinheiro)||0);
           setAvatarUrl(m.avatar_url||'');
           setProfileFilledForm(!!(m.full_name||m.cnpj||m.razao_social));
           setTipoNegocio(m.tipo_negocio||null);
@@ -457,6 +459,11 @@ const App = () => {
       await fetchFinanceiro(user.id);
     } catch (e) { console.error(e); alert(`Erro ao excluir banco: ${e.message}`); }
     setSavingItem(false);
+  };
+
+  const handleSaveSaldoInicialDinheiro = async (val) => {
+    await supabase.auth.updateUser({data:{saldo_inicial_dinheiro:val}});
+    setSaldoInicialDinheiro(val);
   };
 
   const handleSaveLancamentoEspecie = async (payload) => {
@@ -3326,6 +3333,8 @@ const App = () => {
               onDeleteLancamentos={handleDeleteLancamentos}
               onImportClick={()=>setModalImport({stage:'upload',tipoImport:'extrato'})}
               savingItem={savingItem}
+              saldoInicialDinheiro={saldoInicialDinheiro}
+              onSaveSaldoInicialDinheiro={handleSaveSaldoInicialDinheiro}
             />
           </div>
         )}
