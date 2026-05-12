@@ -1948,8 +1948,8 @@ const App = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'var(--color-success-bg)',color:'var(--color-success-text)',borderColor:'var(--color-success-border)'}}><Plus size={11}/>Receita</button>
-                    <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'var(--color-danger-bg)',color:'var(--color-danger-text)',borderColor:'var(--color-danger-border)'}}><Plus size={11}/>Despesa</button>
+                    <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:'',taxa_valor:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'var(--color-success-bg)',color:'var(--color-success-text)',borderColor:'var(--color-success-border)'}}><Plus size={11}/>Receita</button>
+                    <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:'',taxa_valor:''})} className="px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1 transition-colors" style={{background:'var(--color-danger-bg)',color:'var(--color-danger-text)',borderColor:'var(--color-danger-border)'}}><Plus size={11}/>Despesa</button>
                   </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -2090,7 +2090,7 @@ const App = () => {
                   <button onClick={()=>setModalImport({stage:'upload',tipoImport:'receita'})} className="border border-slate-200 bg-white text-slate-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5">
                     <Upload size={14}/>Importar
                   </button>
-                  <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
+                  <button onClick={()=>setModalReceita({tipo:'receita',descricao:'',valor:'',data:today,categoria:'',banco_id:'',meio_pagamento:'',taxa_valor:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-bold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
                     <Plus size={14}/>Lançar receita
                   </button>
                 </div>
@@ -2291,7 +2291,7 @@ const App = () => {
                   <button onClick={()=>setModalImport({stage:'upload',tipoImport:'despesa'})} className="border border-slate-200 bg-white text-slate-600 text-sm font-semibold px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5">
                     <Upload size={14}/>Importar
                   </button>
-                  <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
+                  <button onClick={()=>setModalDespesa({tipo:'despesa',tipo_custo:'variavel',descricao:'',valor:'',data:today,categoria:'',categoria_custom:'',banco_id:'',meio_pagamento:'',taxa_cartao:'',taxa_valor:''})} className="flex items-center gap-1.5 bg-[#05121b] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#0c2133] transition-colors">
                     <Plus size={14}/>Lançar despesa
                   </button>
                 </div>
@@ -2503,7 +2503,7 @@ const App = () => {
                     <button onClick={()=>setCpMes(nextMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:CC.text,display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
                   </div>
                   <button onClick={()=>setModalImport({stage:'upload',tipoImport:'contas_pagar'})} style={{background:'var(--color-bg-card)',border:'1px solid',borderColor:'var(--color-border-light)',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Upload size={12}/>Importar</button>
-                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo_custo:'variavel',status:'pendente'})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
+                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo_custo:'variavel',status:'pendente',taxa_valor:''})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
                 </div>
               </div>
               {/* 2. METRIC CARDS */}
@@ -3373,10 +3373,32 @@ const App = () => {
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Recebimento</label><select value={modalReceita.meio_pagamento||''} onChange={e=>setModalReceita({...modalReceita,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalReceita.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                 </div>
                 {modalReceita.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalReceita.banco_id} onChange={e=>setModalReceita({...modalReceita,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Taxa / Desconto (opcional)</p>
+                  <div className="flex items-center gap-2">
+                    <InputField label="" value={modalReceita.taxa_valor||''} onChange={v=>setModalReceita({...modalReceita,taxa_valor:v})} maskType="currency" placeholder="R$ 0,00"/>
+                    <p className="text-[9px] text-slate-400 leading-tight flex-1">Valor descontado pela maquininha, tarifa bancária, etc. Será lançado como despesa separada.</p>
+                  </div>
+                </div>
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalReceita(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalReceita.descricao||!modalReceita.valor} onClick={()=>saveItem('lancamentos',{...modalReceita,valor:parseFloat((modalReceita.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0,tipo:'receita',user_id:user.id},setModalReceita,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+                <button disabled={savingItem||!modalReceita.descricao||!modalReceita.valor} onClick={async()=>{
+                  const valorNum=parseFloat((modalReceita.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
+                  const taxaNum=parseFloat((modalReceita.taxa_valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
+                  const{taxa_valor:_tv,...recPayload}={...modalReceita,valor:valorNum,tipo:'receita',user_id:user.id};
+                  setSavingItem(true);
+                  try{
+                    const{error}=await supabase.from('lancamentos').insert(recPayload);
+                    if(error)throw error;
+                    if(taxaNum>0){
+                      await supabase.from('lancamentos').insert({descricao:`Taxa - ${modalReceita.descricao}`,valor:taxaNum,data:modalReceita.data,categoria:'Taxa / Maquininha',tipo:'despesa',tipo_custo:'variavel',banco_id:modalReceita.banco_id||null,meio_pagamento:modalReceita.meio_pagamento||null,user_id:user.id});
+                    }
+                    await fetchFinanceiro(user.id);
+                    setModalReceita(null);
+                  }catch(e){console.error(e);alert(`Erro ao salvar: ${e.message||'Tente novamente'}`);}
+                  setSavingItem(false);
+                }} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
           </div>
@@ -3415,25 +3437,36 @@ const App = () => {
                     <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalDespesa.meio_pagamento||''} onChange={e=>setModalDespesa({...modalDespesa,meio_pagamento:e.target.value,taxa_cartao:'',banco_id:e.target.value==='Dinheiro'?'':modalDespesa.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Boleto Bancário','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                   </div>
                   {modalDespesa.categoria==='Personalizado'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Nome da despesa específica</label><input type="text" placeholder="Ex: Manutenção, Seguro, Licença..." value={modalDespesa.categoria_custom||''} onChange={e=>setModalDespesa({...modalDespesa,categoria_custom:e.target.value})} className="w-full bg-white border border-red-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>}
-                  {isCard&&(
-                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[9px] font-black text-orange-700 uppercase tracking-widest">Taxa do Cartão</p>
-                        {taxa>0&&<p className="text-[9px] text-orange-600 font-bold">Custo total: {formatBRL(valorLiq)}</p>}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input type="number" step="0.01" min="0" max="10" placeholder="Ex: 2.5" value={modalDespesa.taxa_cartao||''} onChange={e=>setModalDespesa({...modalDespesa,taxa_cartao:e.target.value})} className="w-28 bg-white border border-orange-200 px-3 py-2 rounded-lg font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-orange-400"/>
-                        <span className="text-[10px] text-orange-600 font-bold">% sobre o valor</span>
-                      </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Taxa / Encargo (opcional)</p>
+                    <div className="flex items-center gap-2">
+                      <InputField label="" value={modalDespesa.taxa_valor||''} onChange={v=>setModalDespesa({...modalDespesa,taxa_valor:v})} maskType="currency" placeholder="R$ 0,00"/>
+                      <p className="text-[9px] text-slate-400 leading-tight flex-1">Tarifa bancária, juros, IOF, taxa de cartão, etc. Será lançado como despesa separada.</p>
                     </div>
-                  )}
+                  </div>
                   {modalDespesa.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalDespesa.banco_id} onChange={e=>setModalDespesa({...modalDespesa,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
                 </div>
                 );
               })()}
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalDespesa(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor||(modalDespesa.categoria==='Personalizado'&&!modalDespesa.categoria_custom)} onClick={()=>{const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;const isCard=modalDespesa.meio_pagamento==='Cartão de Crédito'||modalDespesa.meio_pagamento==='Cartão de Débito';const taxa=parseFloat(modalDespesa.taxa_cartao)||0;const valorFinal=isCard&&taxa>0?valorBruto*(1+taxa/100):valorBruto;const catFinal=modalDespesa.categoria==='Personalizado'?(modalDespesa.categoria_custom||'Outros'):modalDespesa.categoria;const{categoria_custom:_cc,...restDesp}=modalDespesa;saveItem('lancamentos',{...restDesp,valor:valorFinal,categoria:catFinal,tipo:'despesa',user_id:user.id,banco_id:modalDespesa.banco_id||null,taxa_cartao:parseFloat(modalDespesa.taxa_cartao)||null,meio_pagamento:modalDespesa.meio_pagamento||null},setModalDespesa,()=>fetchFinanceiro(user.id));}} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor||(modalDespesa.categoria==='Personalizado'&&!modalDespesa.categoria_custom)} onClick={async()=>{
+                  const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
+                  const taxaNum=parseFloat((modalDespesa.taxa_valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
+                  const catFinal=modalDespesa.categoria==='Personalizado'?(modalDespesa.categoria_custom||'Outros'):modalDespesa.categoria;
+                  const{categoria_custom:_cc,taxa_valor:_tv,taxa_cartao:_tc,...restDesp}=modalDespesa;
+                  setSavingItem(true);
+                  try{
+                    const{error}=await supabase.from('lancamentos').insert({...restDesp,valor:valorBruto,categoria:catFinal,tipo:'despesa',user_id:user.id,banco_id:modalDespesa.banco_id||null,meio_pagamento:modalDespesa.meio_pagamento||null});
+                    if(error)throw error;
+                    if(taxaNum>0){
+                      await supabase.from('lancamentos').insert({descricao:`Taxa - ${modalDespesa.descricao}`,valor:taxaNum,data:modalDespesa.data,categoria:'Taxa / Maquininha',tipo:'despesa',tipo_custo:'variavel',banco_id:modalDespesa.banco_id||null,meio_pagamento:modalDespesa.meio_pagamento||null,user_id:user.id});
+                    }
+                    await fetchFinanceiro(user.id);
+                    setModalDespesa(null);
+                  }catch(e){console.error(e);alert(`Erro ao salvar: ${e.message||'Tente novamente'}`);}
+                  setSavingItem(false);
+                }} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
           </div>
@@ -3449,8 +3482,7 @@ const App = () => {
             setSavingItem(true);
             const valorNum=parseFloat((modalCP.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
             const catFinal=modalCP.categoria==='Personalizado'?(modalCP.categoriaCustom||'Outros'):modalCP.categoria;
-            // strip tipo/tipo_custo: 'tipo' não existe na tabela; 'tipo_custo' aguarda migration SQL
-            const {parcelas:_p,intervalo_dias:_i,tipo:_tp,tipo_custo:_tc,categoriaCustom:_cc,modoRepetir:_mr,...baseRaw}={...modalCP,valor:valorNum,categoria:catFinal,user_id:user.id};
+            const {parcelas:_p,intervalo_dias:_i,tipo:_tp,categoriaCustom:_cc,modoRepetir:_mr,taxa_valor:_tv,...baseRaw}={...modalCP,valor:valorNum,categoria:catFinal,tipo_custo:modalCP.tipo_custo||'variavel',user_id:user.id};
             const baseCP=cleanPayload(baseRaw);
             try{
               if(isRepeticao&&modalCP.vencimento){
@@ -3476,6 +3508,10 @@ const App = () => {
               }else{
                 if(baseCP.id){const{id,...rest}=baseCP;const{error}=await supabase.from('contas_pagar').update(rest).eq('id',id);if(error)throw error;}
                 else{const{error}=await supabase.from('contas_pagar').insert(baseCP);if(error)throw error;}
+              }
+              const taxaNum=parseFloat((modalCP.taxa_valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
+              if(taxaNum>0&&modalCP.vencimento){
+                await supabase.from('contas_pagar').insert({descricao:`Taxa - ${modalCP.descricao}`,valor:taxaNum,vencimento:modalCP.vencimento,categoria:'Taxa / Maquininha',tipo_custo:'variavel',status:'pendente',user_id:user.id});
               }
               await fetchFinanceiro(user.id);
               setModalCP(null);
@@ -3559,6 +3595,13 @@ const App = () => {
                 </div>
                 <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalCP.meio_pagamento||''} onChange={e=>setModalCP({...modalCP,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalCP.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['PIX','Boleto Bancário','Transferência Bancária','Cartão de Crédito','Cartão de Débito','Dinheiro','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                 {modalCP.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalCP.banco_id} onChange={e=>setModalCP({...modalCP,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Taxa / Encargo (opcional)</p>
+                  <div className="flex items-center gap-2">
+                    <InputField label="" value={modalCP.taxa_valor||''} onChange={v=>setModalCP({...modalCP,taxa_valor:v})} maskType="currency" placeholder="R$ 0,00"/>
+                    <p className="text-[9px] text-slate-400 leading-tight flex-1">Tarifa, juros, multa, etc. Será criada uma conta a pagar separada para a taxa.</p>
+                  </div>
+                </div>
                 <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCP.observacao||''} onChange={e=>setModalCP({...modalCP,observacao:e.target.value})} placeholder="Ex: fornecedor X, referência do boleto..." className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00] resize-none h-16"/></div>
               </div>
               <div className="flex gap-3 mt-6">
@@ -3669,7 +3712,8 @@ const App = () => {
           const handleSaveCR=async()=>{
             setSavingItem(true);
             const valorNum=parseFloat((modalCR.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
-            const {parcelas:_p,intervalo_dias:_i,...baseCR}={...modalCR,valor:valorNum,user_id:user.id};
+            const taxaNum=parseFloat((modalCR.taxa_valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
+            const {parcelas:_p,intervalo_dias:_i,taxa_valor:_tv,...baseCR}={...modalCR,valor:valorNum,user_id:user.id};
             try{
               if(isParcelado&&modalCR.vencimento){
                 const interval=parseInt(modalCR.intervalo_dias)||30;
@@ -3683,6 +3727,9 @@ const App = () => {
               }else{
                 if(baseCR.id){const{id,...rest}=baseCR;await supabase.from('contas_receber').update(rest).eq('id',id);}
                 else{await supabase.from('contas_receber').insert(baseCR);}
+              }
+              if(taxaNum>0&&modalCR.vencimento){
+                await supabase.from('contas_pagar').insert({descricao:`Taxa - ${modalCR.descricao}`,valor:taxaNum,vencimento:modalCR.vencimento,categoria:'Taxa / Maquininha',tipo_custo:'variavel',status:'pendente',user_id:user.id});
               }
               await fetchFinanceiro(user.id);
               setModalCR(null);
@@ -3731,6 +3778,13 @@ const App = () => {
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Recebimento</label><select value={modalCR.meio_pagamento||''} onChange={e=>setModalCR({...modalCR,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalCR.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="">Selecione...</option>{['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                 </div>
                 {modalCR.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalCR.banco_id} onChange={e=>setModalCR({...modalCR,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Taxa / Desconto (opcional)</p>
+                  <div className="flex items-center gap-2">
+                    <InputField label="" value={modalCR.taxa_valor||''} onChange={v=>setModalCR({...modalCR,taxa_valor:v})} maskType="currency" placeholder="R$ 0,00"/>
+                    <p className="text-[9px] text-slate-400 leading-tight flex-1">Taxa da maquininha, tarifa bancária, etc. Será criada uma conta a pagar separada para a taxa.</p>
+                  </div>
+                </div>
                 <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Observação (opcional)</label><textarea value={modalCR.observacao||''} onChange={e=>setModalCR({...modalCR,observacao:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789] resize-none h-16"/></div>
               </div>
               <div className="flex gap-3 mt-6">
