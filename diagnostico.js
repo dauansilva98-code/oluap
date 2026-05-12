@@ -439,13 +439,13 @@ const genAlerts = (m) => {
     alerts.push({type:'yellow',icon:AlertTriangle,msg:`Margem líquida de ${m.margLiq.toFixed(1)}% está baixa. Por cada R$100 vendidos, sobram R$${m.margLiq.toFixed(0)}.`,time:'agora'});
   if (m.folegoDias > 0 && m.folegoDias < 30)
     alerts.push({type:'red',icon:AlertOctagon,msg:`Fôlego de caixa crítico: apenas ${m.folegoDias} dias de operação garantidos sem novas vendas.`,time:'agora'});
-  else if (m.folegoDias >= 30 && m.folegoDias < 60)
-    alerts.push({type:'yellow',icon:AlertTriangle,msg:`Fôlego de caixa de ${m.folegoDias} dias. Recomendamos ao menos 60 dias como reserva operacional.`,time:'agora'});
+  else if (m.folegoDias >= 30 && m.folegoDias < 90)
+    alerts.push({type:'yellow',icon:AlertTriangle,msg:`Fôlego de caixa de ${m.folegoDias} dias. Recomendamos ao menos 90 dias como reserva operacional.`,time:'agora'});
   if (m.receita > 0 && m.pontoEq > m.receita)
     alerts.push({type:'yellow',icon:AlertTriangle,msg:`Ponto de equilíbrio (${formatBRL(m.pontoEq)}/mês) está acima do faturamento atual (${formatBRL(m.receita)}/mês).`,time:'agora'});
   if (m.margLiq >= 15)
     alerts.push({type:'green',icon:TrendingUp,msg:`Margem líquida saudável de ${m.margLiq.toFixed(1)}%. Continue monitorando os custos para manter esse resultado.`,time:'agora'});
-  if (m.folegoDias >= 60)
+  if (m.folegoDias >= 90)
     alerts.push({type:'green',icon:CheckCircle,msg:`Fôlego de caixa saudável: ${m.folegoDias} dias de operação garantidos sem novas vendas.`,time:'agora'});
   if (alerts.length === 0)
     alerts.push({type:'green',icon:CheckCircle,msg:'Indicadores dentro do esperado com base no seu diagnóstico. Continue monitorando regularmente.',time:'agora'});
@@ -476,7 +476,15 @@ const calcLiveMetrics = (lancamentos, bancos, dividas) => {
   const margContrib = receita>0 ? ((receita-custVar)/receita)*100 : 0;
   const margLiq = receita>0 ? (lucro/receita)*100 : 0;
   const pontoEq = margContrib>0 ? custFix/(margContrib/100) : 0;
-  const burnRate = totalCust;
+  // Burn Rate: média das saídas de caixa dos últimos 3 meses
+  const _br_now = new Date();
+  const _br_saidas = [1, 2, 3].map(i => {
+    const _d = new Date(_br_now.getFullYear(), _br_now.getMonth() - i, 1);
+    const _m = _d.toISOString().slice(0, 7);
+    return lancamentos.filter(l => l.data && l.data.startsWith(_m) && l.tipo === 'despesa').reduce((a, l) => a + Number(l.valor), 0);
+  });
+  const _br_validos = _br_saidas.filter(v => v > 0);
+  const burnRate = _br_validos.length > 0 ? _br_validos.reduce((a, v) => a + v, 0) / _br_validos.length : totalCust;
   const saldo = bancos.reduce((a,b)=>{
     const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0);
     const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((s,l)=>s+Number(l.valor),0);
@@ -515,7 +523,7 @@ const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => {
     alerts.push({cat:'Resultado',type:'red',icon:AlertOctagon,titulo:'Prejuízo operacional',
       msg:`A empresa está gastando mais do que fatura. Prejuízo de ${formatBRL(Math.abs(m.lucro))}/mês. Sem ação imediata, o caixa se esgota em ${m.folegoDias>0?m.folegoDias+' dias':'breve'}.`});
 
-  if(m.folegoDias > 0 && m.folegoDias < 15)
+  if(m.folegoDias > 0 && m.folegoDias < 30)
     alerts.push({cat:'Caixa',type:'red',icon:AlertOctagon,titulo:'Caixa em estado crítico',
       msg:`Apenas ${m.folegoDias} dias de fôlego sem novas receitas. Risco real de insolvência. Priorize cobrança, corte gastos não essenciais e avalie crédito de emergência.`});
 
@@ -543,20 +551,20 @@ const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => {
     alerts.push({cat:'Resultado',type:'yellow',icon:AlertTriangle,titulo:'Margem líquida muito baixa',
       msg:`${m.margLiq.toFixed(1)}% de margem líquida — por cada R$100 faturados, sobram apenas R$${m.margLiq.toFixed(0)}. Pequenas variações de custo ou queda de receita geram prejuízo.`});
 
-  if(m.folegoDias >= 15 && m.folegoDias < 30)
-    alerts.push({cat:'Caixa',type:'yellow',icon:AlertTriangle,titulo:'Fôlego de caixa baixo',
-      msg:`${m.folegoDias} dias de operação garantidos. Abaixo do mínimo recomendado (60 dias). Priorize cobrança de recebíveis em aberto.`});
-  else if(m.folegoDias >= 30 && m.folegoDias < 60)
+  if(m.folegoDias >= 30 && m.folegoDias < 90)
     alerts.push({cat:'Caixa',type:'yellow',icon:AlertTriangle,titulo:'Reserva operacional insuficiente',
-      msg:`Fôlego de ${m.folegoDias} dias. Recomenda-se ao menos 60 dias para absorver sazonalidade e imprevistos.`});
+      msg:`Fôlego de ${m.folegoDias} dias. Recomenda-se ao menos 90 dias para absorver sazonalidade e imprevistos.`});
 
   if(m.receita>0 && m.pontoEq > m.receita)
     alerts.push({cat:'Ponto de Equilíbrio',type:'yellow',icon:AlertTriangle,titulo:'Faturamento abaixo do PE',
       msg:`O ponto de equilíbrio é ${formatBRL(m.pontoEq)}/mês, mas o faturamento é ${formatBRL(m.receita)}/mês. Falta ${formatBRL(m.pontoEq-m.receita)}/mês para cobrir todos os custos fixos.`});
 
   if(m.margContrib > 0 && m.margContrib < 20)
-    alerts.push({cat:'Margem de Contribuição',type:'yellow',icon:AlertTriangle,titulo:'Margem de contribuição crítica',
-      msg:`${m.margContrib.toFixed(1)}% de margem de contribuição. Cada venda cobre pouco além dos custos variáveis. Revise precificação ou negocie custos diretos.`});
+    alerts.push({cat:'Margem de Contribuição',type:'red',icon:AlertOctagon,titulo:'Margem de contribuição crítica',
+      msg:`${m.margContrib.toFixed(1)}% de margem de contribuição — cada venda cobre pouco além dos custos variáveis. Risco real de prejuízo com qualquer oscilação de custo.`});
+  else if(m.margContrib >= 20 && m.margContrib < 35)
+    alerts.push({cat:'Margem de Contribuição',type:'yellow',icon:AlertTriangle,titulo:'Margem de contribuição baixa',
+      msg:`${m.margContrib.toFixed(1)}% de margem de contribuição. Recomendado acima de 35%. Revise precificação ou negocie custos diretos.`});
 
   if(m.receita>0 && m.totalCust/m.receita > 0.85)
     alerts.push({cat:'Eficiência',type:'yellow',icon:AlertTriangle,titulo:'Estrutura de custos pesada',
@@ -599,9 +607,6 @@ const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => {
   if(m.folegoDias >= 90)
     alerts.push({cat:'Caixa',type:'green',icon:CheckCircle,titulo:'Caixa bem capitalizado',
       msg:`${m.folegoDias} dias de fôlego operacional — boa reserva de segurança. Considere aplicar o excedente em investimentos de curto prazo.`});
-  else if(m.folegoDias >= 60)
-    alerts.push({cat:'Caixa',type:'green',icon:CheckCircle,titulo:'Fôlego de caixa adequado',
-      msg:`${m.folegoDias} dias de operação garantidos sem novas receitas. Reserve mínimo está bem posicionado.`});
 
   if(m.receita>0 && m.pontoEq>0 && m.receita >= m.pontoEq*1.2)
     alerts.push({cat:'Ponto de Equilíbrio',type:'green',icon:Target,titulo:'Operando acima do ponto de equilíbrio',
@@ -1330,8 +1335,8 @@ const App = () => {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="Receita − Custos Diretos" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
-                  <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'} destaque/>
-                  <IndicadorCard titulo="Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Custos totais / mês" status="neutral"/>
+                  <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'} destaque/>
+                  <IndicadorCard titulo="Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa / mês" status="neutral"/>
                   <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
                 </div>
               </div>
@@ -1529,7 +1534,7 @@ const App = () => {
                   <div className="lg:col-span-2 grid grid-cols-2 gap-4">
                     <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Operação garantida sem novas vendas" status={metrics.folegoDias>=60?'green':metrics.folegoDias>=30?'yellow':'red'}/>
                     <SemaforoCard icon={Target} title="Ponto de Equilíbrio" value={formatBRL(metrics.pontoEq)} subtitle="Faturamento mínimo necessário/mês" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.8?'yellow':'red'}/>
-                    <SemaforoCard icon={DollarSign} title="Margem de Contribuição" value={`${metrics.margContrib.toFixed(1)}%`} subtitle="Sobra após custos variáveis" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'}/>
+                    <SemaforoCard icon={DollarSign} title="Margem de Contribuição" value={`${metrics.margContrib.toFixed(1)}%`} subtitle="Sobra após custos variáveis" status={metrics.margContrib>=35?'green':metrics.margContrib>=20?'yellow':'red'}/>
                     <SemaforoCard icon={TrendingUp} title="Margem Líquida" value={`${metrics.margLiq.toFixed(1)}%`} subtitle="Por R$100 vendidos" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                   </div>
                 </div>
@@ -1622,14 +1627,14 @@ const App = () => {
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><TrendingUp size={10}/> Rentabilidade</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="(Receita − Custos Diretos) ÷ Receita" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
-                    <IndicadorCard titulo="Margem de Contribuição" valor={`${metrics.margContrib.toFixed(1)}%`} formula="(Receita − Custos Variáveis) ÷ Receita" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'} destaque/>
+                    <IndicadorCard titulo="Margem de Contribuição" valor={`${metrics.margContrib.toFixed(1)}%`} formula="(Receita − Custos Variáveis) ÷ Receita" status={metrics.margContrib>=35?'green':metrics.margContrib>=20?'yellow':'red'} destaque/>
                     <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                     <IndicadorCard titulo="Ponto de Equilíbrio" valor={formatBRL(metrics.pontoEq)} formula="Custo Fixo ÷ Margem de Contribuição" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.85?'yellow':'red'}/>
                   </div>
 
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Total de custos por mês" status="neutral"/>
+                    <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa (últimos 3 meses)" status="neutral"/>
                     <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
                     <IndicadorCard titulo="Ticket Médio" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula="Faturamento ÷ Nº de vendas/mês" status="neutral"/>
                     <IndicadorCard titulo="Prazo Médio Recebimento" valor={metrics.pmr>0?`${metrics.pmr} dias`:'—'} formula="Média de dias até o cliente pagar" status={metrics.pmr>0?(metrics.pmr<=30?'green':metrics.pmr<=60?'yellow':'red'):'neutral'}/>
@@ -1637,18 +1642,18 @@ const App = () => {
 
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Shield size={10}/> Estrutura de Custos</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <IndicadorCard titulo="Custos Variáveis" valor={formatBRL(metrics.custVar)} formula="CMV + Taxas + Comissões" status="neutral"/>
-                    <IndicadorCard titulo="Custos Fixos" valor={formatBRL(metrics.custFix)} formula="Folha + Aluguel + Fixos" status="neutral"/>
+                    <IndicadorCard titulo="Custos Variáveis" valor={formatBRL(metrics.custVar)} formula="CMV + Impostos s/ venda + Taxas + Comissões" status="neutral"/>
+                    <IndicadorCard titulo="Custos Fixos" valor={formatBRL(metrics.custFix)} formula="Folha + Encargos + Aluguel + Serviços Recorrentes" status="neutral"/>
                     <IndicadorCard titulo="% Custo sobre Receita" valor={metrics.receita>0?`${(metrics.totalCust/metrics.receita*100).toFixed(1)}%`:'—'} formula="Total custos ÷ Receita" status={metrics.receita>0?(metrics.totalCust/metrics.receita<=0.7?'green':metrics.totalCust/metrics.receita<=0.85?'yellow':'red'):'neutral'} destaque/>
                     <IndicadorCard titulo="Resultado Mensal" valor={formatBRL(metrics.lucro)} formula="Receita − Total de Custos" status={metrics.lucro>0?'green':metrics.lucro===0?'neutral':'red'}/>
                   </div>
 
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <IndicadorCard titulo="EBITDA (simplificado)" valor={formatBRL(metrics.lucro+metrics.custFix*0.1)} formula="Resultado + estimativa D&A" status={metrics.lucro>=0?'green':'red'}/>
-                    <IndicadorCard titulo="EBITDA Margin" valor={metrics.receita>0?`${((metrics.lucro+metrics.custFix*0.1)/metrics.receita*100).toFixed(1)}%`:'—'} formula="EBITDA ÷ Receita" status={metrics.receita>0?((metrics.lucro+metrics.custFix*0.1)/metrics.receita>=0.15?'green':(metrics.lucro+metrics.custFix*0.1)/metrics.receita>=0.05?'yellow':'red'):'neutral'} destaque/>
+                    <IndicadorCard titulo="Resultado Operacional Est." valor={formatBRL(metrics.lucro)} formula="Receita − Custos Var. − Custos Fix. (sem IR/Juros/D&A)" status={metrics.lucro>=0?'green':'red'}/>
+                    <IndicadorCard titulo="Margem Operacional" valor={metrics.receita>0?`${(metrics.lucro/metrics.receita*100).toFixed(1)}%`:'—'} formula="Resultado Operacional ÷ Receita" status={metrics.receita>0?(metrics.lucro/metrics.receita>=0.15?'green':metrics.lucro/metrics.receita>=0.05?'yellow':'red'):'neutral'} destaque/>
                     <IndicadorCard titulo="Eficiência Operacional" valor={metrics.receita>0?`${(metrics.custFix/metrics.receita*100).toFixed(1)}%`:'—'} formula="Custos Fixos ÷ Receita" status={metrics.receita>0?(metrics.custFix/metrics.receita<=0.4?'green':metrics.custFix/metrics.receita<=0.6?'yellow':'red'):'neutral'}/>
-                    <IndicadorCard titulo="Alavancagem Operacional" valor={metrics.margContrib>0?`${(metrics.margContrib/Math.max(0.1,metrics.margLiq)).toFixed(1)}×`:'—'} formula="Margem Contribuição ÷ Margem Líquida" status={metrics.lucro>0?'green':'neutral'}/>
+                    <IndicadorCard titulo="Alavancagem Operacional" valor={(metrics.lucro!==0&&metrics.lucro!=null)?`${((metrics.receita-metrics.custVar)/metrics.lucro).toFixed(1)}×`:'—'} formula="MC Total (R$) ÷ Resultado (R$)" status={metrics.lucro>0?'green':metrics.lucro<0?'red':'neutral'}/>
                   </div>
                 </div>
               </>

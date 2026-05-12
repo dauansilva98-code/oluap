@@ -32,7 +32,7 @@ export const calcMetrics = (diag) => {
   const margContrib   = receita > 0 ? ((receita - custVar) / receita) * 100 : 0
   const margLiq       = receita > 0 ? (lucro / receita) * 100 : 0
   const pontoEq       = margContrib > 0 ? custFix / (margContrib / 100) : 0
-  const burnRate      = lucro < 0 ? Math.abs(lucro) : totalCust
+  const burnRate      = totalCust
   const runwayMeses   = burnRate > 0 && saldo > 0 ? saldo / burnRate : 0
   const folegoDias    = Math.round(runwayMeses * 30)
   const ticketMedio   = numVendas > 0 ? receita / numVendas : 0
@@ -65,13 +65,13 @@ export const genAlerts = (m) => {
     alerts.push({type:'yellow',icon:AlertTriangle,msg:`Margem líquida de ${m.margLiq.toFixed(1)}% está baixa.`,time:'agora'})
   if (m.folegoDias > 0 && m.folegoDias < 30)
     alerts.push({type:'red',icon:AlertOctagon,msg:`Fôlego de caixa crítico: apenas ${m.folegoDias} dias.`,time:'agora'})
-  else if (m.folegoDias >= 30 && m.folegoDias < 60)
-    alerts.push({type:'yellow',icon:AlertTriangle,msg:`Fôlego de caixa de ${m.folegoDias} dias. Recomendamos ao menos 60 dias.`,time:'agora'})
+  else if (m.folegoDias >= 30 && m.folegoDias < 90)
+    alerts.push({type:'yellow',icon:AlertTriangle,msg:`Fôlego de caixa de ${m.folegoDias} dias. Recomendamos ao menos 90 dias.`,time:'agora'})
   if (m.receita > 0 && m.pontoEq > m.receita)
     alerts.push({type:'yellow',icon:AlertTriangle,msg:`Ponto de equilíbrio (${formatBRL(m.pontoEq)}/mês) está acima do faturamento.`,time:'agora'})
   if (m.margLiq >= 15)
     alerts.push({type:'green',icon:TrendingUp,msg:`Margem líquida saudável de ${m.margLiq.toFixed(1)}%.`,time:'agora'})
-  if (m.folegoDias >= 60)
+  if (m.folegoDias >= 90)
     alerts.push({type:'green',icon:CheckCircle,msg:`Fôlego de caixa saudável: ${m.folegoDias} dias.`,time:'agora'})
   if (alerts.length === 0)
     alerts.push({type:'green',icon:CheckCircle,msg:'Indicadores dentro do esperado.',time:'agora'})
@@ -113,7 +113,15 @@ export const calcLiveMetrics = (lancamentos, bancos, dividas, srcOverride = null
   const margContrib = receita>0 ? ((receita-custVar)/receita)*100 : 0
   const margLiq = receita>0 ? (lucro/receita)*100 : 0
   const pontoEq = margContrib>0 ? custFix/(margContrib/100) : 0
-  const burnRate = totalCust
+  // Burn Rate: média das saídas de caixa dos últimos 3 meses (suaviza meses atípicos)
+  const _now3 = new Date()
+  const _last3Saidas = [1, 2, 3].map(i => {
+    const _d = new Date(_now3.getFullYear(), _now3.getMonth() - i, 1)
+    const _mes = _d.toISOString().slice(0, 7)
+    return lancamentos.filter(l => l.data && l.data.startsWith(_mes) && l.tipo === 'despesa').reduce((a, l) => a + Number(l.valor), 0)
+  })
+  const _burnRateValidos = _last3Saidas.filter(v => v > 0)
+  const burnRate = _burnRateValidos.length > 0 ? _burnRateValidos.reduce((a, v) => a + v, 0) / _burnRateValidos.length : totalCust
   const saldo = bancos.reduce((a,b)=>{
     const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0)
     const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((s,l)=>s+Number(l.valor),0)
@@ -144,8 +152,12 @@ export const calcLiveMetrics = (lancamentos, bancos, dividas, srcOverride = null
   if(receita>0&&pontoEq<=receita)score+=10; else if(receita>0)score-=10
   if(margemBruta>=40)score+=5; else if(margemBruta<15)score-=5
   score=Math.max(10,Math.min(100,Math.round(score)))
+  // Alavancagem Operacional em R$ (MC Total / Resultado) — multiplicador de crescimento
+  const alavancagem = lucro !== 0 ? (receita - custVar) / lucro : null
+  // Ciclo Financeiro básico (PMR - PMP); PME não disponível sem dados de estoque
+  const cicloFinanceiro = null // calculado no componente com pmrLive/pmpLive/pme
   return {receita,custDir,custVar,custFix,totalCust,lucro,saldo,margemBruta,margContrib,margLiq,pontoEq,burnRate,runwayMeses,folegoDias,
-    recPrev,despPrev,lucroPrev,momReceita,momDespesa,momLucro,cmv,markup,ticketMedio,nVendas,pmr:0,pmp:0,score}
+    recPrev,despPrev,lucroPrev,momReceita,momDespesa,momLucro,cmv,markup,ticketMedio,nVendas,pmr:0,pmp:0,alavancagem,cicloFinanceiro,score}
 }
 
 export const genLiveCashFlowData = (lancamentos) => {
@@ -167,7 +179,7 @@ export const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => 
   if(m.margLiq < 0)
     alerts.push({cat:'Resultado',type:'red',icon:AlertOctagon,titulo:'Prejuízo operacional',
       msg:`A empresa está gastando mais do que fatura. Prejuízo de ${formatBRL(Math.abs(m.lucro))}/mês. Sem ação imediata, o caixa se esgota em ${m.folegoDias>0?m.folegoDias+' dias':'breve'}.`})
-  if(m.folegoDias > 0 && m.folegoDias < 15)
+  if(m.folegoDias > 0 && m.folegoDias < 30)
     alerts.push({cat:'Caixa',type:'red',icon:AlertOctagon,titulo:'Caixa em estado crítico',
       msg:`Apenas ${m.folegoDias} dias de fôlego sem novas receitas.`})
   if(m.burnRate > 0 && m.receita > 0 && m.burnRate >= m.receita)
@@ -189,18 +201,18 @@ export const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => 
   if(m.margLiq >= 0 && m.margLiq < 5)
     alerts.push({cat:'Resultado',type:'yellow',icon:AlertTriangle,titulo:'Margem líquida muito baixa',
       msg:`${m.margLiq.toFixed(1)}% de margem líquida — por cada R$100 faturados, sobram apenas R$${m.margLiq.toFixed(0)}.`})
-  if(m.folegoDias >= 15 && m.folegoDias < 30)
-    alerts.push({cat:'Caixa',type:'yellow',icon:AlertTriangle,titulo:'Fôlego de caixa baixo',
-      msg:`${m.folegoDias} dias de operação garantidos. Abaixo do mínimo recomendado (60 dias).`})
-  else if(m.folegoDias >= 30 && m.folegoDias < 60)
+  if(m.folegoDias >= 30 && m.folegoDias < 90)
     alerts.push({cat:'Caixa',type:'yellow',icon:AlertTriangle,titulo:'Reserva operacional insuficiente',
-      msg:`Fôlego de ${m.folegoDias} dias. Recomenda-se ao menos 60 dias.`})
+      msg:`Fôlego de ${m.folegoDias} dias. Recomenda-se ao menos 90 dias para absorver sazonalidade e imprevistos.`})
   if(m.receita>0 && m.pontoEq > m.receita)
     alerts.push({cat:'Ponto de Equilíbrio',type:'yellow',icon:AlertTriangle,titulo:'Faturamento abaixo do PE',
       msg:`O ponto de equilíbrio é ${formatBRL(m.pontoEq)}/mês, mas o faturamento é ${formatBRL(m.receita)}/mês.`})
   if(m.margContrib > 0 && m.margContrib < 20)
-    alerts.push({cat:'Margem de Contribuição',type:'yellow',icon:AlertTriangle,titulo:'Margem de contribuição crítica',
-      msg:`${m.margContrib.toFixed(1)}% de margem de contribuição. Revise precificação ou negocie custos diretos.`})
+    alerts.push({cat:'Margem de Contribuição',type:'red',icon:AlertOctagon,titulo:'Margem de contribuição crítica',
+      msg:`${m.margContrib.toFixed(1)}% de margem de contribuição — cada venda cobre pouco além dos custos variáveis. Risco real de prejuízo com qualquer oscilação de custo.`})
+  else if(m.margContrib >= 20 && m.margContrib < 35)
+    alerts.push({cat:'Margem de Contribuição',type:'yellow',icon:AlertTriangle,titulo:'Margem de contribuição baixa',
+      msg:`${m.margContrib.toFixed(1)}% de margem de contribuição. Recomendado acima de 35%. Revise precificação ou negocie custos diretos.`})
   if(m.receita>0 && m.totalCust/m.receita > 0.85)
     alerts.push({cat:'Eficiência',type:'yellow',icon:AlertTriangle,titulo:'Estrutura de custos pesada',
       msg:`${(m.totalCust/m.receita*100).toFixed(1)}% da receita comprometida com custos.`})
@@ -235,9 +247,6 @@ export const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => 
   if(m.folegoDias >= 90)
     alerts.push({cat:'Caixa',type:'green',icon:CheckCircle,titulo:'Caixa bem capitalizado',
       msg:`${m.folegoDias} dias de fôlego operacional — boa reserva de segurança.`})
-  else if(m.folegoDias >= 60)
-    alerts.push({cat:'Caixa',type:'green',icon:CheckCircle,titulo:'Fôlego de caixa adequado',
-      msg:`${m.folegoDias} dias de operação garantidos sem novas receitas.`})
   if(m.receita>0 && m.pontoEq>0 && m.receita >= m.pontoEq*1.2)
     alerts.push({cat:'Ponto de Equilíbrio',type:'green',icon:Target,titulo:'Operando acima do ponto de equilíbrio',
       msg:`Faturamento (${formatBRL(m.receita)}) está ${(m.receita/m.pontoEq*100-100).toFixed(0)}% acima do PE (${formatBRL(m.pontoEq)}).`})

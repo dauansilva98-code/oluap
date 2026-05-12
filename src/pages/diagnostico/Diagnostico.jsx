@@ -797,9 +797,13 @@ const App = () => {
 
   // PMR / PMP live: (total pendente / receita ou custo mensal) × 30 dias
   const totalCRPendente = contasReceber.filter(cr => cr.status !== 'recebido').reduce((a, cr) => a + Number(cr.valor), 0);
-  const totalCPPendente = contasPagar.filter(cp => cp.status !== 'pago').reduce((a, cp) => a + Number(cp.valor), 0);
+  // PMP correto: apenas contas a pagar a fornecedores (não folha, aluguel, impostos)
+  const fornecedorCats = new Set(['Fornecedor', 'Mercadoria', 'Matéria-prima', 'CMV', 'Estoque', 'Compras'])
+  const totalCPFornecedor = contasPagar.filter(cp => cp.status !== 'pago' && fornecedorCats.has(cp.categoria)).reduce((a, cp) => a + Number(cp.valor), 0);
+  // Compras do mês: lançamentos de despesa categorias fornecedor no mês atual
+  const comprasMensal = lancamentos.filter(l => l.tipo === 'despesa' && fornecedorCats.has(l.categoria) && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0);
   const pmrLive = receitaMensal > 0 ? Math.round((totalCRPendente / receitaMensal) * 30) : 0;
-  const pmpLive = liveMetrics && liveMetrics.totalCust > 0 ? Math.round((totalCPPendente / liveMetrics.totalCust) * 30) : 0;
+  const pmpLive = comprasMensal > 0 ? Math.round((totalCPFornecedor / comprasMensal) * 30) : 0;
 
   // Projeção do próximo mês: média dos últimos 3 meses
   const getMonthData = (monthsAgo) => {
@@ -841,6 +845,15 @@ const App = () => {
   const receitaRecorrente = receitasMesAtualList.filter(l => descsRecorrentes.has((l.descricao || '').toLowerCase().trim())).reduce((a, l) => a + Number(l.valor), 0);
   const receitaAvulsa = receitaMensal - receitaRecorrente;
   const pctRecorrente = receitaMensal > 0 ? (receitaRecorrente / receitaMensal) * 100 : 0;
+
+  // DRE: deduções de receita (impostos sobre venda) e despesas financeiras
+  const impostosCats = new Set(['Imposto', 'Simples Nacional', 'DAS', 'ISS', 'ICMS', 'PIS', 'COFINS', 'Tributo'])
+  const deducoesMensal = lancamentos.filter(l => l.tipo === 'despesa' && impostosCats.has(l.categoria) && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0)
+  const financeiroCats = new Set(['Juros', 'IOF', 'Encargos Financeiros', 'Empréstimo', 'Financiamento'])
+  const despFinanceirasMensal = lancamentos.filter(l => l.tipo === 'despesa' && financeiroCats.has(l.categoria) && l.data?.startsWith(mesAtualPE)).reduce((a, l) => a + Number(l.valor), 0)
+  const receitaLiquidaDRE = metrics.receita - deducoesMensal
+  const resultadoOperacionalDRE = receitaLiquidaDRE - metrics.custVar - metrics.custFix
+  const resultadoLiquidoDRE = resultadoOperacionalDRE - despFinanceirasMensal
 
   const AC={red:{bg:'bg-red-50',border:'border-red-100',ic:'text-red-500'},yellow:{bg:'bg-amber-50',border:'border-amber-100',ic:'text-amber-500'},green:{bg:'bg-emerald-50',border:'border-emerald-100',ic:'text-emerald-500'}};
 
@@ -1060,8 +1073,8 @@ const App = () => {
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="Receita − Custos Diretos" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
-                  <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'} destaque/>
-                  <IndicadorCard titulo="Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Custos totais / mês" status="neutral"/>
+                  <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'} destaque/>
+                  <IndicadorCard titulo="Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa / mês" status="neutral"/>
                   <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
                 </div>
               </div>
@@ -1302,7 +1315,7 @@ const App = () => {
                   <div className="lg:col-span-2 grid grid-cols-2 gap-4">
                     <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Operação garantida sem novas vendas" status={metrics.folegoDias>=60?'green':metrics.folegoDias>=30?'yellow':'red'}/>
                     <SemaforoCard icon={Target} title="Custo Mensal do Negócio" value={formatBRL(custoFixoMensal||metrics.custFix)} subtitle="Total de custos fixos classificados" status={custoFixoMensal>0?(custoFixoMensal/Math.max(1,metrics.receita)<=0.5?'green':custoFixoMensal/Math.max(1,metrics.receita)<=0.7?'yellow':'red'):'neutral'}/>
-                    <SemaforoCard icon={DollarSign} title="Margem de Contribuição" value={`${metrics.margContrib.toFixed(1)}%`} subtitle="Sobra após custos variáveis" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'}/>
+                    <SemaforoCard icon={DollarSign} title="Margem de Contribuição" value={`${metrics.margContrib.toFixed(1)}%`} subtitle="Sobra após custos variáveis" status={metrics.margContrib>=35?'green':metrics.margContrib>=20?'yellow':'red'}/>
                     <SemaforoCard icon={TrendingUp} title="Margem Líquida" value={`${metrics.margLiq.toFixed(1)}%`} subtitle="Por R$100 vendidos" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                   </div>
                 </div>
@@ -1367,13 +1380,17 @@ const App = () => {
                   </div>
                   <div className="space-y-2">
                     {[
-                      {label:'Faturamento Bruto',     valor:metrics.receita,     pct:100,                                                bg:'bg-emerald-50',  txt:'text-emerald-800', border:'border-emerald-100'},
-                      {label:'(-) Custos Diretos',    valor:-metrics.custDir,    pct:metrics.receita>0?-(metrics.custDir/metrics.receita*100):0,   bg:'bg-red-50',      txt:'text-red-700',    border:'border-red-100'},
-                      {label:'(=) Margem Bruta',      valor:metrics.receita-metrics.custDir, pct:metrics.margemBruta,                   bg:'bg-slate-50',    txt:'text-[#05121b]',  border:'border-slate-200', bold:true},
-                      {label:'(-) Custos Fixos',      valor:-metrics.custFix,    pct:metrics.receita>0?-(metrics.custFix/metrics.receita*100):0,   bg:'bg-red-50',      txt:'text-red-700',    border:'border-red-100'},
-                      {label:'(=) Resultado Líquido', valor:metrics.lucro,       pct:metrics.margLiq,                                   bg:metrics.lucro>=0?'bg-emerald-50':'bg-red-50', txt:metrics.lucro>=0?'text-emerald-800':'text-red-700', border:metrics.lucro>=0?'border-emerald-200':'border-red-200', bold:true, destaque:true},
+                      {label:'(+) Receita Bruta (Faturamento)',  valor:metrics.receita,       pct:100,                                                          bg:'bg-emerald-50',   txt:'text-emerald-800', border:'border-emerald-100'},
+                      {label:'(−) Deduções da Receita',          valor:-deducoesMensal,        pct:metrics.receita>0?-(deducoesMensal/metrics.receita*100):0,     bg:'bg-red-50',       txt:'text-red-700',    border:'border-red-100',  dim:deducoesMensal===0},
+                      {label:'(=) Receita Líquida',              valor:receitaLiquidaDRE,      pct:metrics.receita>0?(receitaLiquidaDRE/metrics.receita*100):100, bg:'bg-slate-50',     txt:'text-[#05121b]',  border:'border-slate-200', bold:true},
+                      {label:'(−) Custos Variáveis',             valor:-metrics.custVar,       pct:metrics.receita>0?-(metrics.custVar/metrics.receita*100):0,    bg:'bg-red-50',       txt:'text-red-700',    border:'border-red-100'},
+                      {label:'(=) Margem de Contribuição',       valor:receitaLiquidaDRE-metrics.custVar, pct:metrics.receita>0?((receitaLiquidaDRE-metrics.custVar)/metrics.receita*100):0, bg:'bg-slate-50', txt:'text-[#05121b]', border:'border-slate-200', bold:true},
+                      {label:'(−) Custos Fixos',                 valor:-metrics.custFix,       pct:metrics.receita>0?-(metrics.custFix/metrics.receita*100):0,    bg:'bg-red-50',       txt:'text-red-700',    border:'border-red-100'},
+                      {label:'(=) Resultado Operacional',        valor:resultadoOperacionalDRE, pct:metrics.receita>0?(resultadoOperacionalDRE/metrics.receita*100):0, bg:'bg-slate-50', txt:'text-[#05121b]', border:'border-slate-200', bold:true},
+                      {label:'(−) Despesas Financeiras',         valor:-despFinanceirasMensal, pct:metrics.receita>0?-(despFinanceirasMensal/metrics.receita*100):0, bg:'bg-red-50',    txt:'text-red-700',    border:'border-red-100',  dim:despFinanceirasMensal===0},
+                      {label:'(=) Resultado Líquido do Período', valor:resultadoLiquidoDRE,    pct:metrics.receita>0?(resultadoLiquidoDRE/metrics.receita*100):0,  bg:resultadoLiquidoDRE>=0?'bg-emerald-50':'bg-red-50', txt:resultadoLiquidoDRE>=0?'text-emerald-800':'text-red-700', border:resultadoLiquidoDRE>=0?'border-emerald-200':'border-red-200', bold:true, destaque:true},
                     ].map((row,i)=>(
-                      <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${row.bg} ${row.border} ${row.destaque?'ring-1 ring-offset-0 ring-current/20':''}`}>
+                      <div key={i} className={`flex items-center justify-between px-4 py-3 rounded-xl border ${row.bg} ${row.border} ${row.destaque?'ring-1 ring-offset-0 ring-current/20':''} ${row.dim?'opacity-50':''}`}>
                         <span className={`text-xs ${row.bold?'font-black':'font-medium'} ${row.txt}`}>{row.label}</span>
                         <div className="flex items-center gap-4">
                           <span className={`text-[10px] font-bold ${row.txt} opacity-60`}>{row.pct.toFixed(1)}%</span>
@@ -1382,6 +1399,9 @@ const App = () => {
                       </div>
                     ))}
                   </div>
+                  {(deducoesMensal===0||despFinanceirasMensal===0)&&(
+                    <p className="text-[9px] text-slate-400 mt-2">Linhas com valor zero indicam que os dados não foram classificados (impostos/despesas financeiras). Classifique os lançamentos com as categorias correspondentes para ativá-las.</p>
+                  )}
                 </div>
 
                 {/* ── ALERTAS ── */}
@@ -1490,29 +1510,29 @@ const App = () => {
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><TrendingUp size={10}/> Rentabilidade</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="(Receita − Custos Diretos) ÷ Receita" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
-                    <IndicadorCard titulo="Margem de Contribuição" valor={`${metrics.margContrib.toFixed(1)}%`} formula="(Receita − Custos Variáveis) ÷ Receita" status={metrics.margContrib>=30?'green':metrics.margContrib>=15?'yellow':'red'} destaque/>
+                    <IndicadorCard titulo="Margem de Contribuição" valor={`${metrics.margContrib.toFixed(1)}%`} formula="(Receita − Custos Variáveis) ÷ Receita" status={metrics.margContrib>=35?'green':metrics.margContrib>=20?'yellow':'red'} destaque/>
                     <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                     <IndicadorCard titulo="Ponto de Equilíbrio" valor={formatBRL(pontoEquilibrioReal||metrics.pontoEq)} formula="Custo Fixo ÷ Margem de Contribuição" status={metrics.receita>=(pontoEquilibrioReal||metrics.pontoEq)?'green':metrics.receita>=(pontoEquilibrioReal||metrics.pontoEq)*0.85?'yellow':'red'}/>
                   </div>
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Total de custos por mês" status="neutral"/>
+                    <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa (últimos 3 meses)" status="neutral"/>
                     <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
                     <IndicadorCard titulo={isServico&&!isProduto?'Valor Médio por Contrato':'Ticket Médio'} valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula={`Faturamento ÷ ${metrics.nVendas||0} receitas no período`} status={metrics.ticketMedio>0?'neutral':'neutral'}/>
                     <IndicadorCard titulo="Prazo Médio Recebimento" valor={pmrLive>0?`${pmrLive} dias`:'—'} formula="(Recebíveis pendentes ÷ Receita) × 30" status={pmrLive>0?(pmrLive<=30?'green':pmrLive<=60?'yellow':'red'):'neutral'}/>
                   </div>
                   {isProduto&&(
                   <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-6">
-                    <IndicadorCard titulo="Prazo Médio Pagamento" valor={pmpLive>0?`${pmpLive} dias`:'—'} formula="(Contas a pagar pendentes ÷ Custos) × 30" status={pmpLive>0?(pmpLive>=30?'green':pmpLive>=15?'yellow':'red'):'neutral'}/>
-                    <IndicadorCard titulo="Ciclo Financeiro" valor={(pmrLive>0&&pmpLive>0)?`${pmrLive-pmpLive} dias`:'—'} formula="PMR − PMP (negativo = caixa antecipado)" status={(pmrLive>0&&pmpLive>0)?(pmrLive-pmpLive<=0?'green':pmrLive-pmpLive<=30?'yellow':'red'):'neutral'} destaque/>
+                    <IndicadorCard titulo="Prazo Médio Pagamento" valor={pmpLive>0?`${pmpLive} dias`:'—'} formula="(CP Fornecedores ÷ Compras do período) × 30" status={pmpLive>0?(pmpLive>=30?'green':pmpLive>=15?'yellow':'red'):'neutral'}/>
+                    <IndicadorCard titulo="Ciclo Financeiro" valor={(pmrLive>0&&pmpLive>0)?`${pmrLive-pmpLive} dias`:'—'} formula="PMR − PMP · Produto: PMR + PME − PMP (PME requer estoque)" status={(pmrLive>0&&pmpLive>0)?(pmrLive-pmpLive<=0?'green':pmrLive-pmpLive<=30?'yellow':'red'):'neutral'} destaque/>
                   </div>
                   )}
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Shield size={10}/> Estrutura de Custos</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <IndicadorCard titulo="Custos Variáveis" valor={formatBRL(metrics.custVar)} formula="CMV + Taxas + Comissões" status="neutral"/>
-                    <IndicadorCard titulo="Custos Fixos" valor={formatBRL(metrics.custFix)} formula="Folha + Aluguel + Fixos" status="neutral"/>
+                    <IndicadorCard titulo="Custos Variáveis" valor={formatBRL(metrics.custVar)} formula="CMV + Impostos s/ venda + Taxas + Comissões" status="neutral"/>
+                    <IndicadorCard titulo="Custos Fixos" valor={formatBRL(metrics.custFix)} formula="Folha + Encargos + Aluguel + Serviços Recorrentes" status="neutral"/>
                     <IndicadorCard titulo="% Custo sobre Receita" valor={metrics.receita>0?`${(metrics.totalCust/metrics.receita*100).toFixed(1)}%`:'—'} formula="Total custos ÷ Receita" status={metrics.receita>0?(metrics.totalCust/metrics.receita<=0.7?'green':metrics.totalCust/metrics.receita<=0.85?'yellow':'red'):'neutral'} destaque/>
                     <IndicadorCard titulo="Resultado Mensal" valor={formatBRL(metrics.lucro)} formula="Receita − Total de Custos" status={metrics.lucro>0?'green':metrics.lucro===0?'neutral':'red'}/>
                   </div>
@@ -1525,10 +1545,10 @@ const App = () => {
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <IndicadorCard titulo="EBITDA (simplificado)" valor={formatBRL(metrics.lucro+metrics.custFix*0.1)} formula="Resultado + estimativa D&A" status={metrics.lucro>=0?'green':'red'}/>
-                    <IndicadorCard titulo="EBITDA Margin" valor={metrics.receita>0?`${((metrics.lucro+metrics.custFix*0.1)/metrics.receita*100).toFixed(1)}%`:'—'} formula="EBITDA ÷ Receita" status={metrics.receita>0?((metrics.lucro+metrics.custFix*0.1)/metrics.receita>=0.15?'green':(metrics.lucro+metrics.custFix*0.1)/metrics.receita>=0.05?'yellow':'red'):'neutral'} destaque/>
+                    <IndicadorCard titulo="Resultado Operacional Est." valor={formatBRL(metrics.lucro)} formula="Receita − Custos Var. − Custos Fix. (sem IR/Juros/D&A)" status={metrics.lucro>=0?'green':'red'}/>
+                    <IndicadorCard titulo="Margem Operacional" valor={metrics.receita>0?`${(metrics.lucro/metrics.receita*100).toFixed(1)}%`:'—'} formula="Resultado Operacional ÷ Receita" status={metrics.receita>0?(metrics.lucro/metrics.receita>=0.15?'green':metrics.lucro/metrics.receita>=0.05?'yellow':'red'):'neutral'} destaque/>
                     <IndicadorCard titulo="Eficiência Operacional" valor={metrics.receita>0?`${(metrics.custFix/metrics.receita*100).toFixed(1)}%`:'—'} formula="Custos Fixos ÷ Receita" status={metrics.receita>0?(metrics.custFix/metrics.receita<=0.4?'green':metrics.custFix/metrics.receita<=0.6?'yellow':'red'):'neutral'}/>
-                    <IndicadorCard titulo="Alavancagem Operacional" valor={metrics.margContrib>0?`${(metrics.margContrib/Math.max(0.1,metrics.margLiq)).toFixed(1)}×`:'—'} formula="Margem Contribuição ÷ Margem Líquida" status={metrics.lucro>0?'green':'neutral'}/>
+                    <IndicadorCard titulo="Alavancagem Operacional" valor={(metrics.lucro!==0&&metrics.lucro!=null)?`${((metrics.receita-metrics.custVar)/metrics.lucro).toFixed(1)}×`:'—'} formula="MC Total (R$) ÷ Resultado (R$)" status={metrics.lucro>0?'green':metrics.lucro<0?'red':'neutral'}/>
                   </div>
                 </div>
 
