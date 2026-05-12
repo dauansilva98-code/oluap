@@ -847,6 +847,9 @@ const App = () => {
   const [savingItem, setSavingItem] = useState(false);
   // Modal forms (null = closed, {} = new, {id:...} = editing)
   const [modalBanco, setModalBanco] = useState(null);
+  const [saldoInicialDinheiro, setSaldoInicialDinheiro] = useState(0);
+  const [modalSaldoDinheiro, setModalSaldoDinheiro] = useState(false);
+  const [saldoDinheiroInput, setSaldoDinheiroInput] = useState('');
   const [modalReceita, setModalReceita] = useState(null);
   const [modalDespesa, setModalDespesa] = useState(null);
   const [modalCP, setModalCP] = useState(null);
@@ -880,6 +883,7 @@ const App = () => {
         if(cu.user_metadata){
           const m=cu.user_metadata;
           setProfileData({full_name:m.full_name||'',email:cu.email||'',phone:m.phone||'',cnpj:m.cnpj||'',razao_social:m.razao_social||''});
+          setSaldoInicialDinheiro(parseFloat(m.saldo_inicial_dinheiro)||0);
           setAvatarUrl(m.avatar_url||'');
           setProfileFilledForm(!!(m.full_name||m.cnpj||m.razao_social));
           setFormData(prev=>({...prev,
@@ -1239,7 +1243,7 @@ const App = () => {
               const entradasMes=lancMes.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
               const saidasMes=lancMes.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
               const totalBancos=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
-              const dinheiroCaixa=lancamentos.reduce((a,l)=>{
+              const dinheiroCaixa=saldoInicialDinheiro+lancamentos.reduce((a,l)=>{
                 if(l.meio_pagamento!=='Dinheiro')return a;
                 return l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor);
               },0);
@@ -2227,7 +2231,10 @@ const App = () => {
         {view==='bancos'&&(()=>{
           const tipos=['Conta Corrente','Conta Poupança','Conta Digital','Caixa Físico','Outros'];
           const CORES=['#137789','#ff7b00','#22c55e','#8b5cf6','#f59e0b','#ef4444','#0ea5e9','#ec4899'];
-          const saldoTotal=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
+          const saldoBancos=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
+          const dinEnt0=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+          const dinSai0=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          const saldoTotal=saldoBancos+(saldoInicialDinheiro+dinEnt0-dinSai0);
           return(
             <div className="max-w-4xl mx-auto fade-in">
               <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
@@ -2236,11 +2243,19 @@ const App = () => {
               </header>
               {/* Saldo total */}
               <div className="bg-[#05121b] rounded-2xl p-6 mb-6 flex items-center justify-between">
-                <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Total</p><p className="text-3xl font-black text-white">{formatBRL(saldoTotal)}</p></div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Total</p>
+                  <p className="text-3xl font-black text-white">{formatBRL(saldoTotal)}</p>
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-[9px] text-slate-400">Bancos: <span className="font-bold text-white/70">{formatBRL(saldoBancos)}</span></span>
+                    <span className="text-slate-600">·</span>
+                    <span className="text-[9px] text-slate-400">Dinheiro: <span className="font-bold text-white/70">{formatBRL(saldoInicialDinheiro+dinEnt0-dinSai0)}</span></span>
+                  </div>
+                </div>
                 <Landmark size={32} className="text-white/20"/>
               </div>
               {/* Bank cards */}
-              {bancos.length===0?<div className="bg-white border border-slate-100 rounded-2xl py-16 text-center shadow-sm"><Landmark size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum banco cadastrado</p></div>:(
+              {bancos.length===0&&saldoInicialDinheiro===0?<div className="bg-white border border-slate-100 rounded-2xl py-16 text-center shadow-sm"><Landmark size={28} className="text-slate-200 mx-auto mb-3"/><p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">Nenhum banco cadastrado</p></div>:(
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {bancos.map(b=>{
                     const saldo=saldoBanco(b.id);
@@ -2266,6 +2281,29 @@ const App = () => {
                       </div>
                     );
                   })}
+                  {/* Dinheiro em Caixa */}
+                  {(()=>{
+                    const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+                    const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+                    const dinSaldo=saldoInicialDinheiro+dinEnt-dinSai;
+                    return(
+                      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between mb-5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-amber-700 font-black text-xl bg-amber-100 shadow-sm">💵</div>
+                            <div><p className="font-black text-sm text-[#05121b]">Dinheiro em Caixa</p><p className="text-[10px] text-amber-600">Caixa físico · Espécie</p></div>
+                          </div>
+                          <button onClick={()=>{setSaldoDinheiroInput(saldoInicialDinheiro>0?formatBRL(saldoInicialDinheiro).replace('R$ ','').trim():'');setModalSaldoDinheiro(true);}} className="text-slate-300 hover:text-amber-600 transition-colors"><Pencil size={14}/></button>
+                        </div>
+                        <p className={`text-2xl font-black mb-4 ${dinSaldo>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(dinSaldo)}</p>
+                        <div className="grid grid-cols-3 gap-2 pt-4 border-t border-amber-100">
+                          <div><p className="text-[9px] text-amber-600 font-bold uppercase tracking-widest">Inicial</p><p className="text-sm font-black text-amber-700">{formatBRL(saldoInicialDinheiro)}</p></div>
+                          <div><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Entradas</p><p className="text-sm font-black text-emerald-600">+{formatBRL(dinEnt)}</p></div>
+                          <div><p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Saídas</p><p className="text-sm font-black text-red-500">-{formatBRL(dinSai)}</p></div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -2669,6 +2707,32 @@ const App = () => {
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalBanco(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
                 <button disabled={savingItem||!modalBanco.nome} onClick={()=>saveItem('bancos',{...modalBanco,saldo_inicial:parseFloat((modalBanco.saldo_inicial||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,user_id:user.id},setModalBanco,()=>fetchFinanceiro(user.id))} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-[#05121b] text-white hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal Saldo Inicial Dinheiro */}
+        {modalSaldoDinheiro&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalSaldoDinheiro(false)}>
+            <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3"><span className="text-2xl">💵</span><h3 className="text-xl font-black text-[#05121b]">Dinheiro em Caixa</h3></div>
+                <button onClick={()=>setModalSaldoDinheiro(false)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
+              </div>
+              <div className="space-y-4">
+                <InputField label="Saldo Inicial" subLabel="Valor em espécie que você já tinha antes de começar a registrar os lançamentos." value={saldoDinheiroInput} onChange={v=>setSaldoDinheiroInput(v)} maskType="currency" placeholder="R$ 0,00"/>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={()=>setModalSaldoDinheiro(false)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
+                <button disabled={savingItem} onClick={async()=>{
+                  setSavingItem(true);
+                  const val=parseFloat((saldoDinheiroInput||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
+                  await supabase.auth.updateUser({data:{saldo_inicial_dinheiro:val}});
+                  setSaldoInicialDinheiro(val);
+                  setSavingItem(false);
+                  setModalSaldoDinheiro(false);
+                }} className="flex-1 py-3.5 rounded-xl font-black text-xs bg-amber-500 text-white hover:bg-amber-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">{savingItem?<Loader2 size={13} className="animate-spin"/>:null}Salvar</button>
               </div>
             </div>
           </div>
