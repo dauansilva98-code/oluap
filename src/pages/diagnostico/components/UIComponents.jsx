@@ -56,7 +56,7 @@ export const StatusBadge = ({internalStatus}) => {
   )
 }
 
-export const SemaforoCard = ({icon:Icon,title,value,subtitle,status}) => {
+export const SemaforoCard = ({icon:Icon,title,traducao,value,subtitle,status}) => {
   const C = {
     green:{bg:'bg-emerald-50',border:'border-emerald-200',dot:'bg-emerald-500',txt:'text-emerald-700',val:'text-emerald-800'},
     yellow:{bg:'bg-amber-50',border:'border-amber-200',dot:'bg-amber-500',txt:'text-amber-700',val:'text-amber-800'},
@@ -69,8 +69,9 @@ export const SemaforoCard = ({icon:Icon,title,value,subtitle,status}) => {
         <div className={`w-3 h-3 rounded-full ${C.dot} pulse-dot`}></div>
       </div>
       <div>
-        <p className={`text-[10px] font-bold uppercase tracking-widest ${C.txt} mb-1`}>{title}</p>
-        <p className={`text-xl font-black ${C.val}`}>{value}</p>
+        <p className={`text-[10px] font-bold uppercase tracking-widest ${C.txt} leading-tight`}>{title}</p>
+        {traducao&&<p className={`text-[8px] font-medium ${C.txt} opacity-60 normal-case tracking-normal mt-0.5 mb-1`}>{traducao}</p>}
+        <p className={`text-xl font-black ${C.val} ${traducao?'':'mt-1'}`}>{value}</p>
         {subtitle&&<p className={`text-[10px] font-medium ${C.txt} mt-1`}>{subtitle}</p>}
       </div>
     </div>
@@ -92,7 +93,7 @@ export const ScoreRing = ({score}) => {
   )
 }
 
-export const IndicadorCard = ({titulo,valor,formula,status,destaque=false}) => {
+export const IndicadorCard = ({titulo,traducao,valor,formula,status,destaque=false}) => {
   const C = {
     green:   {bg:'bg-emerald-50',border:'border-emerald-200',val:'text-emerald-800',badge:'bg-emerald-100 text-emerald-700 border-emerald-200'},
     yellow:  {bg:'bg-amber-50',  border:'border-amber-200',  val:'text-amber-800',  badge:'bg-amber-100 text-amber-700 border-amber-200'},
@@ -103,8 +104,11 @@ export const IndicadorCard = ({titulo,valor,formula,status,destaque=false}) => {
   return (
     <div className={`${C.bg} border ${C.border} rounded-2xl p-5 flex flex-col gap-2 ${destaque?'ring-2 ring-offset-1 ring-[#137789]/20':''}`}>
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{titulo}</p>
-        <div className={`w-2 h-2 rounded-full ${dot} pulse-dot`}></div>
+        <div className="flex flex-col leading-tight">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{titulo}</p>
+          {traducao&&<p className="text-[8px] font-medium text-slate-300 normal-case tracking-normal">{traducao}</p>}
+        </div>
+        <div className={`w-2 h-2 rounded-full ${dot} pulse-dot shrink-0`}></div>
       </div>
       <p className={`text-2xl font-black ${C.val} leading-none`}>{valor}</p>
       {formula&&<p className="text-[9px] text-slate-400 font-medium leading-relaxed">{formula}</p>}

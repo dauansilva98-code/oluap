@@ -312,7 +312,7 @@ const StatusBadge = ({internalStatus}) => {
 };
 
 // ── SemaforoCard ──────────────────────────────────────────────────────────────
-const SemaforoCard = ({icon:Icon,title,value,subtitle,status}) => {
+const SemaforoCard = ({icon:Icon,title,traducao,value,subtitle,status}) => {
   const C = {
     green:{bg:'bg-emerald-50',border:'border-emerald-200',dot:'bg-emerald-500',txt:'text-emerald-700',val:'text-emerald-800'},
     yellow:{bg:'bg-amber-50',border:'border-amber-200',dot:'bg-amber-500',txt:'text-amber-700',val:'text-amber-800'},
@@ -325,8 +325,9 @@ const SemaforoCard = ({icon:Icon,title,value,subtitle,status}) => {
         <div className={`w-3 h-3 rounded-full ${C.dot} pulse-dot`}></div>
       </div>
       <div>
-        <p className={`text-[10px] font-bold uppercase tracking-widest ${C.txt} mb-1`}>{title}</p>
-        <p className={`text-xl font-black ${C.val}`}>{value}</p>
+        <p className={`text-[10px] font-bold uppercase tracking-widest ${C.txt} leading-tight`}>{title}</p>
+        {traducao&&<p className={`text-[8px] font-medium ${C.txt} opacity-60 normal-case tracking-normal mt-0.5 mb-1`}>{traducao}</p>}
+        <p className={`text-xl font-black ${C.val} ${traducao?'':'mt-1'}`}>{value}</p>
         {subtitle&&<p className={`text-[10px] font-medium ${C.txt} mt-1`}>{subtitle}</p>}
       </div>
     </div>
@@ -630,7 +631,7 @@ const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => {
 };
 
 // ── IndicadorCard ─────────────────────────────────────────────────────────────
-const IndicadorCard = ({titulo, valor, formula, status, destaque=false}) => {
+const IndicadorCard = ({titulo, traducao, valor, formula, status, destaque=false}) => {
   const C = {
     green:   {bg:'bg-emerald-50', border:'border-emerald-200', val:'text-emerald-800', badge:'bg-emerald-100 text-emerald-700 border-emerald-200'},
     yellow:  {bg:'bg-amber-50',   border:'border-amber-200',   val:'text-amber-800',   badge:'bg-amber-100 text-amber-700 border-amber-200'},
@@ -641,8 +642,11 @@ const IndicadorCard = ({titulo, valor, formula, status, destaque=false}) => {
   return (
     <div className={`${C.bg} border ${C.border} rounded-2xl p-5 flex flex-col gap-2 ${destaque?'ring-2 ring-offset-1 ring-[#137789]/20':''}`}>
       <div className="flex items-center justify-between">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{titulo}</p>
-        <div className={`w-2 h-2 rounded-full ${dot} pulse-dot`}></div>
+        <div className="flex flex-col leading-tight">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{titulo}</p>
+          {traducao&&<p className="text-[8px] font-medium text-slate-300 normal-case tracking-normal">{traducao}</p>}
+        </div>
+        <div className={`w-2 h-2 rounded-full ${dot} pulse-dot shrink-0`}></div>
       </div>
       <p className={`text-2xl font-black ${C.val} leading-none`}>{valor}</p>
       {formula && <p className="text-[9px] text-slate-400 font-medium leading-relaxed">{formula}</p>}
@@ -1336,8 +1340,8 @@ const App = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="Receita − Custos Diretos" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
                   <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'} destaque/>
-                  <IndicadorCard titulo="Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa / mês" status="neutral"/>
-                  <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
+                  <IndicadorCard titulo="Burn Rate" traducao="taxa de consumo de caixa" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa / mês" status="neutral"/>
+                  <IndicadorCard titulo="Runway" traducao="fôlego de caixa" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
                 </div>
               </div>
               </>
@@ -1634,9 +1638,9 @@ const App = () => {
 
                   <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa (últimos 3 meses)" status="neutral"/>
-                    <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
-                    <IndicadorCard titulo="Ticket Médio" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula="Faturamento ÷ Nº de vendas/mês" status="neutral"/>
+                    <IndicadorCard titulo="Cash Burn Rate" traducao="taxa de consumo de caixa" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa (últimos 3 meses)" status="neutral"/>
+                    <IndicadorCard titulo="Runway" traducao="fôlego de caixa" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
+                    <IndicadorCard titulo="Ticket Médio" traducao="valor médio por venda" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula="Faturamento ÷ Nº de vendas/mês" status="neutral"/>
                     <IndicadorCard titulo="Prazo Médio Recebimento" valor={metrics.pmr>0?`${metrics.pmr} dias`:'—'} formula="Média de dias até o cliente pagar" status={metrics.pmr>0?(metrics.pmr<=30?'green':metrics.pmr<=60?'yellow':'red'):'neutral'}/>
                   </div>
 
@@ -1648,7 +1652,7 @@ const App = () => {
                     <IndicadorCard titulo="Resultado Mensal" valor={formatBRL(metrics.lucro)} formula="Receita − Total de Custos" status={metrics.lucro>0?'green':metrics.lucro===0?'neutral':'red'}/>
                   </div>
 
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência <span className="normal-case tracking-normal font-medium opacity-60 text-[8px]">resultado operacional estimado</span></p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <IndicadorCard titulo="Resultado Operacional Est." valor={formatBRL(metrics.lucro)} formula="Receita − Custos Var. − Custos Fix. (sem IR/Juros/D&A)" status={metrics.lucro>=0?'green':'red'}/>
                     <IndicadorCard titulo="Margem Operacional" valor={metrics.receita>0?`${(metrics.lucro/metrics.receita*100).toFixed(1)}%`:'—'} formula="Resultado Operacional ÷ Receita" status={metrics.receita>0?(metrics.lucro/metrics.receita>=0.15?'green':metrics.lucro/metrics.receita>=0.05?'yellow':'red'):'neutral'} destaque/>
@@ -1729,7 +1733,7 @@ const App = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   <SimComparativo label="Resultado Mensal" before={simResult.before.lucro} after={simResult.after.lucro} formato="brl"/>
                   <SimComparativo label="Margem Líquida" before={simResult.before.margLiq} after={simResult.after.margLiq} formato="pct"/>
-                  <SimComparativo label="Runway (meses de caixa)" before={simResult.before.runway} after={simResult.after.runway} formato="meses"/>
+                  <SimComparativo label="Runway · fôlego de caixa (meses)" before={simResult.before.runway} after={simResult.after.runway} formato="meses"/>
                   <SimComparativo label="Ponto de Equilíbrio" before={simResult.before.pontoEq} after={simResult.after.pontoEq} formato="brl" lowerIsBetter={true}/>
                 </div>
                 <div className={`rounded-xl p-4 flex items-start gap-3 ${simResult.positivo?'bg-emerald-50 border border-emerald-100':'bg-red-50 border border-red-100'}`}>

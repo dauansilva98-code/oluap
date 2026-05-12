@@ -697,9 +697,9 @@ const App = () => {
     if(sc.id==='aumentar_ticket'){dR=metrics.receita*(raw/100);insight=`Com preços ${raw.toFixed(1)}% maiores, o resultado mensal melhora ${formatBRL(dR)}.`;}
     else if(sc.id==='queda_receita'){dR=-(metrics.receita*(raw/100));insight=`Queda de ${raw.toFixed(1)}%: você perde ${formatBRL(Math.abs(dR))}/mês de receita.`;}
     else if(sc.id==='perda_cliente'){dR=-raw;insight=`Sem esse contrato, o resultado mensal cai ${formatBRL(raw)}.`;}
-    else if(sc.id==='novo_contrato'){dR=raw;insight=`Novo contrato de ${formatBRL(raw)}/mês melhora margem e runway imediatamente.`;}
+    else if(sc.id==='novo_contrato'){dR=raw;insight=`Novo contrato de ${formatBRL(raw)}/mês melhora margem e fôlego de caixa imediatamente.`;}
     else if(sc.id==='contratar_func'){dCF=raw*1.3;insight=`Salário de ${formatBRL(raw)} + encargos = ${formatBRL(raw*1.3)}/mês de custo fixo novo.`;}
-    else if(sc.id==='nova_despesa'){dCF=raw;insight=`Nova despesa de ${formatBRL(raw)}/mês reduz seu runway.`;}
+    else if(sc.id==='nova_despesa'){dCF=raw;insight=`Nova despesa de ${formatBRL(raw)}/mês reduz seu fôlego de caixa.`;}
     else if(sc.id==='reduzir_custo'){dCF=-raw;insight=`Cortar ${formatBRL(raw)}/mês libera ${formatBRL(raw*12)}/ano no caixa.`;}
     else if(sc.id==='investimento'){dS=-raw;insight=`Investimento de ${formatBRL(raw)} sai imediatamente do caixa.`;}
     else if(sc.id==='emprestimo'){dS=raw;dCF=raw/12;insight=`Captação de ${formatBRL(raw)}: entra no caixa agora, mas parcela de ${formatBRL(raw/12)}/mês pesa nos custos.`;}
@@ -731,7 +731,7 @@ const App = () => {
   const isLastStep=formStep===currentSteps.length-1;
 
   const navItems=[
-    {id:'dashboard',       label:'Dashboard',             icon:LayoutDashboard},
+    {id:'dashboard',       label:'Painel',                icon:LayoutDashboard},
     {id:'alertas',         label:'CFO Digital',           icon:Brain},
     {id:'fluxo',           label:'Fluxo de Caixa',        icon:Activity},
     {id:'receitas',        label:'Receitas',              icon:TrendingUp},
@@ -1074,8 +1074,8 @@ const App = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="Receita − Custos Diretos" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
                   <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'} destaque/>
-                  <IndicadorCard titulo="Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa / mês" status="neutral"/>
-                  <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
+                  <IndicadorCard titulo="Burn Rate" traducao="taxa de consumo de caixa" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa / mês" status="neutral"/>
+                  <IndicadorCard titulo="Runway" traducao="fôlego de caixa" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
                 </div>
               </div>
               </>
@@ -1517,9 +1517,9 @@ const App = () => {
 
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <IndicadorCard titulo="Cash Burn Rate" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa (últimos 3 meses)" status="neutral"/>
-                    <IndicadorCard titulo="Runway" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
-                    <IndicadorCard titulo={isServico&&!isProduto?'Valor Médio por Contrato':'Ticket Médio'} valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula={`Faturamento ÷ ${metrics.nVendas||0} receitas no período`} status={metrics.ticketMedio>0?'neutral':'neutral'}/>
+                    <IndicadorCard titulo="Cash Burn Rate" traducao="taxa de consumo de caixa" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa (últimos 3 meses)" status="neutral"/>
+                    <IndicadorCard titulo="Runway" traducao="fôlego de caixa" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
+                    <IndicadorCard titulo={isServico&&!isProduto?'Valor Médio por Contrato':'Ticket Médio'} traducao="valor médio por venda" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula={`Faturamento ÷ ${metrics.nVendas||0} receitas no período`} status={metrics.ticketMedio>0?'neutral':'neutral'}/>
                     <IndicadorCard titulo="Prazo Médio Recebimento" valor={pmrLive>0?`${pmrLive} dias`:'—'} formula="(Recebíveis pendentes ÷ Receita) × 30" status={pmrLive>0?(pmrLive<=30?'green':pmrLive<=60?'yellow':'red'):'neutral'}/>
                   </div>
                   {isProduto&&(
@@ -1539,11 +1539,11 @@ const App = () => {
                   {isProduto&&(
                   <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-6">
                     <IndicadorCard titulo="CMV (Custo das Mercadorias)" valor={metrics.cmv>0?formatBRL(metrics.cmv):'—'} formula="Despesas em Fornecedor / Mercadoria / Estoque" status={metrics.cmv>0?(metrics.receita>0&&metrics.cmv/metrics.receita<=0.4?'green':metrics.receita>0&&metrics.cmv/metrics.receita<=0.6?'yellow':'red'):'neutral'}/>
-                    <IndicadorCard titulo="Markup" valor={metrics.markup!=null?`${metrics.markup.toFixed(1)}%`:'—'} formula="(Receita − CMV) ÷ CMV × 100" status={metrics.markup!=null?(metrics.markup>=100?'green':metrics.markup>=50?'yellow':'red'):'neutral'} destaque/>
+                    <IndicadorCard titulo="Markup" traducao="margem sobre custo" valor={metrics.markup!=null?`${metrics.markup.toFixed(1)}%`:'—'} formula="(Receita − CMV) ÷ CMV × 100" status={metrics.markup!=null?(metrics.markup>=100?'green':metrics.markup>=50?'yellow':'red'):'neutral'} destaque/>
                   </div>
                   )}
 
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência</p>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><BarChart2 size={10}/> EBITDA & Eficiência <span className="text-[8px] font-medium normal-case tracking-normal opacity-60">resultado operacional estimado</span></p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <IndicadorCard titulo="Resultado Operacional Est." valor={formatBRL(metrics.lucro)} formula="Receita − Custos Var. − Custos Fix. (sem IR/Juros/D&A)" status={metrics.lucro>=0?'green':'red'}/>
                     <IndicadorCard titulo="Margem Operacional" valor={metrics.receita>0?`${(metrics.lucro/metrics.receita*100).toFixed(1)}%`:'—'} formula="Resultado Operacional ÷ Receita" status={metrics.receita>0?(metrics.lucro/metrics.receita>=0.15?'green':metrics.lucro/metrics.receita>=0.05?'yellow':'red'):'neutral'} destaque/>
@@ -1633,12 +1633,12 @@ const App = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   <SimComparativo label="Resultado Mensal" before={simResult.before.lucro} after={simResult.after.lucro} formato="brl"/>
                   <SimComparativo label="Margem Líquida" before={simResult.before.margLiq} after={simResult.after.margLiq} formato="pct"/>
-                  <SimComparativo label="Runway (meses de caixa)" before={simResult.before.runway} after={simResult.after.runway} formato="meses"/>
+                  <SimComparativo label="Runway · fôlego de caixa (meses)" before={simResult.before.runway} after={simResult.after.runway} formato="meses"/>
                   <SimComparativo label="Ponto de Equilíbrio" before={simResult.before.pontoEq} after={simResult.after.pontoEq} formato="brl" lowerIsBetter={true}/>
                 </div>
                 <div className={`rounded-xl p-4 flex items-start gap-3 ${simResult.positivo?'bg-emerald-50 border border-emerald-100':'bg-red-50 border border-red-100'}`}>
                   <span className="text-xl">{simResult.positivo?'✅':'⚠️'}</span>
-                  <p className={`text-[11px] font-semibold leading-relaxed ${simResult.positivo?'text-emerald-800':'text-red-700'}`}>{simResult.positivo?'Essa decisão melhora o resultado mensal. Avalie se o ganho é consistente ou sazonal antes de comprometer gastos recorrentes.':'Essa decisão piora o resultado mensal. Certifique-se de ter runway suficiente antes de executar ou busque uma contrapartida de receita.'}</p>
+                  <p className={`text-[11px] font-semibold leading-relaxed ${simResult.positivo?'text-emerald-800':'text-red-700'}`}>{simResult.positivo?'Essa decisão melhora o resultado mensal. Avalie se o ganho é consistente ou sazonal antes de comprometer gastos recorrentes.':'Essa decisão piora o resultado mensal. Certifique-se de ter fôlego de caixa suficiente antes de executar ou busque uma contrapartida de receita.'}</p>
                 </div>
               </div>
             )}
@@ -1871,12 +1871,14 @@ const App = () => {
                   <p className="text-[11px] text-slate-400 mt-1">Inicial + Operacional</p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
-                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">Burn rate</p>
+                  <p className="text-[11px] font-medium text-slate-500 leading-tight">Burn Rate</p>
+                  <p className="text-[8px] text-slate-400 mb-1">taxa de consumo de caixa</p>
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(burnRate)}</p>
                   <p className="text-[11px] text-slate-400 mt-1">por dia</p>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
-                  <p className="text-[11px] font-medium text-slate-500 mb-1.5">Runway</p>
+                  <p className="text-[11px] font-medium text-slate-500 leading-tight">Runway</p>
+                  <p className="text-[8px] text-slate-400 mb-1">fôlego de caixa</p>
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{runway} dias</p>
                   <p className="text-[11px] text-slate-400 mt-1">com saldo atual</p>
                 </div>
