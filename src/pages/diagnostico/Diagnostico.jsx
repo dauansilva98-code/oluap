@@ -1862,6 +1862,10 @@ const App = () => {
                   <h1 className="text-[22px] font-medium text-[#05121b] mt-0.5">Fluxo de Caixa</h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <button onClick={handleFecharMes} disabled={savingItem} className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
+                    Fechar Mês
+                    {ultimoFechamento&&<span className="text-[10px] text-slate-400">· {new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}</span>}
+                  </button>
                   <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1">
                     {[{id:'diario',l:'Diário'},{id:'semanal',l:'Semanal'},{id:'mensal',l:'Mensal'},{id:'anual',l:'Anual'},{id:'periodo',l:'Período'}].map(f=>(
                       <button key={f.id} onClick={()=>setFluxoFiltro(f.id)} className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${fluxoFiltro===f.id?'bg-[#05121b] text-white shadow-sm':'text-slate-500 hover:text-[#05121b]'}`}>{f.l}</button>
@@ -3350,12 +3354,6 @@ const App = () => {
             ── BANCOS ────────────────────────────────────────────────── */}
         {view==='bancos'&&(
           <div className="fade-in">
-            <div className="flex justify-end mb-3">
-              <button onClick={handleFecharMes} disabled={savingItem} className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-50">
-                {ultimoFechamento&&<span className="text-[10px] text-slate-400 font-normal">último: {new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}</span>}
-                Fechar Mês
-              </button>
-            </div>
             <BancosContas
               bancos={bancos}
               lancamentos={lancamentos}
