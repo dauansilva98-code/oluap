@@ -2591,7 +2591,7 @@ const App = () => {
               </div>
               {/* 5. GRÁFICOS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,padding:20}}>
+                {donutData.length>0&&(<div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,padding:20}}>
                   <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Contas por categoria</h3>
                   <ResponsiveContainer width="100%" height={140}>
                     <PieChart>
@@ -2612,7 +2612,7 @@ const App = () => {
                       </div>
                     ))}
                   </div>
-                </div>
+                </div>)}
                 <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,padding:20}}>
                   <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Previsto vs pago — últimos 6 meses</h3>
                   <ResponsiveContainer width="100%" height={140}>
