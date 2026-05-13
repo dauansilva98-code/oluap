@@ -1772,11 +1772,13 @@ const App = () => {
             if(fluxoFiltro==='periodo'&&fluxoDataInicio)return fluxoDataInicio;
             return null;
           })();
-          const bancosBase=bancos.reduce((a,b)=>a+Number(b.saldo_inicial||0),0);
+          const bancosBase=bancos.reduce((a,b)=>a+Number(b.saldo_inicial||0),0)+saldoInicialDinheiro;
           const movAntes=periodoInicio?lancamentos.filter(l=>l.data&&l.data<periodoInicio).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0):0;
           const saldoInic=bancosBase+movAntes;
           const saldoFinal=saldoInic+saldoOperacional;
-          const saldoAtual=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
+          const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+          const _dinSaiAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          const saldoAtual=bancos.reduce((a,b)=>a+saldoBanco(b.id),0)+(saldoInicialDinheiro+_dinEntAll-_dinSaiAll);
           const daysMap={diario:1,semanal:7,mensal:30,anual:365};
           const periodoDias=fluxoFiltro==='periodo'&&fluxoDataInicio&&fluxoDataFim
             ?Math.max(1,Math.round((new Date(fluxoDataFim)-new Date(fluxoDataInicio))/(1000*60*60*24)))

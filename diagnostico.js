@@ -1858,6 +1858,15 @@ const App = () => {
           });
           const totalEnt=filteredLanc.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
           const totalSai=filteredLanc.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          const periodoInicio=filteredLanc.length>0?filteredLanc.reduce((min,l)=>l.data<min?l.data:min,filteredLanc[0].data):null;
+          const bancosBase=bancos.reduce((a,b)=>a+Number(b.saldo_inicial||0),0)+saldoInicialDinheiro;
+          const movAntes=periodoInicio?lancamentos.filter(l=>l.data&&l.data<periodoInicio).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0):0;
+          const saldoInic=bancosBase+movAntes;
+          const saldoOperacional=totalEnt-totalSai;
+          const saldoFinal=saldoInic+saldoOperacional;
+          const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+          const _dinSaiAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          const saldoAtual=bancos.reduce((a,b)=>a+saldoBanco(b.id),0)+(saldoInicialDinheiro+_dinEntAll-_dinSaiAll);
           // Chart data: group by day/week/month depending on filter
           const chartMap={};
           filteredLanc.forEach(l=>{
@@ -1880,10 +1889,11 @@ const App = () => {
                 </div>
               </header>
               {/* KPI row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5"><p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Saldo Inicial</p><p className="text-2xl font-black text-slate-800">{formatBRL(saldoInic)}</p></div>
                 <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5"><p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total Entradas</p><p className="text-2xl font-black text-emerald-800">{formatBRL(totalEnt)}</p></div>
                 <div className="bg-red-50 border border-red-200 rounded-2xl p-5"><p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Total Saídas</p><p className="text-2xl font-black text-red-800">{formatBRL(totalSai)}</p></div>
-                <div className={`${totalEnt-totalSai>=0?'bg-blue-50 border-blue-200':'bg-amber-50 border-amber-200'} border rounded-2xl p-5`}><p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${totalEnt-totalSai>=0?'text-blue-600':'text-amber-600'}`}>Saldo Período</p><p className={`text-2xl font-black ${totalEnt-totalSai>=0?'text-blue-800':'text-amber-800'}`}>{formatBRL(totalEnt-totalSai)}</p></div>
+                <div className={`${saldoFinal>=0?'bg-blue-50 border-blue-200':'bg-amber-50 border-amber-200'} border rounded-2xl p-5`}><p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${saldoFinal>=0?'text-blue-600':'text-amber-600'}`}>Saldo Final</p><p className={`text-2xl font-black ${saldoFinal>=0?'text-blue-800':'text-amber-800'}`}>{formatBRL(saldoFinal)}</p></div>
               </div>
               {/* Chart */}
               {chartData.length>0&&(
