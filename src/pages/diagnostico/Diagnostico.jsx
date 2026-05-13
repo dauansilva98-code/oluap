@@ -143,6 +143,7 @@ const App = () => {
   // Modal forms (null = closed, {} = new, {id:...} = editing)
   const [modalBanco, setModalBanco] = useState(null);
   const [saldoInicialDinheiro, setSaldoInicialDinheiro] = useState(0);
+  const [ultimoFechamento, setUltimoFechamento] = useState(null);
   const [modalReceita, setModalReceita] = useState(null);
   const [modalDespesa, setModalDespesa] = useState(null);
   const [modalImport, setModalImport] = useState(null);
@@ -203,6 +204,7 @@ const App = () => {
           const m=cu.user_metadata;
           setProfileData({full_name:m.full_name||'',email:cu.email||'',phone:m.phone||'',cnpj:m.cnpj||'',razao_social:m.razao_social||''});
           setSaldoInicialDinheiro(parseFloat(m.saldo_inicial_dinheiro)||0);
+          setUltimoFechamento(m.ultimo_fechamento||null);
           setAvatarUrl(m.avatar_url||'');
           setProfileFilledForm(!!(m.full_name||m.cnpj||m.razao_social));
           setTipoNegocio(m.tipo_negocio||null);
@@ -429,8 +431,8 @@ const App = () => {
   const saldoBanco=(bancoId)=>{
     const b=bancos.find(x=>x.id===bancoId);
     if(!b)return 0;
-    const ent=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
-    const sai=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+    const ent=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+    const sai=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
     return Number(b.saldo_inicial)+ent-sai;
   };
 
@@ -464,6 +466,29 @@ const App = () => {
   const handleSaveSaldoInicialDinheiro = async (val) => {
     await supabase.auth.updateUser({data:{saldo_inicial_dinheiro:val}});
     setSaldoInicialDinheiro(val);
+  };
+
+  const handleFecharMes = async () => {
+    if (!window.confirm('Fechar mês?\n\nO saldo atual de cada banco e do caixa será definido como novo ponto de partida. Transações futuras serão calculadas a partir de hoje.\n\nVocê pode abrir um novo mês a qualquer momento.')) return;
+    setSavingItem(true);
+    try {
+      const closeDate = today;
+      for (const b of bancos) {
+        const saldo = saldoBanco(b.id);
+        const {error} = await supabase.from('bancos').update({saldo_inicial: saldo}).eq('id', b.id);
+        if (error) throw error;
+      }
+      const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+      const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+      const novoDinheiro = saldoInicialDinheiro + dinEnt - dinSai;
+      const {error:metaErr} = await supabase.auth.updateUser({data:{saldo_inicial_dinheiro:novoDinheiro, ultimo_fechamento:closeDate}});
+      if (metaErr) throw metaErr;
+      setUltimoFechamento(closeDate);
+      setSaldoInicialDinheiro(novoDinheiro);
+      await fetchFinanceiro(user.id);
+      alert(`Mês fechado! Saldo definido como ponto de partida em ${new Date(closeDate+'T12:00:00').toLocaleDateString('pt-BR')}.`);
+    } catch(e) { console.error(e); alert(`Erro ao fechar mês: ${e.message}`); }
+    setSavingItem(false);
   };
 
   const handleSaveLancamentoEspecie = async (payload) => {
@@ -574,8 +599,9 @@ const App = () => {
     setSavingItem(true);
     try {
       const dp = dataPagamento || today;
-      await supabase.from('contas_pagar').update({ status: 'pago', meio_pagamento: meioPagamento, data_pagamento: dp }).eq('id', id);
-      await supabase.from('lancamentos').insert({
+      const { error: upErr } = await supabase.from('contas_pagar').update({ status: 'pago', meio_pagamento: meioPagamento, data_pagamento: dp }).eq('id', id);
+      if (upErr) throw upErr;
+      const { error: insErr } = await supabase.from('lancamentos').insert({
         descricao: desc, valor: Number(valor), data: dp,
         categoria: cat || 'Outros', tipo: 'despesa',
         meio_pagamento: meioPagamento,
@@ -583,6 +609,7 @@ const App = () => {
         tipo_custo: tipo_custo || 'variavel',
         user_id: user.id,
       });
+      if (insErr) throw insErr;
       await fetchFinanceiro(user.id);
       setModalPagarCP(null);
     } catch (e) { console.error(e); alert(`Erro ao registrar pagamento: ${e.message}`); }
@@ -766,7 +793,7 @@ const App = () => {
     greenFill:'rgba(29,158,117,0.12)',blueFill:'rgba(55,138,221,0.12)',redFill:'rgba(216,90,48,0.12)',
   };
 
-  const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas, null, saldoInicialDinheiro);
+  const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas, null, saldoInicialDinheiro, ultimoFechamento);
   const metrics = liveMetrics;
   const cashFlowData = genLiveCashFlowData(lancamentos);
   const usingLiveData = cashFlowData.some(d=>d.Entradas>0||d.Saidas>0);
@@ -788,7 +815,7 @@ const App = () => {
       return lancamentos.filter(l => l.data && l.data >= cfoDataInicio && l.data <= cfoDataFim);
     return null;
   })();
-  const cfoMetrics = lancamentosParaCFO != null ? calcLiveMetrics(lancamentos, bancos, dividas, lancamentosParaCFO, saldoInicialDinheiro) : liveMetrics;
+  const cfoMetrics = lancamentosParaCFO != null ? calcLiveMetrics(lancamentos, bancos, dividas, lancamentosParaCFO, saldoInicialDinheiro, ultimoFechamento) : liveMetrics;
 
   // KPIs: Custo Fixo Real & Ponto de Equilíbrio (baseados na classificação fixa/variável)
   const mesAtualPE = new Date().toISOString().slice(0, 7);
@@ -980,10 +1007,7 @@ const App = () => {
               const entradasMes=lancMes.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
               const saidasMes=lancMes.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
               const totalBancos=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
-              const dinheiroCaixa=saldoInicialDinheiro+lancamentos.reduce((a,l)=>{
-                if(l.meio_pagamento!=='Dinheiro')return a;
-                return l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor);
-              },0);
+              const dinheiroCaixa=saldoInicialDinheiro+lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0);
               const totalInvestido=investimentos.filter(i=>i.status==='ativo').reduce((a,i)=>a+Number(i.valor_atual||i.valor_aplicado||0),0);
               return(
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -1776,8 +1800,8 @@ const App = () => {
           const movAntes=periodoInicio?lancamentos.filter(l=>l.data&&l.data<periodoInicio).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0):0;
           const saldoInic=bancosBase+movAntes;
           const saldoFinal=saldoInic+saldoOperacional;
-          const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
-          const _dinSaiAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+          const _dinSaiAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
           const saldoAtual=bancos.reduce((a,b)=>a+saldoBanco(b.id),0)+(saldoInicialDinheiro+_dinEntAll-_dinSaiAll);
           const daysMap={diario:1,semanal:7,mensal:30,anual:365};
           const periodoDias=fluxoFiltro==='periodo'&&fluxoDataInicio&&fluxoDataFim
@@ -3326,6 +3350,12 @@ const App = () => {
             ── BANCOS ────────────────────────────────────────────────── */}
         {view==='bancos'&&(
           <div className="fade-in">
+            <div className="flex justify-end mb-3">
+              <button onClick={handleFecharMes} disabled={savingItem} className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors disabled:opacity-50">
+                {ultimoFechamento&&<span className="text-[10px] text-slate-400 font-normal">último: {new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}</span>}
+                Fechar Mês
+              </button>
+            </div>
             <BancosContas
               bancos={bancos}
               lancamentos={lancamentos}
@@ -3700,14 +3730,16 @@ const App = () => {
                   setSavingItem(true);
                   try{
                     const dr=modalPagarCR.dataRecebimento||today;
-                    await supabase.from('contas_receber').update({status:'recebido',meio_pagamento:modalPagarCR.meioPagamento,data_pagamento:dr}).eq('id',modalPagarCR.id);
-                    await supabase.from('lancamentos').insert({
+                    const{error:upErr}=await supabase.from('contas_receber').update({status:'recebido',meio_pagamento:modalPagarCR.meioPagamento,data_pagamento:dr}).eq('id',modalPagarCR.id);
+                    if(upErr)throw upErr;
+                    const{error:insErr}=await supabase.from('lancamentos').insert({
                       descricao:modalPagarCR.desc,valor:Number(modalPagarCR.valor),
                       data:dr,categoria:modalPagarCR.cat||'Outros',tipo:'receita',
                       meio_pagamento:modalPagarCR.meioPagamento,
                       banco_id:modalPagarCR.bancoId||null,
                       user_id:user.id,
                     });
+                    if(insErr)throw insErr;
                     await fetchFinanceiro(user.id);
                     setModalPagarCR(null);
                   }catch(e){console.error(e);alert(`Erro: ${e.message}`);}
