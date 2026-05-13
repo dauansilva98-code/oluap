@@ -512,11 +512,6 @@ export default function BancosContas({
           {card('#EAF3DE', '#C0DD97', <><p style={labelSt('#3B6D11')}>Saldo total consolidado</p><p style={valueSt('#27500A')}>{fmtBRL(saldoTotal)}</p><p style={subSt('#3B6D11')}>todas as contas</p></>)}
           {card('#E6F1FB', '#B5D4F4', <><p style={labelSt('#185FA5')}>Saldo bancário</p><p style={valueSt('#0C447C')}>{fmtBRL(saldoBancario)}</p><p style={subSt('#185FA5')}>{bancos.length} conta{bancos.length !== 1 ? 's' : ''} ativa{bancos.length !== 1 ? 's' : ''}</p></>)}
           {card('#FAEEDA', '#FAC775', <><p style={labelSt('#854F0B')}>Dinheiro em espécie</p><p style={valueSt('#633806')}>{fmtBRL(especieSaldo)}</p><p style={subSt('#854F0B')}>caixa físico</p></>)}
-          <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.1rem' }}>
-            <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', marginBottom: 4 }}>Maior saldo</p>
-            <p style={{ fontSize: 19, fontWeight: 500, color: '#05121b', lineHeight: 1.2 }}>{fmtBRL(maiorBanco?.saldoCalc || 0)}</p>
-            <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{maiorBanco?.nome || '—'}</p>
-          </div>
           {card('#EEEDFE', '#CECBF6', <><p style={labelSt('#3C3489')}>Entradas do mês</p><p style={valueSt('#26215C')}>{fmtBRL(entradasMes)}</p><p style={subSt('#3C3489')}>receitas registradas</p></>)}
           <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.1rem' }}>
             <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', marginBottom: 4 }}>Última atualização</p>

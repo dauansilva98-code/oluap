@@ -78,7 +78,7 @@ export const genAlerts = (m) => {
   return alerts
 }
 
-export const calcLiveMetrics = (lancamentos, bancos, dividas, srcOverride = null) => {
+export const calcLiveMetrics = (lancamentos, bancos, dividas, srcOverride = null, saldoInicialDinheiro = 0) => {
   if (!lancamentos || lancamentos.length === 0) return null
   let src, divisor
   if (srcOverride) {
@@ -122,11 +122,14 @@ export const calcLiveMetrics = (lancamentos, bancos, dividas, srcOverride = null
   })
   const _burnRateValidos = _last3Saidas.filter(v => v > 0)
   const burnRate = _burnRateValidos.length > 0 ? _burnRateValidos.reduce((a, v) => a + v, 0) / _burnRateValidos.length : totalCust
-  const saldo = bancos.reduce((a,b)=>{
+  const saldoBancos = bancos.reduce((a,b)=>{
     const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0)
     const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((s,l)=>s+Number(l.valor),0)
     return a+Number(b.saldo_inicial)+ent-sai
   },0)
+  const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0)
+  const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0)
+  const saldo = saldoBancos + saldoInicialDinheiro + dinEnt - dinSai
   const runwayMeses = burnRate>0&&saldo>0 ? saldo/burnRate : 0
   const folegoDias = Math.round(runwayMeses*30)
   // MoM: compare with previous month

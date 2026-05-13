@@ -57,6 +57,7 @@ const CHART_COLORS = ['#137789','#ff7b00','#05121b','#fbbf24','#34d399','#f87171
 // §2  UTILITÁRIOS  —  formatadores, máscaras, validadores, parser de gráficos
 // ─────────────────────────────────────────────────────────────────────────────
 const formatBRL = v => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+const fmtCurrInput = v => Number(v)>0 ? formatCurrency(String(Math.round(Number(v)*100))) : '';
 const formatCurrency = value => {
   if (!value) return "";
   const n = value.replace(/\D/g,"");
@@ -454,7 +455,7 @@ const genAlerts = (m) => {
 };
 
 // ── calcLiveMetrics — métricas calculadas dos lançamentos reais ───────────────
-const calcLiveMetrics = (lancamentos, bancos, dividas) => {
+const calcLiveMetrics = (lancamentos, bancos, dividas, saldoInicialDinheiro = 0) => {
   if (!lancamentos || lancamentos.length === 0) return null;
   const mesAtual = new Date().toISOString().slice(0,7);
   let src = lancamentos.filter(l => l.data && l.data.startsWith(mesAtual));
@@ -486,11 +487,14 @@ const calcLiveMetrics = (lancamentos, bancos, dividas) => {
   });
   const _br_validos = _br_saidas.filter(v => v > 0);
   const burnRate = _br_validos.length > 0 ? _br_validos.reduce((a, v) => a + v, 0) / _br_validos.length : totalCust;
-  const saldo = bancos.reduce((a,b)=>{
+  const _saldoBancos = bancos.reduce((a,b)=>{
     const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0);
     const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((s,l)=>s+Number(l.valor),0);
     return a+Number(b.saldo_inicial)+ent-sai;
   },0);
+  const _dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+  const _dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+  const saldo = _saldoBancos + saldoInicialDinheiro + _dinEnt - _dinSai;
   const runwayMeses = burnRate>0&&saldo>0 ? saldo/burnRate : 0;
   const folegoDias = Math.round(runwayMeses*30);
   let score=50;
@@ -1122,7 +1126,7 @@ const App = () => {
     {id:'profile',         label:'Meu Perfil',            icon:User},
   ];
 
-  const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas);
+  const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas, saldoInicialDinheiro);
   const metrics = liveMetrics;
   const cashFlowData = genLiveCashFlowData(lancamentos);
   const usingLiveData = cashFlowData.some(d=>d.Entradas>0||d.Saidas>0);
@@ -1959,7 +1963,7 @@ const App = () => {
                           <td className="px-5 py-3 text-[10px] text-slate-400 font-medium whitespace-nowrap">{fmtDate(l.data)}</td>
                           <td className="px-5 py-3 text-xs font-bold text-[#05121b]">{l.descricao}</td>
                           <td className="px-5 py-3 text-[10px] text-slate-400">{l.categoria||'—'}</td>
-                          <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===l.banco_id)?.nome||'—'}</td>
+                          <td className="px-5 py-3 text-[10px] text-slate-400">{l.meio_pagamento==='Dinheiro'?'Dinheiro':(bancos.find(b=>b.id===l.banco_id)?.nome||'—')}</td>
                           <td className="px-5 py-3 text-sm font-black text-emerald-700 whitespace-nowrap">+{formatBRL(l.valor)}</td>
                           <td className="px-5 py-3"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
                         </tr>
@@ -1997,7 +2001,7 @@ const App = () => {
                           <td className="px-5 py-3 text-[10px] text-slate-400 font-medium whitespace-nowrap">{fmtDate(l.data)}</td>
                           <td className="px-5 py-3 text-xs font-bold text-[#05121b]">{l.descricao}</td>
                           <td className="px-5 py-3 text-[10px] text-slate-400">{l.categoria||'—'}</td>
-                          <td className="px-5 py-3 text-[10px] text-slate-400">{bancos.find(b=>b.id===l.banco_id)?.nome||'—'}</td>
+                          <td className="px-5 py-3 text-[10px] text-slate-400">{l.meio_pagamento==='Dinheiro'?'Dinheiro':(bancos.find(b=>b.id===l.banco_id)?.nome||'—')}</td>
                           <td className="px-5 py-3 text-sm font-black text-red-600 whitespace-nowrap">-{formatBRL(l.valor)}</td>
                           <td className="px-5 py-3"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
                         </tr>
@@ -2056,7 +2060,7 @@ const App = () => {
                             </td>
                             <td className="px-5 py-3">
                               <div className="flex items-center gap-2">
-                                <button onClick={()=>setModalCP({...cp})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
+                                <button onClick={()=>setModalCP({...cp,valor:fmtCurrInput(cp.valor)})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
                                 <button onClick={()=>deleteItem('contas_pagar',cp.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                               </div>
                             </td>
@@ -2105,7 +2109,7 @@ const App = () => {
                             <td className="px-5 py-3"><span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}><span className={`w-1.5 h-1.5 rounded-full ${S.dot}`}></span>{S.lbl}</span></td>
                             <td className="px-5 py-3">
                               <div className="flex items-center gap-2">
-                                <button onClick={()=>setModalCR({...cr})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
+                                <button onClick={()=>setModalCR({...cr,valor:fmtCurrInput(cr.valor)})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
                                 <button onClick={()=>deleteItem('contas_receber',cr.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                               </div>
                             </td>
@@ -2211,7 +2215,7 @@ const App = () => {
                             <td className="px-5 py-3"><span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${S.bg} ${S.border} ${S.txt}`}>{S.lbl}</span></td>
                             <td className="px-5 py-3">
                               <div className="flex items-center gap-2">
-                                <button onClick={()=>setModalDivida({...d})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
+                                <button onClick={()=>setModalDivida({...d,valor_total:fmtCurrInput(d.valor_total),valor_parcela:fmtCurrInput(d.valor_parcela)})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={13}/></button>
                                 <button onClick={()=>deleteItem('dividas',d.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>
                               </div>
                             </td>
@@ -2269,7 +2273,7 @@ const App = () => {
                             <div><p className="font-black text-sm text-[#05121b]">{b.nome}</p><p className="text-[10px] text-slate-400">{b.tipo}</p></div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button onClick={()=>setModalBanco({...b})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={14}/></button>
+                            <button onClick={()=>setModalBanco({...b,saldo_inicial:fmtCurrInput(b.saldo_inicial)})} className="text-slate-300 hover:text-[#137789] transition-colors"><Pencil size={14}/></button>
                             <button onClick={()=>deleteItem('bancos',b.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={14}/></button>
                           </div>
                         </div>
@@ -2394,9 +2398,9 @@ const App = () => {
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo de custo</label>
                   <div className="flex gap-2">
-                    {[{v:'fixa',l:'Custo Fixo'},{v:'variavel',l:'Custo Variável'}].map(({v,l})=>(
+                    {[{v:'fixa',l:'Custo Fixo',sel:'bg-red-600 text-white border-red-600',unsel:'bg-white text-red-600 border-red-200 hover:border-red-300'},{v:'variavel',l:'Custo Variável',sel:'bg-amber-500 text-white border-amber-500',unsel:'bg-white text-amber-600 border-amber-200 hover:border-amber-300'}].map(({v,l,sel,unsel})=>(
                       <button key={v} type="button" onClick={()=>setModalDespesa({...modalDespesa,tipo_custo:v})}
-                        className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${(modalDespesa.tipo_custo||'variavel')===v?'bg-red-500 text-white border-red-500':'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
+                        className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${(modalDespesa.tipo_custo||'variavel')===v?sel:unsel}`}>
                         {l}
                       </button>
                     ))}

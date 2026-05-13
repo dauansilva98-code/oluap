@@ -766,7 +766,7 @@ const App = () => {
     greenFill:'rgba(29,158,117,0.12)',blueFill:'rgba(55,138,221,0.12)',redFill:'rgba(216,90,48,0.12)',
   };
 
-  const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas);
+  const liveMetrics = calcLiveMetrics(lancamentos, bancos, dividas, null, saldoInicialDinheiro);
   const metrics = liveMetrics;
   const cashFlowData = genLiveCashFlowData(lancamentos);
   const usingLiveData = cashFlowData.some(d=>d.Entradas>0||d.Saidas>0);
@@ -788,7 +788,7 @@ const App = () => {
       return lancamentos.filter(l => l.data && l.data >= cfoDataInicio && l.data <= cfoDataFim);
     return null;
   })();
-  const cfoMetrics = lancamentosParaCFO != null ? calcLiveMetrics(lancamentos, bancos, dividas, lancamentosParaCFO) : liveMetrics;
+  const cfoMetrics = lancamentosParaCFO != null ? calcLiveMetrics(lancamentos, bancos, dividas, lancamentosParaCFO, saldoInicialDinheiro) : liveMetrics;
 
   // KPIs: Custo Fixo Real & Ponto de Equilíbrio (baseados na classificação fixa/variável)
   const mesAtualPE = new Date().toISOString().slice(0, 7);
@@ -980,7 +980,7 @@ const App = () => {
               const entradasMes=lancMes.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
               const saidasMes=lancMes.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
               const totalBancos=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
-              const dinheiroCaixa=lancamentos.reduce((a,l)=>{
+              const dinheiroCaixa=saldoInicialDinheiro+lancamentos.reduce((a,l)=>{
                 if(l.meio_pagamento!=='Dinheiro')return a;
                 return l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor);
               },0);
@@ -2204,7 +2204,7 @@ const App = () => {
                               <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
                               <td className="px-4 py-3.5"><span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${tipoInfo.cls}`}>{tipoInfo.lbl}</span></td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{fmtDate(l.data)}</td>
-                              <td className="px-4 py-3.5 text-slate-500 text-xs">{bancos.find(b=>b.id===l.banco_id)?.nome||'—'}</td>
+                              <td className="px-4 py-3.5 text-slate-500 text-xs">{l.meio_pagamento==='Dinheiro'?'Dinheiro':(bancos.find(b=>b.id===l.banco_id)?.nome||'—')}</td>
                               <td className="px-4 py-3.5 text-right font-medium text-emerald-700 whitespace-nowrap">+{formatBRL(l.valor)}</td>
                               <td className="px-4 py-3.5"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
                             </tr>
@@ -2680,7 +2680,7 @@ const App = () => {
                             <td style={{padding:'10px 16px',textAlign:'right',fontSize:13,fontWeight:500,color:valColor,whiteSpace:'nowrap'}}>{formatBRL(c.valor)}</td>
                             <td style={{padding:'10px 16px'}}>
                               <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                                <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:c.valor,vencimento:c.venc,categoria:c.cat,tipo_custo:c.tipo_custo||'variavel',status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
+                                <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:formatCurrency(String(Math.round(Number(c.valor||0)*100))),vencimento:c.venc,categoria:c.cat,tipo_custo:c.tipo_custo||'variavel',status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
                                 {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,cat:c.cat,tipo_custo:contasPagar.find(x=>x.id===c.id)?.tipo_custo||'variavel',meioPagamento:'',bancoId:'',dataPagamento:today})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'var(--color-success-bg)',color:'var(--color-success-text)',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
                               </div>
                             </td>
@@ -2705,7 +2705,7 @@ const App = () => {
             contasReceber={contasReceber}
             bancos={bancos}
             onSalvar={handleSalvarCR}
-            onEditar={cr=>setModalCR({...cr})}
+            onEditar={cr=>setModalCR({...cr,valor:formatCurrency(String(Math.round(Number(cr.valor||0)*100)))})}
             onReceber={handleReceberCR}
             onExcluir={handleExcluirCR}
             onPagamentoParcial={handlePagamentoParcial}
@@ -3430,9 +3430,9 @@ const App = () => {
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Tipo de custo</label>
                     <div className="flex gap-2">
-                      {[{v:'fixa',l:'Custo Fixo'},{v:'variavel',l:'Custo Variável'}].map(({v,l})=>(
+                      {[{v:'fixa',l:'Custo Fixo',sel:'bg-red-600 text-white border-red-600',unsel:'bg-white text-red-600 border-red-200 hover:border-red-300'},{v:'variavel',l:'Custo Variável',sel:'bg-amber-500 text-white border-amber-500',unsel:'bg-white text-amber-600 border-amber-200 hover:border-amber-300'}].map(({v,l,sel,unsel})=>(
                         <button key={v} type="button" onClick={()=>setModalDespesa({...modalDespesa,tipo_custo:v})}
-                          className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${(modalDespesa.tipo_custo||'variavel')===v?'bg-red-500 text-white border-red-500':'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
+                          className={`flex-1 py-2.5 rounded-xl text-xs font-black border transition-colors ${(modalDespesa.tipo_custo||'variavel')===v?sel:unsel}`}>
                           {l}
                         </button>
                       ))}
