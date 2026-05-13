@@ -2246,12 +2246,13 @@ const App = () => {
             if(['Impostos','Impostos e taxas','Imposto / DAS'].includes(cat))return'imposto';
             return'variavel';
           };
+          const getTipoCusto=l=>tipoFromCat(l.categoria)==='imposto'?'imposto':(l.tipo_custo||tipoFromCat(l.categoria));
           // Metrics
           const totalMes=despesasMes.reduce((a,l)=>a+Number(l.valor),0);
           const totalPrev=despesasPrev.reduce((a,l)=>a+Number(l.valor),0);
-          const fixas=despesasMes.filter(l=>tipoFromCat(l.categoria)==='fixa').reduce((a,l)=>a+Number(l.valor),0);
-          const variaveis=despesasMes.filter(l=>tipoFromCat(l.categoria)==='variavel').reduce((a,l)=>a+Number(l.valor),0);
-          const variavelsPrev=despesasPrev.filter(l=>tipoFromCat(l.categoria)==='variavel').reduce((a,l)=>a+Number(l.valor),0);
+          const fixas=despesasMes.filter(l=>getTipoCusto(l)==='fixa').reduce((a,l)=>a+Number(l.valor),0);
+          const variaveis=despesasMes.filter(l=>getTipoCusto(l)==='variavel').reduce((a,l)=>a+Number(l.valor),0);
+          const variavelsPrev=despesasPrev.filter(l=>getTipoCusto(l)==='variavel').reduce((a,l)=>a+Number(l.valor),0);
           const aPagar=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento?.startsWith(periodoKey)).reduce((a,cp)=>a+Number(cp.valor),0);
           const aPagarCount=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento?.startsWith(periodoKey)).length;
           // Delta: expense rising = bad (red), falling = good (green)
@@ -2270,7 +2271,7 @@ const App = () => {
             atual:despesasMes.filter(l=>(l.categoria||'Outros')===cat).reduce((a,l)=>a+Number(l.valor),0),
           }));
           // Table
-          const filtroFnD={todos:()=>true,fixa:l=>tipoFromCat(l.categoria)==='fixa',variavel:l=>tipoFromCat(l.categoria)==='variavel',imposto:l=>tipoFromCat(l.categoria)==='imposto'};
+          const filtroFnD={todos:()=>true,fixa:l=>getTipoCusto(l)==='fixa',variavel:l=>getTipoCusto(l)==='variavel',imposto:l=>getTipoCusto(l)==='imposto'};
           const filtradosD=despesasMes.filter(filtroFnD[filtroDespesas]||filtroFnD.todos);
           const TIPO_STYLE={fixa:'bg-cyan-50 text-cyan-700 border-cyan-200',variavel:'bg-violet-50 text-violet-700 border-violet-200',imposto:'bg-amber-50 text-amber-700 border-amber-200'};
           const TIPO_LABEL={fixa:'Fixa',variavel:'Variável',imposto:'Imposto'};
@@ -2398,7 +2399,7 @@ const App = () => {
                       </thead>
                       <tbody>
                         {filtradosD.map((l,idx)=>{
-                          const tipo=tipoFromCat(l.categoria);
+                          const tipo=getTipoCusto(l);
                           const isSelD=despSelected.has(l.id);
                           return(
                             <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtradosD.length-1?'border-b border-slate-100':''}`} style={{background:isSelD?'var(--color-row-selected)':undefined}}>
@@ -2433,7 +2434,7 @@ const App = () => {
             cat:cp.categoria||'Outros',
             cc:cp.centro_custo||'—',
             venc:cp.vencimento||'',
-            tipo:cp.tipo||'variavel',
+            tipo_custo:cp.tipo_custo||'variavel',
             status:CP_STATUS_MAP[cp.status]||cp.status||'aberto',
             valor:Number(cp.valor)||0,
           }));
@@ -2660,7 +2661,7 @@ const App = () => {
                     </thead>
                     <tbody>
                       {filtrados.map(c=>{
-                        const tp=tipoBadge[c.tipo]||{bg:'#f1f5f9',txt:'#64748b',lbl:c.tipo};
+                        const tp=tipoBadge[c.tipo_custo]||{bg:'#f1f5f9',txt:'#64748b',lbl:c.tipo_custo};
                         const sb=statusBadge[c.status]||{bg:'#f1f5f9',txt:'#64748b',lbl:c.status};
                         const isAtrasado=c.status==='atrasado';
                         const isPago=c.status==='pago';
