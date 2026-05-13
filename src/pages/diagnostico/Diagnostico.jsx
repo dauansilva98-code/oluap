@@ -2467,7 +2467,7 @@ const App = () => {
           };
           const toggleCpSelect=id=>setCpSelected(prev=>{const n=new Set(prev);n.has(id)?n.delete(id):n.add(id);return n;});
           const CAT_COLORS={'Folha':'#378ADD','Fornecedores':'#7F77DD','Impostos':'#D85A30','Infraestrutura':'#BA7517','Marketing':'#1D9E75','Utilities':'#137789','Financeiro':'#E8734A','Outros':'#888780'};
-          const catMap=cpDataFiltradaMes.reduce((acc,c)=>{const cat=c.cat||'Outros';acc[cat]=(acc[cat]||0)+c.valor;return acc},{});
+          const catMap=cpData.reduce((acc,c)=>{const cat=c.cat||'Outros';acc[cat]=(acc[cat]||0)+c.valor;return acc},{});
           const donutData=Object.entries(catMap).map(([name,value])=>({name,value,color:CAT_COLORS[name]||'#888780'}));
           const barData=[];
           for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const mes=d.toISOString().slice(0,7);const label=d.toLocaleDateString('pt-BR',{month:'short'});const prev=cpData.filter(c=>c.venc.startsWith(mes)).reduce((a,c)=>a+c.valor,0);const pago=cpData.filter(c=>c.venc.startsWith(mes)&&c.status==='pago').reduce((a,c)=>a+c.valor,0);barData.push({mes:label.charAt(0).toUpperCase()+label.slice(1),Previsto:prev,Pago:pago});}
