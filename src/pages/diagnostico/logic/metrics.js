@@ -36,12 +36,11 @@ export const calcMetrics = (diag) => {
   const runwayMeses   = burnRate > 0 && saldo > 0 ? saldo / burnRate : 0
   const folegoDias    = Math.round(runwayMeses * 30)
   const ticketMedio   = numVendas > 0 ? receita / numVendas : 0
-  let score = 50
-  if (margLiq >= 15) score += 20; else if (margLiq >= 5) score += 10; else if (margLiq >= 0) score -= 5; else score -= 25
-  if (folegoDias >= 90) score += 15; else if (folegoDias >= 45) score += 5; else if (folegoDias >= 20) score -= 5; else if (folegoDias > 0) score -= 15
-  if (receita > 0 && pontoEq <= receita) score += 10; else if (receita > 0) score -= 10
-  if (margemBruta >= 40) score += 5; else if (margemBruta < 15) score -= 5
-  score = Math.max(10, Math.min(100, Math.round(score)))
+  const _mlScore  = margLiq >= 15 ? 100 : margLiq >= 5 ? 70 : margLiq >= 0 ? 40 : 0
+  const _fogScore = folegoDias >= 90 ? 100 : folegoDias >= 30 ? 65 : folegoDias > 0 ? 30 : 0
+  const _peScore  = pontoEq <= 0 ? 50 : receita >= pontoEq ? 100 : receita >= pontoEq * 0.85 ? 60 : 20
+  const _mbScore  = margemBruta >= 40 ? 100 : margemBruta >= 25 ? 70 : margemBruta >= 10 ? 40 : 0
+  let score = Math.max(10, Math.min(100, Math.round(_mlScore * 0.30 + _fogScore * 0.30 + _peScore * 0.25 + _mbScore * 0.15)))
   return { receita, custDir, custVar, custFix, totalCust, lucro, saldo, margemBruta, margContrib, margLiq, pontoEq, burnRate, runwayMeses, folegoDias, ticketMedio, pmr, pmp, score }
 }
 
@@ -149,12 +148,11 @@ export const calcLiveMetrics = (lancamentos, bancos, dividas, srcOverride = null
   // Ticket médio: receita / nº de transações de receita
   const nVendas = src.filter(l=>l.tipo==='receita').length
   const ticketMedio = nVendas > 0 ? receita / nVendas : 0
-  let score=50
-  if(margLiq>=15)score+=20; else if(margLiq>=5)score+=10; else if(margLiq<0)score-=25
-  if(folegoDias>=90)score+=15; else if(folegoDias>=45)score+=5; else if(folegoDias>0&&folegoDias<20)score-=15
-  if(receita>0&&pontoEq<=receita)score+=10; else if(receita>0)score-=10
-  if(margemBruta>=40)score+=5; else if(margemBruta<15)score-=5
-  score=Math.max(10,Math.min(100,Math.round(score)))
+  const _mlS  = margLiq >= 15 ? 100 : margLiq >= 5 ? 70 : margLiq >= 0 ? 40 : 0
+  const _fogS = folegoDias >= 90 ? 100 : folegoDias >= 30 ? 65 : folegoDias > 0 ? 30 : 0
+  const _peS  = pontoEq <= 0 ? 50 : receita >= pontoEq ? 100 : receita >= pontoEq * 0.85 ? 60 : 20
+  const _mbS  = margemBruta >= 40 ? 100 : margemBruta >= 25 ? 70 : margemBruta >= 10 ? 40 : 0
+  let score = Math.max(10, Math.min(100, Math.round(_mlS * 0.30 + _fogS * 0.30 + _peS * 0.25 + _mbS * 0.15)))
   // Alavancagem Operacional em R$ (MC Total / Resultado) — multiplicador de crescimento
   const alavancagem = lucro !== 0 ? (receita - custVar) / lucro : null
   // Ciclo Financeiro básico (PMR - PMP); PME não disponível sem dados de estoque
@@ -207,9 +205,14 @@ export const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => 
   if(m.folegoDias >= 30 && m.folegoDias < 90)
     alerts.push({cat:'Caixa',type:'yellow',icon:AlertTriangle,titulo:'Reserva operacional insuficiente',
       msg:`Fôlego de ${m.folegoDias} dias. Recomenda-se ao menos 90 dias para absorver sazonalidade e imprevistos.`})
-  if(m.receita>0 && m.pontoEq > m.receita)
-    alerts.push({cat:'Ponto de Equilíbrio',type:'yellow',icon:AlertTriangle,titulo:'Faturamento abaixo do PE',
-      msg:`O ponto de equilíbrio é ${formatBRL(m.pontoEq)}/mês, mas o faturamento é ${formatBRL(m.receita)}/mês.`})
+  if(m.receita>0 && m.pontoEq>0){
+    if(m.receita < m.pontoEq*0.85)
+      alerts.push({cat:'Ponto de Equilíbrio',type:'red',icon:AlertOctagon,titulo:'Faturamento crítico abaixo do PE',
+        msg:`Faturamento (${formatBRL(m.receita)}) está ${(100-m.receita/m.pontoEq*100).toFixed(0)}% abaixo do ponto de equilíbrio (${formatBRL(m.pontoEq)}/mês).`})
+    else if(m.receita < m.pontoEq)
+      alerts.push({cat:'Ponto de Equilíbrio',type:'yellow',icon:AlertTriangle,titulo:'Faturamento abaixo do PE',
+        msg:`O ponto de equilíbrio é ${formatBRL(m.pontoEq)}/mês. Faltam ${formatBRL(m.pontoEq-m.receita)} para atingi-lo.`})
+  }
   if(m.margContrib > 0 && m.margContrib < 20)
     alerts.push({cat:'Margem de Contribuição',type:'red',icon:AlertOctagon,titulo:'Margem de contribuição crítica',
       msg:`${m.margContrib.toFixed(1)}% de margem de contribuição — cada venda cobre pouco além dos custos variáveis. Risco real de prejuízo com qualquer oscilação de custo.`})
@@ -220,12 +223,12 @@ export const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => 
     alerts.push({cat:'Eficiência',type:'yellow',icon:AlertTriangle,titulo:'Estrutura de custos pesada',
       msg:`${(m.totalCust/m.receita*100).toFixed(1)}% da receita comprometida com custos.`})
   const atRec = contasReceber.filter(cr=>cr.vencimento<today&&cr.status!=='recebido')
-  const totRec = contasReceber.filter(cr=>cr.status!=='recebido').reduce((a,cr)=>a+Number(cr.valor),0)
   if(atRec.length>0){
     const totAtRec=atRec.reduce((a,cr)=>a+Number(cr.valor),0)
-    const pctInad=totRec>0?totAtRec/totRec*100:0
+    const totalEmitidoCR=contasReceber.reduce((a,cr)=>a+Number(cr.valor),0)
+    const pctInad=totalEmitidoCR>0?totAtRec/totalEmitidoCR*100:0
     alerts.push({cat:'Inadimplência',type:'yellow',icon:Wallet,titulo:`${atRec.length} recebível${atRec.length>1?'s':''} em atraso`,
-      msg:`${formatBRL(totAtRec)} a cobrar (${pctInad.toFixed(0)}% dos recebíveis pendentes).`})
+      msg:`${formatBRL(totAtRec)} a cobrar (${pctInad.toFixed(0)}% do total emitido).`})
   }
   const d7 = new Date(today); d7.setDate(d7.getDate()+7)
   const d7s = d7.toISOString().split('T')[0]
@@ -250,7 +253,7 @@ export const genLiveAlerts = (m, contasPagar, contasReceber, dividas, today) => 
   if(m.folegoDias >= 90)
     alerts.push({cat:'Caixa',type:'green',icon:CheckCircle,titulo:'Caixa bem capitalizado',
       msg:`${m.folegoDias} dias de fôlego operacional — boa reserva de segurança.`})
-  if(m.receita>0 && m.pontoEq>0 && m.receita >= m.pontoEq*1.2)
+  if(m.receita>0 && m.pontoEq>0 && m.receita >= m.pontoEq)
     alerts.push({cat:'Ponto de Equilíbrio',type:'green',icon:Target,titulo:'Operando acima do ponto de equilíbrio',
       msg:`Faturamento (${formatBRL(m.receita)}) está ${(m.receita/m.pontoEq*100-100).toFixed(0)}% acima do PE (${formatBRL(m.pontoEq)}).`})
   if(m.margContrib >= 40)

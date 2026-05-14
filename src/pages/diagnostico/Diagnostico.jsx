@@ -848,8 +848,8 @@ const App = () => {
     return { rec, desp };
   };
   const [pm1, pm2, pm3] = [1, 2, 3].map(getMonthData);
-  const projecaoReceita = (pm1.rec + pm2.rec + pm3.rec) / 3;
-  const projecaoDespesa = (pm1.desp + pm2.desp + pm3.desp) / 3;
+  const projecaoReceita = pm1.rec*0.50 + pm2.rec*0.30 + pm3.rec*0.20;
+  const projecaoDespesa = pm1.desp*0.50 + pm2.desp*0.30 + pm3.desp*0.20;
   const projecaoLucro = projecaoReceita - projecaoDespesa;
   const hasProjecao = projecaoReceita > 0 || projecaoDespesa > 0;
 
@@ -1059,7 +1059,7 @@ const App = () => {
                         <span className={`text-[10px] font-bold ${metrics.score>=70?'text-emerald-700':metrics.score>=40?'text-amber-700':'text-red-700'}`}>{metrics.score>=70?'Saudável':metrics.score>=40?'Atenção':'Crítico'}</span>
                       </div>
                     </div>
-                    <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Sem novas vendas" status={metrics.folegoDias>=60?'green':metrics.folegoDias>=30?'yellow':'red'}/>
+                    <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Sem novas vendas" status={metrics.folegoDias>=90?'green':metrics.folegoDias>=30?'yellow':'red'}/>
                     <SemaforoCard icon={Target} title="Ponto de Equilíbrio" value={formatBRL(pontoEquilibrioReal||metrics.pontoEq)} subtitle="Necessário por mês" status={(pontoEquilibrioReal||metrics.pontoEq)>0?(metrics.receita>=(pontoEquilibrioReal||metrics.pontoEq)?'green':metrics.receita>=(pontoEquilibrioReal||metrics.pontoEq)*0.8?'yellow':'red'):'neutral'}/>
                     <SemaforoCard icon={TrendingUp} title="Margem Líquida" value={`${metrics.margLiq.toFixed(1)}%`} subtitle="Por R$100 vendidos" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                   </div>
@@ -1106,7 +1106,7 @@ const App = () => {
                   <IndicadorCard titulo="Margem Bruta" valor={`${metrics.margemBruta.toFixed(1)}%`} formula="Receita − Custos Diretos" status={metrics.margemBruta>=40?'green':metrics.margemBruta>=20?'yellow':'red'}/>
                   <IndicadorCard titulo="Margem Líquida" valor={`${metrics.margLiq.toFixed(1)}%`} formula="Lucro Líquido ÷ Receita" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'} destaque/>
                   <IndicadorCard titulo="Burn Rate" traducao="taxa de consumo de caixa" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa / mês" status="neutral"/>
-                  <IndicadorCard titulo="Runway" traducao="fôlego de caixa" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
+                  <IndicadorCard titulo="Runway" traducao="fôlego de caixa" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate" status={metrics.runwayMeses>=6?'green':metrics.runwayMeses>=3?'yellow':metrics.runwayMeses>0?'red':'neutral'}/>
                 </div>
               </div>
               </>
@@ -1570,7 +1570,7 @@ const App = () => {
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2"><Activity size={10}/> Caixa & Liquidez</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
                     <IndicadorCard titulo="Cash Burn Rate" traducao="taxa de consumo de caixa" valor={formatBRL(metrics.burnRate)} formula="Média das saídas de caixa (últimos 3 meses)" status="neutral"/>
-                    <IndicadorCard titulo="Runway" traducao="fôlego de caixa" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=3?'green':metrics.runwayMeses>=1.5?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
+                    <IndicadorCard titulo="Runway" traducao="fôlego de caixa" valor={metrics.runwayMeses>0?`${metrics.runwayMeses.toFixed(1)} meses`:'—'} formula="Saldo ÷ Burn Rate mensal" status={metrics.runwayMeses>=6?'green':metrics.runwayMeses>=3?'yellow':metrics.runwayMeses>0?'red':'neutral'} destaque/>
                     <IndicadorCard titulo={isServico&&!isProduto?'Valor Médio por Contrato':'Ticket Médio'} traducao="valor médio por venda" valor={metrics.ticketMedio>0?formatBRL(metrics.ticketMedio):'—'} formula={`Faturamento ÷ ${metrics.nVendas||0} receitas no período`} status={metrics.ticketMedio>0?'neutral':'neutral'}/>
                     <IndicadorCard titulo="Prazo Médio Recebimento" valor={pmrLive>0?`${pmrLive} dias`:'—'} formula="(Recebíveis pendentes ÷ Receita) × 30" status={pmrLive>0?(pmrLive<=30?'green':pmrLive<=60?'yellow':'red'):'neutral'}/>
                   </div>
@@ -1946,9 +1946,8 @@ const App = () => {
                 <div className="rounded-2xl border px-4 py-3 flex items-start gap-3" style={{background:'var(--color-warning-bg)',borderColor:'var(--color-warning-border)'}}>
                   <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{background:'var(--color-warning-dot)'}}/>
                   <p className="text-xs leading-relaxed" style={{color:'var(--color-warning-text)'}}>
-                    <span className="font-bold" style={{color:'var(--color-warning-text2)'}}>Vencimentos nos próximos 7 dias: </span>
-                    {alertas.map((cp,i)=><span key={cp.id}>{cp.descricao||cp.nome||'—'} {formatBRL(cp.valor)} ({fmtDate(cp.vencimento)}){i<alertas.length-1?', ':''}</span>)}
-                    {' '} — total <span className="font-bold" style={{color:'var(--color-warning-text2)'}}>{formatBRL(alertTotal)}</span>
+                    <span className="font-bold" style={{color:'var(--color-warning-text2)'}}>Alerta: </span>
+                    Você tem <span className="font-bold">{alertas.length}</span> {alertas.length===1?'boleto':'boletos'} nos próximos 7 dias, totalizando <span className="font-bold" style={{color:'var(--color-warning-text2)'}}>{formatBRL(alertTotal)}</span>. Prepare o caixa para essas saídas.
                   </p>
                 </div>
               )}
@@ -2609,48 +2608,35 @@ const App = () => {
                 </div>
               </div>
               {/* 3. ALERTAS */}
-              {vencidas.length>0&&(
-                <div style={{borderRadius:12,padding:'14px 18px',border:'1px solid #F09595',background:'var(--color-danger-bg)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                    <div style={{width:8,height:8,borderRadius:'50%',background:CC.red,flexShrink:0}}/>
-                    <span style={{fontSize:12,fontWeight:700,color:'var(--color-danger-text)'}}>{vencidas.length} {vencidas.length===1?'conta vencida':'contas vencidas'}</span>
-                    <span style={{marginLeft:'auto',fontSize:12,fontWeight:700,color:'var(--color-danger-text)'}}>Total: {formatBRL(totalVencidas)}</span>
-                  </div>
-                  <div style={{display:'flex',flexDirection:'column',gap:4,paddingLeft:16}}>
-                    {vencidas.slice(0,4).map(c=>(
-                      <div key={c.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:11,color:'var(--color-danger-text2)'}}>
-                        <span>{c.desc}</span>
-                        <span style={{display:'flex',gap:12,fontWeight:500,flexShrink:0,marginLeft:12}}>
-                          <span>{c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}`:'-'}</span>
-                          <span>{formatBRL(c.valor)}</span>
-                        </span>
+              {(()=>{
+                const d7cp=new Date(today);d7cp.setDate(d7cp.getDate()+7);
+                const d7cpStr=d7cp.toISOString().split('T')[0];
+                const proximos7cp=cpData.filter(c=>c.status!=='pago'&&c.venc>=today&&c.venc<=d7cpStr);
+                const totalProximos7cp=proximos7cp.reduce((a,c)=>a+c.valor,0);
+                const vencidasGeral=cpData.filter(c=>c.status!=='pago'&&c.venc<today);
+                const totalVencidasGeral=vencidasGeral.reduce((a,c)=>a+c.valor,0);
+                return(
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    {proximos7cp.length>0&&(
+                      <div style={{borderRadius:12,padding:'14px 18px',border:'1px solid var(--color-warning-border)',background:'var(--color-warning-bg)',display:'flex',alignItems:'flex-start',gap:10}}>
+                        <div style={{width:8,height:8,borderRadius:'50%',background:'var(--color-warning-dot)',flexShrink:0,marginTop:4}}/>
+                        <p style={{fontSize:12,color:'var(--color-warning-text)',margin:0,lineHeight:1.6}}>
+                          <span style={{fontWeight:700,color:'var(--color-warning-text2)'}}>Alerta: </span>
+                          Você tem <span style={{fontWeight:700}}>{proximos7cp.length}</span> {proximos7cp.length===1?'boleto':'boletos'} nos próximos 7 dias, totalizando <span style={{fontWeight:700}}>{formatBRL(totalProximos7cp)}</span>. Prepare o caixa para essas saídas.
+                        </p>
                       </div>
-                    ))}
-                    {vencidas.length>4&&<span style={{fontSize:10,color:'var(--color-danger-text2)',fontWeight:500}}>+ {vencidas.length-4} mais...</span>}
-                  </div>
-                </div>
-              )}
-              {emAberto.length>0&&(
-                <div style={{borderRadius:12,padding:'14px 18px',border:'1px solid #EF9F27',background:'var(--color-warning-bg)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                    <div style={{width:8,height:8,borderRadius:'50%',background:'var(--color-warning-dot)',flexShrink:0}}/>
-                    <span style={{fontSize:12,fontWeight:700,color:'var(--color-warning-text)'}}>{emAberto.length} {emAberto.length===1?'vencimento':'vencimentos'} esta semana</span>
-                    <span style={{marginLeft:'auto',fontSize:12,fontWeight:700,color:'var(--color-warning-text)'}}>Total: {formatBRL(totalVencendo)}</span>
-                  </div>
-                  <div style={{display:'flex',flexDirection:'column',gap:4,paddingLeft:16}}>
-                    {emAberto.slice(0,4).map(c=>(
-                      <div key={c.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:11,color:'var(--color-warning-text)'}}>
-                        <span>{c.desc}</span>
-                        <span style={{display:'flex',gap:12,fontWeight:500,flexShrink:0,marginLeft:12}}>
-                          <span>{c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}`:'-'}</span>
-                          <span>{formatBRL(c.valor)}</span>
-                        </span>
+                    )}
+                    {vencidasGeral.length>0&&(
+                      <div style={{borderRadius:12,padding:'12px 18px',border:'1px solid var(--color-danger-border)',background:'var(--color-danger-bg)',display:'flex',alignItems:'center',gap:10}}>
+                        <div style={{width:8,height:8,borderRadius:'50%',background:CC.red,flexShrink:0}}/>
+                        <p style={{fontSize:12,color:'var(--color-danger-text)',margin:0,fontWeight:600}}>
+                          {vencidasGeral.length} {vencidasGeral.length===1?'conta vencida':'contas vencidas'} — Total: {formatBRL(totalVencidasGeral)}
+                        </p>
                       </div>
-                    ))}
-                    {emAberto.length>4&&<span style={{fontSize:10,color:'var(--color-warning-text)',fontWeight:500}}>+ {emAberto.length-4} mais...</span>}
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
               {/* 4. CALENDÁRIO */}
               <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
                 <h3 style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:12}}>Calendário de vencimentos — {cpMesLabel}</h3>
