@@ -5,13 +5,13 @@ import { X, Upload, Pencil, Trash2 } from 'lucide-react'
 const fmtBRL = v => `R$ ${Number(v || 0).toLocaleString('pt-BR')}`
 
 const TIPO_BADGE = {
-  Corrente:     { bg: '#E6F1FB', color: '#185FA5' },
-  'Corrente PJ':{ bg: '#E6F1FB', color: '#185FA5' },
-  Digital:      { bg: '#EEEDFE', color: '#3C3489' },
-  'Digital PJ': { bg: '#EEEDFE', color: '#3C3489' },
-  Poupança:     { bg: '#FAEEDA', color: '#854F0B' },
-  'Poupança PJ':{ bg: '#FAEEDA', color: '#854F0B' },
-  Investimento: { bg: '#EAF3DE', color: '#3B6D11' },
+  Corrente:     { bg: 'var(--color-info-bg)',    color: 'var(--color-info-text)'    },
+  'Corrente PJ':{ bg: 'var(--color-info-bg)',    color: 'var(--color-info-text)'    },
+  Digital:      { bg: 'var(--color-purple-bg)',  color: 'var(--color-purple-text)'  },
+  'Digital PJ': { bg: 'var(--color-purple-bg)',  color: 'var(--color-purple-text)'  },
+  Poupança:     { bg: 'var(--color-warning-bg)', color: 'var(--color-warning-text)' },
+  'Poupança PJ':{ bg: 'var(--color-warning-bg)', color: 'var(--color-warning-text)' },
+  Investimento: { bg: 'var(--color-success-bg)', color: 'var(--color-success-text)' },
 }
 
 const BANK_COLORS = ['#378ADD','#1D9E75','#7F77DD','#BA7517','#D85A30','#137789','#E8734A','#888780']
@@ -329,9 +329,9 @@ export default function BancosContas({
           {['entrada', 'saida'].map(t => (
             <button key={t} onClick={() => setFields(f => ({ ...f, tipomov: t }))} style={{
               padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s', border: '1px solid',
-              background:   fields.tipomov === t ? (t === 'entrada' ? '#EAF3DE' : '#FCEBEB') : '#fff',
-              color:        fields.tipomov === t ? (t === 'entrada' ? '#3B6D11' : '#A32D2D') : '#94a3b8',
-              borderColor:  fields.tipomov === t ? (t === 'entrada' ? '#9FE1CB' : '#F7C1C1') : '#e2e8f0',
+              background:   fields.tipomov === t ? (t === 'entrada' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)') : 'var(--color-bg-card)',
+              color:        fields.tipomov === t ? (t === 'entrada' ? 'var(--color-success-text)' : 'var(--color-danger-text)') : 'var(--color-text-muted)',
+              borderColor:  fields.tipomov === t ? (t === 'entrada' ? 'var(--color-success-border)' : 'var(--color-danger-border)') : 'var(--color-border-light)',
             }}>
               {t === 'entrada' ? '+ Entrada' : '− Saída'}
             </button>
@@ -463,7 +463,7 @@ export default function BancosContas({
             if (onSaveSaldoInicialDinheiro) await onSaveSaldoInicialDinheiro(val)
             setSavingSaldoDinheiro(false)
             setModalSaldoDinheiro(false)
-          }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: '#854F0B' }}>
+          }} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors disabled:opacity-50" style={{ background: 'var(--color-warning-dot)' }}>
             {savingSaldoDinheiro ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
@@ -484,8 +484,8 @@ export default function BancosContas({
         {/* Cabeçalho */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Gestão financeira</p>
-            <h1 style={{ fontSize: 20, fontWeight: 500, color: '#05121b', margin: 0 }}>Bancos e contas</h1>
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 2 }}>Gestão financeira</p>
+            <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>Bancos e contas</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button onClick={onImportClick} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors">
@@ -509,13 +509,13 @@ export default function BancosContas({
 
         {/* Cards de métricas */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
-          {card('#EAF3DE', '#C0DD97', <><p style={labelSt('#3B6D11')}>Saldo total consolidado</p><p style={valueSt('#27500A')}>{fmtBRL(saldoTotal)}</p><p style={subSt('#3B6D11')}>todas as contas</p></>)}
-          {card('#E6F1FB', '#B5D4F4', <><p style={labelSt('#185FA5')}>Saldo bancário</p><p style={valueSt('#0C447C')}>{fmtBRL(saldoBancario)}</p><p style={subSt('#185FA5')}>{bancos.length} conta{bancos.length !== 1 ? 's' : ''} ativa{bancos.length !== 1 ? 's' : ''}</p></>)}
-          {card('#FAEEDA', '#FAC775', <><p style={labelSt('#854F0B')}>Dinheiro em espécie</p><p style={valueSt('#633806')}>{fmtBRL(especieSaldo)}</p><p style={subSt('#854F0B')}>caixa físico</p></>)}
-          {card('#EEEDFE', '#CECBF6', <><p style={labelSt('#3C3489')}>Entradas do mês</p><p style={valueSt('#26215C')}>{fmtBRL(entradasMes)}</p><p style={subSt('#3C3489')}>receitas registradas</p></>)}
-          <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.1rem' }}>
-            <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', marginBottom: 4 }}>Última atualização</p>
-            <p style={{ fontSize: 19, fontWeight: 500, color: '#05121b', lineHeight: 1.2 }}>Hoje</p>
+          {card('var(--color-success-bg)', 'var(--color-success-border)', <><p style={labelSt('var(--color-success-text)')}>Saldo total consolidado</p><p style={valueSt('var(--color-success-text)')}>{fmtBRL(saldoTotal)}</p><p style={subSt('var(--color-success-text)')}>todas as contas</p></>)}
+          {card('var(--color-info-bg)', 'var(--color-info-border)', <><p style={labelSt('var(--color-info-text)')}>Saldo bancário</p><p style={valueSt('var(--color-info-text)')}>{fmtBRL(saldoBancario)}</p><p style={subSt('var(--color-info-text)')}>{bancos.length} conta{bancos.length !== 1 ? 's' : ''} ativa{bancos.length !== 1 ? 's' : ''}</p></>)}
+          {card('var(--color-warning-bg)', 'var(--color-warning-border)', <><p style={labelSt('var(--color-warning-text)')}>Dinheiro em espécie</p><p style={valueSt('var(--color-warning-text)')}>{fmtBRL(especieSaldo)}</p><p style={subSt('var(--color-warning-text)')}>caixa físico</p></>)}
+          {card('var(--color-purple-bg)', 'var(--color-purple-border)', <><p style={labelSt('var(--color-purple-text)')}>Entradas do mês</p><p style={valueSt('var(--color-purple-text)')}>{fmtBRL(entradasMes)}</p><p style={subSt('var(--color-purple-text)')}>receitas registradas</p></>)}
+          <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12, padding: '1rem 1.1rem' }}>
+            <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Última atualização</p>
+            <p style={{ fontSize: 19, fontWeight: 500, color: 'var(--color-text-primary)', lineHeight: 1.2 }}>Hoje</p>
             <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{new Date().toLocaleDateString('pt-BR')}</p>
           </div>
         </div>
@@ -524,18 +524,18 @@ export default function BancosContas({
         {bancosComSaldo.length > 0 && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
             {bancosComSaldo.map(b => {
-              const badge = TIPO_BADGE[b.tipo] || { bg: '#f8fafc', color: '#64748b' }
+              const badge = TIPO_BADGE[b.tipo] || { bg: 'var(--color-bg-card-alt)', color: 'var(--color-text-secondary)' }
               const entradas = lancamentos.filter(l => l.banco_id === b.id && l.tipo === 'receita' && l.data?.startsWith(mesAtual)).reduce((a, l) => a + Number(l.valor), 0)
               const saidas   = lancamentos.filter(l => l.banco_id === b.id && l.tipo === 'despesa' && l.data?.startsWith(mesAtual)).reduce((a, l) => a + Number(l.valor), 0)
               return (
-                <div key={b.id} className="bg-white" style={{ border: '0.5px solid #e2e8f0', borderRadius: 12, padding: '1.1rem 1.25rem' }}>
+                <div key={b.id} style={{ background: 'var(--color-bg-card)', border: '0.5px solid var(--color-border-light)', borderRadius: 12, padding: '1.1rem 1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
                     <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, background: b.color + '20', color: b.color, fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {b.init}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.nome}</p>
-                      <p style={{ fontSize: 11, color: '#94a3b8', margin: 0 }}>{b.tipo || 'Corrente'}{b.agencia ? ` · Ag. ${b.agencia}` : ''}</p>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.nome}</p>
+                      <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0 }}>{b.tipo || 'Corrente'}{b.agencia ? ` · Ag. ${b.agencia}` : ''}</p>
                     </div>
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       <button onClick={() => openEditBanco(b)} title="Editar" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#94a3b8', borderRadius: 6, display: 'flex', alignItems: 'center' }}
@@ -548,16 +548,16 @@ export default function BancosContas({
                       </button>
                     </div>
                   </div>
-                  <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 2 }}>Saldo disponível</p>
-                  <p style={{ fontSize: 20, fontWeight: 500, color: b.saldoCalc >= 0 ? '#27500A' : '#791F1F', margin: '0 0 10px' }}>{fmtBRL(b.saldoCalc)}</p>
+                  <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>Saldo disponível</p>
+                  <p style={{ fontSize: 20, fontWeight: 500, color: b.saldoCalc >= 0 ? 'var(--color-success-text)' : 'var(--color-danger-text)', margin: '0 0 10px' }}>{fmtBRL(b.saldoCalc)}</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#94a3b8' }}>Entradas do mês</span>
-                      <span style={{ color: '#27500A', fontWeight: 500 }}>+{fmtBRL(entradas)}</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Entradas do mês</span>
+                      <span style={{ color: 'var(--color-success-text)', fontWeight: 500 }}>+{fmtBRL(entradas)}</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                      <span style={{ color: '#94a3b8' }}>Saídas do mês</span>
-                      <span style={{ color: '#791F1F', fontWeight: 500 }}>-{fmtBRL(saidas)}</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>Saídas do mês</span>
+                      <span style={{ color: 'var(--color-danger-text)', fontWeight: 500 }}>-{fmtBRL(saidas)}</span>
                     </div>
                   </div>
                   <div style={{ marginBottom: 12 }}>
@@ -572,14 +572,14 @@ export default function BancosContas({
         )}
 
         {/* Card dinheiro em espécie */}
-        <div className="bg-white" style={{ border: '0.5px solid #e2e8f0', borderRadius: 12, padding: '1.1rem 1.25rem' }}>
+        <div style={{ background: 'var(--color-bg-card)', border: '0.5px solid var(--color-border-light)', borderRadius: 12, padding: '1.1rem 1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
             <div>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: 0 }}>Dinheiro em espécie</p>
-              <p style={{ fontSize: 12, color: '#94a3b8', margin: '2px 0 0' }}>Caixa físico da empresa</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>Dinheiro em espécie</p>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '2px 0 0' }}>Caixa físico da empresa</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <p style={{ fontSize: 22, fontWeight: 500, color: especieSaldo >= 0 ? '#27500A' : '#791F1F', margin: 0 }}>{fmtBRL(especieSaldo)}</p>
+              <p style={{ fontSize: 22, fontWeight: 500, color: especieSaldo >= 0 ? 'var(--color-success-text)' : 'var(--color-danger-text)', margin: 0 }}>{fmtBRL(especieSaldo)}</p>
               {onSaveSaldoInicialDinheiro && (
                 <>
                   <button title="Editar saldo inicial" onClick={() => { setSaldoDinheiroInput(saldoInicialDinheiro > 0 ? String(saldoInicialDinheiro) : ''); setModalSaldoDinheiro(true); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4, lineHeight: 0 }}><Pencil size={15} /></button>
@@ -598,12 +598,12 @@ export default function BancosContas({
           )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
             {[
-              { label: 'Entradas do mês', valor: `+ ${fmtBRL(especieMov.filter(m => m.tipo === 'entrada' && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`, cor: '#27500A' },
-              { label: 'Saídas do mês',   valor: `- ${fmtBRL(especieMov.filter(m => m.tipo === 'saida'   && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`, cor: '#791F1F' },
-              { label: 'Total movimentos', valor: `${especieMov.length}`, cor: '#05121b' },
+              { label: 'Entradas do mês', valor: `+ ${fmtBRL(especieMov.filter(m => m.tipo === 'entrada' && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`, cor: 'var(--color-success-text)' },
+              { label: 'Saídas do mês',   valor: `- ${fmtBRL(especieMov.filter(m => m.tipo === 'saida'   && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`, cor: 'var(--color-danger-text)' },
+              { label: 'Total movimentos', valor: `${especieMov.length}`, cor: 'var(--color-text-primary)' },
             ].map(({ label, valor, cor }) => (
-              <div key={label} style={{ background: '#f8fafc', borderRadius: 8, padding: '.75rem' }}>
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 4px' }}>{label}</p>
+              <div key={label} style={{ background: 'var(--color-bg-card-alt)', borderRadius: 8, padding: '.75rem' }}>
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 4px' }}>{label}</p>
                 <p style={{ fontSize: 14, fontWeight: 500, color: cor, margin: 0 }}>{valor}</p>
               </div>
             ))}
@@ -615,10 +615,10 @@ export default function BancosContas({
           ) : (
             <div>
               {especieMov.slice(0, 10).map((m, i) => (
-                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: i < Math.min(especieMov.length, 10) - 1 ? '0.5px solid #f1f5f9' : 'none' }}>
-                  <span style={{ flex: 1, fontSize: 13, color: '#05121b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.desc}</span>
-                  <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>{m.data}</span>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: m.tipo === 'entrada' ? '#27500A' : '#791F1F', flexShrink: 0 }}>
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: i < Math.min(especieMov.length, 10) - 1 ? '0.5px solid var(--color-border-subtle)' : 'none' }}>
+                  <span style={{ flex: 1, fontSize: 13, color: 'var(--color-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.desc}</span>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)', flexShrink: 0 }}>{m.data}</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: m.tipo === 'entrada' ? 'var(--color-success-text)' : 'var(--color-danger-text)', flexShrink: 0 }}>
                     {m.tipo === 'entrada' ? '+' : '-'} {fmtBRL(m.valor)}
                   </span>
                 </div>
@@ -629,8 +629,8 @@ export default function BancosContas({
 
         {/* Gráficos */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.2rem' }}>
-            <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', marginBottom: 12, marginTop: 0 }}>Distribuição do saldo</p>
+          <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12, padding: '1rem 1.2rem' }}>
+            <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 12, marginTop: 0 }}>Distribuição do saldo</p>
             <div style={{ position: 'relative', width: '100%', height: 180 }}>
               <canvas ref={donutRef} />
             </div>
@@ -639,13 +639,13 @@ export default function BancosContas({
                 {bancosComSaldo.map((b, i) => (
                   <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <div style={{ width: 8, height: 8, borderRadius: 2, background: BANK_COLORS[i % BANK_COLORS.length], flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: '#64748b' }}>{b.nome} <strong style={{ color: '#05121b' }}>{fmtBRL(b.saldoCalc)}</strong></span>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{b.nome} <strong style={{ color: 'var(--color-text-primary)' }}>{fmtBRL(b.saldoCalc)}</strong></span>
                   </div>
                 ))}
                 {especieSaldo > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <div style={{ width: 8, height: 8, borderRadius: 2, background: '#888780', flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: '#64748b' }}>Espécie <strong style={{ color: '#05121b' }}>{fmtBRL(especieSaldo)}</strong></span>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Espécie <strong style={{ color: 'var(--color-text-primary)' }}>{fmtBRL(especieSaldo)}</strong></span>
                   </div>
                 )}
               </div>
@@ -653,16 +653,16 @@ export default function BancosContas({
               <p style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center', marginTop: 12 }}>Cadastre bancos para visualizar a distribuição</p>
             )}
           </div>
-          <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.2rem' }}>
-            <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', marginBottom: 10, marginTop: 0 }}>Evolução do saldo — 6 meses</p>
+          <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12, padding: '1rem 1.2rem' }}>
+            <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', marginBottom: 10, marginTop: 0 }}>Evolução do saldo — 6 meses</p>
             <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 10, height: 10, borderRadius: 2, background: '#1D9E75' }} />
-                <span style={{ fontSize: 11, color: '#64748b' }}>Saldo total</span>
+                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Saldo total</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 14, height: 0, borderTop: '2px dashed #378ADD' }} />
-                <span style={{ fontSize: 11, color: '#64748b' }}>Só bancário</span>
+                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Só bancário</span>
               </div>
             </div>
             <div style={{ position: 'relative', width: '100%', height: 200 }}>
@@ -672,10 +672,10 @@ export default function BancosContas({
         </div>
 
         {/* Extrato consolidado */}
-        <div className="bg-white border border-slate-200" style={{ borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, borderBottom: '0.5px solid #e2e8f0' }}>
+        <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, borderBottom: '0.5px solid var(--color-border-light)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>
                 {extratoFiltrado.length} lançamento{extratoFiltrado.length !== 1 ? 's' : ''}
               </p>
               {selectedLancs.size > 0 && (
@@ -692,9 +692,9 @@ export default function BancosContas({
               {filtros.map(({ key, label }) => (
                 <button key={key} onClick={() => setFiltroBank(key)} style={{
                   padding: '4px 12px', borderRadius: 999, fontSize: 11, fontWeight: 500, border: '0.5px solid', cursor: 'pointer', transition: 'all 0.15s',
-                  background:  filtroBank === key ? '#05121b' : '#f8fafc',
-                  color:       filtroBank === key ? '#fff'    : '#64748b',
-                  borderColor: filtroBank === key ? '#05121b' : '#e2e8f0',
+                  background:  filtroBank === key ? 'var(--color-bg-elevated)' : 'var(--color-bg-card-alt)',
+                  color:       filtroBank === key ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)',
+                  borderColor: filtroBank === key ? 'var(--color-bg-elevated)' : 'var(--color-border-light)',
                 }}>
                   {label}
                 </button>
@@ -710,13 +710,13 @@ export default function BancosContas({
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '0.5px solid #e2e8f0', background: '#f8fafc' }}>
+                  <tr style={{ borderBottom: '0.5px solid var(--color-border-light)', background: 'var(--color-bg-card-alt)' }}>
                     <th style={{ width: 40, padding: '10px 12px' }}>
                       <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} style={{ cursor: 'pointer', accentColor: '#137789' }} />
                     </th>
                     {['Descrição', 'Conta', 'Data', 'Categoria', 'Tipo', 'Método', 'Valor', ''].map(h => (
                       <th key={h} style={{
-                        padding: '10px 12px', fontSize: 11, fontWeight: 500, color: '#94a3b8',
+                        padding: '10px 12px', fontSize: 11, fontWeight: 500, color: 'var(--color-text-muted)',
                         textAlign: h === 'Valor' ? 'right' : 'left',
                         whiteSpace: 'nowrap',
                       }}>
@@ -729,14 +729,14 @@ export default function BancosContas({
                   {extratoFiltrado.map(l => {
                     const isSel = selectedLancs.has(l.id)
                     return (
-                      <tr key={l.id} style={{ borderBottom: '0.5px solid #f1f5f9', background: isSel ? '#f0f9ff' : '', transition: 'background 0.1s' }}
-                        onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = '#f8fafc' }}
+                      <tr key={l.id} style={{ borderBottom: '0.5px solid var(--color-border-subtle)', background: isSel ? 'var(--color-row-selected)' : '', transition: 'background 0.1s' }}
+                        onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = 'var(--color-bg-card-alt)' }}
                         onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = '' }}>
                         <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                           <input type="checkbox" checked={isSel} onChange={() => toggleSelectLanc(l.id)} style={{ cursor: 'pointer', accentColor: '#137789' }} />
                         </td>
                         <td style={{ padding: '10px 12px', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: 13, fontWeight: 500, color: '#05121b' }}>{l.desc}</span>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>{l.desc}</span>
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                           <span style={{ fontSize: 11, color: '#94a3b8' }}>{l.conta}</span>
@@ -745,18 +745,18 @@ export default function BancosContas({
                           <span style={{ fontSize: 11, color: '#94a3b8' }}>{l.dataFmt}</span>
                         </td>
                         <td style={{ padding: '10px 12px', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: 12, color: '#64748b' }}>{l.categoria}</span>
+                          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{l.categoria}</span>
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 999, background: l.tipo === 'entrada' ? '#EAF3DE' : '#FCEBEB', color: l.tipo === 'entrada' ? '#3B6D11' : '#A32D2D' }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 999, background: l.tipo === 'entrada' ? 'var(--color-success-bg)' : 'var(--color-danger-bg)', color: l.tipo === 'entrada' ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
                             {l.tipo === 'entrada' ? 'Entrada' : 'Saída'}
                           </span>
                         </td>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: 12, color: '#64748b' }}>{l.met}</span>
+                          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{l.met}</span>
                         </td>
                         <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontSize: 13, fontWeight: 500, color: l.tipo === 'entrada' ? '#27500A' : '#791F1F' }}>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: l.tipo === 'entrada' ? 'var(--color-success-text)' : 'var(--color-danger-text)' }}>
                             {l.tipo === 'entrada' ? '+' : '-'} {fmtBRL(l.valor)}
                           </span>
                         </td>

@@ -6,10 +6,10 @@ const fmtDate = d => d ? `${d.substring(8,10)}/${d.substring(5,7)}/${d.substring
 const todayStr = new Date().toISOString().split('T')[0]
 
 const STATUS_BADGE = {
-  recebido:  { bg: '#EAF3DE', color: '#3B6D11', label: 'Recebido'     },
-  aberto:    { bg: '#FAEEDA', color: '#854F0B', label: 'Em aberto'    },
-  atrasado:  { bg: '#FCEBEB', color: '#A32D2D', label: 'Inadimplente' },
-  parcial:   { bg: '#E6F1FB', color: '#185FA5', label: 'Pago parcial' },
+  recebido:  { bg: 'var(--color-success-bg)', color: 'var(--color-success-text)', label: 'Recebido'     },
+  aberto:    { bg: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', label: 'Em aberto'    },
+  atrasado:  { bg: 'var(--color-danger-bg)',  color: 'var(--color-danger-text)',  label: 'Inadimplente' },
+  parcial:   { bg: 'var(--color-info-bg)',    color: 'var(--color-info-text)',    label: 'Pago parcial' },
 }
 
 const FILTROS = [
@@ -353,8 +353,8 @@ export default function ContasReceberView({
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <p style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>Gestão financeira</p>
-            <h1 style={{ fontSize: 20, fontWeight: 500, color: '#05121b', margin: 0 }}>Contas a receber</h1>
+            <p style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginBottom: 2 }}>Gestão financeira</p>
+            <h1 style={{ fontSize: 20, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>Contas a receber</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             {(()=>{
@@ -363,15 +363,15 @@ export default function ContasReceberView({
               const nextM=(()=>{const d=new Date(parseInt(y),parseInt(m));return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
               const lbl=(()=>{const n=new Date(parseInt(y),parseInt(m)-1).toLocaleString('pt-BR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);})();
               return(
-                <div style={{display:'flex',alignItems:'center',gap:4,background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'4px 8px'}}>
-                  <button onClick={()=>setCrMes(prevM)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'#94a3b8',display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
-                  <span style={{fontSize:12,color:'#64748b',minWidth:130,textAlign:'center'}}>{lbl}</span>
-                  <button onClick={()=>setCrMes(nextM)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'#94a3b8',display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
+                <div style={{display:'flex',alignItems:'center',gap:4,background:'var(--color-bg-card-alt)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:'4px 8px'}}>
+                  <button onClick={()=>setCrMes(prevM)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'var(--color-text-muted)',display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
+                  <span style={{fontSize:12,color:'var(--color-text-secondary)',minWidth:130,textAlign:'center'}}>{lbl}</span>
+                  <button onClick={()=>setCrMes(nextM)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'var(--color-text-muted)',display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
                 </div>
               );
             })()}
             {onImportClick&&(
-              <button onClick={onImportClick} style={{background:'#fff',border:'1px solid #e2e8f0',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+              <button onClick={onImportClick} style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'var(--color-text-primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
                 <Upload size={12}/>Importar
               </button>
             )}
@@ -391,14 +391,14 @@ export default function ContasReceberView({
           <>
             {/* Metric cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
-              {card('#EAF3DE','#C0DD97', <><p style={ls('#3B6D11')}>Total a receber</p><p style={vs('#27500A')}>{fmtBRL(totalAReceber)}</p><p style={ss('#3B6D11')}>{qtdAReceber} cobranças</p></>)}
-              {card('#FCEBEB','#F7C1C1', <><p style={ls('#993C1D')}>Inadimplentes</p><p style={vs('#791F1F')}>{fmtBRL(inadimplente)}</p><p style={ss('#993C1D')}>{atrasados.length} clientes</p></>)}
-              {card('#FAEEDA','#FAC775', <><p style={ls('#854F0B')}>Vencem em 7 dias</p><p style={vs('#633806')}>{fmtBRL(totalVencer7)}</p><p style={ss('#854F0B')}>{vencendoLogo.length} cobranças</p></>)}
-              {card('#EAF3DE','#C0DD97', <><p style={ls('#3B6D11')}>Recebido</p><p style={vs('#27500A')}>{fmtBRL(recebido)}</p><p style={ss('#3B6D11')}>{cobranças.filter(c=>c.status==='recebido').length} cobranças</p></>)}
-              {card('#E6F1FB','#B5D4F4', <><p style={ls('#185FA5')}>Total emitido</p><p style={vs('#0C447C')}>{fmtBRL(totalEmitido)}</p><p style={{ fontSize:11,color:'#185FA5',marginTop:2 }}>{cobranças.length} cobranças</p></>)}
-              <div className="bg-slate-50 border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.1rem' }}>
-                <p style={{ fontSize: 11, fontWeight: 500, color: '#64748b', marginBottom: 4 }}>Taxa inadimplência</p>
-                <p style={{ fontSize: 19, fontWeight: 500, color: '#05121b', lineHeight: 1.2 }}>{taxaInad}%</p>
+              {card('var(--color-success-bg)','var(--color-success-border)', <><p style={ls('var(--color-success-text)')}>Total a receber</p><p style={vs('var(--color-success-text)')}>{fmtBRL(totalAReceber)}</p><p style={ss('var(--color-success-text)')}>{qtdAReceber} cobranças</p></>)}
+              {card('var(--color-danger-bg)','var(--color-danger-border)', <><p style={ls('var(--color-danger-text2)')}>Inadimplentes</p><p style={vs('var(--color-danger-text)')}>{fmtBRL(inadimplente)}</p><p style={ss('var(--color-danger-text2)')}>{atrasados.length} clientes</p></>)}
+              {card('var(--color-warning-bg)','var(--color-warning-border)', <><p style={ls('var(--color-warning-text)')}>Vencem em 7 dias</p><p style={vs('var(--color-warning-text)')}>{fmtBRL(totalVencer7)}</p><p style={ss('var(--color-warning-text)')}>{vencendoLogo.length} cobranças</p></>)}
+              {card('var(--color-success-bg)','var(--color-success-border)', <><p style={ls('var(--color-success-text)')}>Recebido</p><p style={vs('var(--color-success-text)')}>{fmtBRL(recebido)}</p><p style={ss('var(--color-success-text)')}>{cobranças.filter(c=>c.status==='recebido').length} cobranças</p></>)}
+              {card('var(--color-info-bg)','var(--color-info-border)', <><p style={ls('var(--color-info-text)')}>Total emitido</p><p style={vs('var(--color-info-text)')}>{fmtBRL(totalEmitido)}</p><p style={{ fontSize:11,color:'var(--color-info-text)',marginTop:2 }}>{cobranças.length} cobranças</p></>)}
+              <div style={{ background: 'var(--color-bg-card-alt)', border: '1px solid var(--color-border-light)', borderRadius: 12, padding: '1rem 1.1rem' }}>
+                <p style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Taxa inadimplência</p>
+                <p style={{ fontSize: 19, fontWeight: 500, color: 'var(--color-text-primary)', lineHeight: 1.2 }}>{taxaInad}%</p>
                 <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>meta: abaixo de 5%</p>
               </div>
             </div>
@@ -407,17 +407,17 @@ export default function ContasReceberView({
             {(atrasados.length > 0 || vencendoLogo.length > 0) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {atrasados.length > 0 && (
-                  <div style={{ background: '#FCEBEB', border: '0.5px solid #F09595', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <AlertTriangle size={16} color="#D85A30" style={{ flexShrink: 0 }} />
-                    <p style={{ fontSize: 12, color: '#791F1F', margin: 0 }}>
+                  <div style={{ background: 'var(--color-danger-bg)', border: '0.5px solid var(--color-danger-border)', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <AlertTriangle size={16} color="var(--color-danger-text2)" style={{ flexShrink: 0 }} />
+                    <p style={{ fontSize: 12, color: 'var(--color-danger-text)', margin: 0 }}>
                       <strong>{atrasados.length} cobranças em atraso</strong> — Total inadimplente: <strong>{fmtBRL(inadimplente)}</strong>
                     </p>
                   </div>
                 )}
                 {vencendoLogo.length > 0 && (
-                  <div style={{ background: '#FAEEDA', border: '0.5px solid #EF9F27', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <Clock size={16} color="#BA7517" style={{ flexShrink: 0 }} />
-                    <p style={{ fontSize: 12, color: '#633806', margin: 0 }}>
+                  <div style={{ background: 'var(--color-warning-bg)', border: '0.5px solid var(--color-warning-border)', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <Clock size={16} color="var(--color-warning-dot)" style={{ flexShrink: 0 }} />
+                    <p style={{ fontSize: 12, color: 'var(--color-warning-text)', margin: 0 }}>
                       <strong>{vencendoLogo.length} cobranças vencem nos próximos 7 dias</strong> — Total: <strong>{fmtBRL(totalVencer7)}</strong>
                     </p>
                   </div>
@@ -426,9 +426,9 @@ export default function ContasReceberView({
             )}
 
             {/* Barra de situação */}
-            <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.2rem' }}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: '0 0 10px' }}>Situação das cobranças</p>
-              <div style={{ display: 'flex', gap: 3, height: 10, borderRadius: 999, overflow: 'hidden', background: '#f1f5f9' }}>
+            <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12, padding: '1rem 1.2rem' }}>
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', margin: '0 0 10px' }}>Situação das cobranças</p>
+              <div style={{ display: 'flex', gap: 3, height: 10, borderRadius: 999, overflow: 'hidden', background: 'var(--color-bg-subtle)' }}>
                 <div style={{ width: `${pctRecebido}%`, background: '#1D9E75', transition: 'width 0.5s' }} />
                 <div style={{ width: `${pctInad}%`,     background: '#D85A30', transition: 'width 0.5s' }} />
                 <div style={{ width: `${pctVencer}%`,   background: '#EF9F27', transition: 'width 0.5s' }} />
@@ -441,7 +441,7 @@ export default function ContasReceberView({
                 ].map(({ color, label, valor, pct }) => (
                   <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                    <span style={{ fontSize: 11, color: '#64748b' }}>{label} <strong style={{ color: '#05121b' }}>{fmtBRL(valor)}</strong> ({pct.toFixed(1)}%)</span>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{label} <strong style={{ color: 'var(--color-text-primary)' }}>{fmtBRL(valor)}</strong> ({pct.toFixed(1)}%)</span>
                   </div>
                 ))}
               </div>
@@ -449,16 +449,16 @@ export default function ContasReceberView({
 
             {/* Gráficos */}
             <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 14 }}>
-              <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.2rem' }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: '0 0 8px' }}>Recebimentos — últimos 6 meses</p>
+              <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12, padding: '1rem 1.2rem' }}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', margin: '0 0 8px' }}>Recebimentos — últimos 6 meses</p>
                 <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: '#1D9E75' }} /><span style={{ fontSize: 11, color: '#64748b' }}>Recebido</span></div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 14, height: 0, borderTop: '2px dashed #D3D1C7' }} /><span style={{ fontSize: 11, color: '#64748b' }}>Emitido</span></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: '#1D9E75' }} /><span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Recebido</span></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 14, height: 0, borderTop: '2px dashed #D3D1C7' }} /><span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Emitido</span></div>
                 </div>
                 <div style={{ position: 'relative', width: '100%', height: 180 }}><canvas ref={lineRef} /></div>
               </div>
-              <div className="bg-white border border-slate-200" style={{ borderRadius: 12, padding: '1rem 1.2rem' }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: '0 0 12px' }}>Por categoria</p>
+              <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12, padding: '1rem 1.2rem' }}>
+                <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', margin: '0 0 12px' }}>Por categoria</p>
                 {donutCats.length > 0 ? (
                   <>
                     <div style={{ position: 'relative', width: '100%', height: 150 }}><canvas ref={donutRef} /></div>
@@ -466,7 +466,7 @@ export default function ContasReceberView({
                       {donutCats.map(({ color, label, value }) => (
                         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                           <div style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
-                          <span style={{ fontSize: 11, color: '#64748b' }}>{label} <strong style={{ color: '#05121b' }}>{fmtBRL(value)}</strong></span>
+                          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{label} <strong style={{ color: 'var(--color-text-primary)' }}>{fmtBRL(value)}</strong></span>
                         </div>
                       ))}
                     </div>
@@ -478,20 +478,20 @@ export default function ContasReceberView({
         )}
 
         {/* Tabela */}
-        <div className="bg-white border border-slate-200" style={{ borderRadius: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, borderBottom: '0.5px solid #e2e8f0' }}>
+        <div style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-light)', borderRadius: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, borderBottom: '0.5px solid var(--color-border-light)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: '#05121b', margin: 0 }}>{filtrados.length} cobranças</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)', margin: 0 }}>{filtrados.length} cobranças</p>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {FILTROS.map(({ key, label }) => (
-                  <button key={key} onClick={() => setFiltro(key)} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700, border: '1px solid', cursor: 'pointer', background: filtro === key ? '#05121b' : 'transparent', color: filtro === key ? '#fff' : '#64748b', borderColor: filtro === key ? '#05121b' : '#e2e8f0' }}>
+                  <button key={key} onClick={() => setFiltro(key)} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700, border: '1px solid', cursor: 'pointer', background: filtro === key ? 'var(--color-bg-elevated)' : 'transparent', color: filtro === key ? 'var(--color-text-inverse)' : 'var(--color-text-secondary)', borderColor: filtro === key ? 'var(--color-bg-elevated)' : 'var(--color-border-light)' }}>
                     {label}
                   </button>
                 ))}
               </div>
             </div>
             {crSelected.size > 0 && (
-              <button onClick={handleBulkDelete} style={{ padding: '4px 12px', borderRadius: 8, fontSize: 11, background: '#FCEBEB', color: '#A32D2D', border: '1px solid #F7C1C1', cursor: 'pointer', fontWeight: 600 }}>
+              <button onClick={handleBulkDelete} style={{ padding: '4px 12px', borderRadius: 8, fontSize: 11, background: 'var(--color-danger-bg)', color: 'var(--color-danger-text)', border: '1px solid var(--color-danger-border)', cursor: 'pointer', fontWeight: 600 }}>
                 Excluir {crSelected.size} selecionada(s)
               </button>
             )}
@@ -504,10 +504,10 @@ export default function ContasReceberView({
                 <col style={{ width: '10%' }} /><col style={{ width: '24%' }} />
               </colgroup>
               <thead>
-                <tr style={{ borderBottom: '0.5px solid #e2e8f0', background: '#f8fafc' }}>
+                <tr style={{ borderBottom: '0.5px solid var(--color-border-light)', background: 'var(--color-bg-card-alt)' }}>
                   <th style={{ padding: '10px 12px' }}></th>
                   {['Descrição','Categoria','Vencimento','Data pgto.','Status','Valor','Ações'].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 500, color: '#94a3b8', textAlign: h === 'Valor' ? 'right' : 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h}</th>
+                    <th key={h} style={{ padding: '10px 12px', fontSize: 11, fontWeight: 500, color: 'var(--color-text-muted)', textAlign: h === 'Valor' ? 'right' : 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -516,40 +516,40 @@ export default function ContasReceberView({
                   const isAtrasado  = c.status === 'atrasado'
                   const isRecebido  = c.status === 'recebido'
                   const statusBadge = STATUS_BADGE[c.status] || STATUS_BADGE.aberto
-                  const valorColor  = isAtrasado ? '#791F1F' : isRecebido ? '#27500A' : '#05121b'
+                  const valorColor  = isAtrasado ? 'var(--color-danger-text)' : isRecebido ? 'var(--color-success-text)' : 'var(--color-text-primary)'
                   const isSelected  = crSelected.has(c.id)
-                  const rowBg       = isSelected ? '#f0f9ff' : isAtrasado ? '#fffbfa' : undefined
+                  const rowBg       = isSelected ? 'var(--color-row-selected)' : isAtrasado ? 'var(--color-row-danger)' : undefined
                   return (
                     <tr key={c.id}
-                      style={{ borderBottom: '0.5px solid #f1f5f9', background: rowBg, transition: 'background 0.1s' }}
-                      onMouseEnter={e => { if (!isSelected && !isAtrasado) e.currentTarget.style.background = '#f8fafc' }}
-                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = isAtrasado ? '#fffbfa' : '' }}>
+                      style={{ borderBottom: '0.5px solid var(--color-border-subtle)', background: rowBg, transition: 'background 0.1s' }}
+                      onMouseEnter={e => { if (!isSelected && !isAtrasado) e.currentTarget.style.background = 'var(--color-bg-card-alt)' }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = isAtrasado ? 'var(--color-row-danger)' : '' }}>
                       <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                         <input type="checkbox" checked={isSelected} onChange={() => toggleCrSelect(c.id)} style={{ cursor: 'pointer', accentColor: '#137789' }} />
                       </td>
                       <td style={{ padding: '10px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: '#05121b' }}>{c.desc}</span>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-primary)' }}>{c.desc}</span>
                       </td>
                       <td style={{ padding: '10px 12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: 11, color: '#94a3b8' }}>{c.cat}</span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
                         <div>
-                          <span style={{ fontSize: 12, color: isAtrasado ? '#D85A30' : '#64748b', fontWeight: isAtrasado ? 600 : 400 }}>
+                          <span style={{ fontSize: 12, color: isAtrasado ? 'var(--color-danger-text2)' : 'var(--color-text-secondary)', fontWeight: isAtrasado ? 600 : 400 }}>
                             {c.venc ? fmtDate(c.venc) : '—'}
                           </span>
                           {isAtrasado && (
-                            <p style={{ fontSize: 10, color: '#A32D2D', margin: 0 }}>
+                            <p style={{ fontSize: 10, color: 'var(--color-danger-text)', margin: 0 }}>
                               {Math.abs(Math.ceil((new Date(c.venc) - new Date(todayStr)) / 86400000))} dias em atraso
                             </p>
                           )}
                           {c.status === 'aberto' && c.diasAteVencer !== null && c.diasAteVencer <= 7 && c.diasAteVencer >= 0 && (
-                            <p style={{ fontSize: 10, color: '#BA7517', margin: 0 }}>vence em {c.diasAteVencer}d</p>
+                            <p style={{ fontSize: 10, color: 'var(--color-warning-dot)', margin: 0 }}>vence em {c.diasAteVencer}d</p>
                           )}
                         </div>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
-                        <span style={{ fontSize: 12, color: isRecebido ? '#3B6D11' : '#94a3b8' }}>
+                        <span style={{ fontSize: 12, color: isRecebido ? 'var(--color-success-text)' : 'var(--color-text-muted)' }}>
                           {c.dataPagamento ? fmtDate(c.dataPagamento) : '—'}
                         </span>
                       </td>
@@ -562,17 +562,17 @@ export default function ContasReceberView({
                       <td style={{ padding: '10px 12px' }}>
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                           <button onClick={() => onEditar?.(c._raw)}
-                            style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', cursor: 'pointer', fontWeight: 500 }}>
+                            style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, background: 'var(--color-bg-subtle)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-light)', cursor: 'pointer', fontWeight: 500 }}>
                             Editar
                           </button>
                           {!isRecebido && (
                             <>
                               <button onClick={() => setModalReceber({ id: c.id, desc: c.desc, valor: c.valor, cat: c.cat, meioPagamento: '', bancoId: '', dataRecebimento: todayStr })}
-                                style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, fontWeight: 500, background: '#EAF3DE', color: '#3B6D11', border: '0.5px solid #C0DD97', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, fontWeight: 500, background: 'var(--color-success-bg)', color: 'var(--color-success-text)', border: '0.5px solid var(--color-success-border)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 Receber
                               </button>
                               <button onClick={() => setModalParcial({ id: c.id, desc: c.desc, valorTotal: c.valor, cat: c.cat, valorPago: '', novaData: '', meio: '', bancoId: '', dataRecebimento: todayStr })}
-                                style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, fontWeight: 500, background: '#E6F1FB', color: '#185FA5', border: '0.5px solid #B5D4F4', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, fontWeight: 500, background: 'var(--color-info-bg)', color: 'var(--color-info-text)', border: '0.5px solid var(--color-info-border)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 Parcial
                               </button>
                             </>

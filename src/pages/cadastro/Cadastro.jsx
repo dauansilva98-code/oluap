@@ -19,6 +19,7 @@ const Cadastro = () => {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [cnpj, setCnpj] = useState('')
+  const [razaoSocial, setRazaoSocial] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -46,7 +47,7 @@ const Cadastro = () => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name, phone, cnpj } },
+      options: { data: { full_name: name, phone, cnpj, razao_social: razaoSocial } },
     })
 
     if (error) {
@@ -136,6 +137,12 @@ const Cadastro = () => {
                 <input type="text" required value={cnpj} onChange={(e) => setCnpj(maskCNPJ(e.target.value))} placeholder="00.000.000/0000-00" maxLength="18"
                   className="w-full bg-slate-50 border border-slate-200 text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#ff7b00] focus:border-transparent placeholder-slate-400 transition-all font-medium" />
               </div>
+            </div>
+
+            <div className="w-full">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 mb-2 block">Razão Social</label>
+              <input type="text" required value={razaoSocial} onChange={(e) => setRazaoSocial(e.target.value)} placeholder="Ex: Empresa LTDA"
+                className="w-full bg-slate-50 border border-slate-200 text-[#05121b] px-5 py-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#ff7b00] focus:border-transparent placeholder-slate-400 transition-all font-medium" />
             </div>
 
             <div className="w-full">

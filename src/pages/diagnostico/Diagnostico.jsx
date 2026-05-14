@@ -2503,26 +2503,26 @@ const App = () => {
           const dows=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
           const calCells=cpData.filter(c=>c.venc.startsWith(mesAtualCP)).sort((a,b)=>a.venc.localeCompare(b.venc)).map(c=>{const dt=new Date(c.venc+'T00:00:00');return{dia:c.venc.slice(8,10),dow:dows[dt.getDay()],status:c.status==='pago'?'pago':(c.venc<today?'vencendo':'previsto'),valor:c.valor};});
           const calStyle={
-            pago:    {bg:'#EAF3DE',border:'#C0DD97',tagBg:'#C0DD97',tagTxt:'#27500A',lbl:'pago'},
-            vencendo:{bg:'#FCEBEB',border:'#F09595',tagBg:'#F7C1C1',tagTxt:'#791F1F',lbl:''},
-            hoje:    {bg:'#E6F1FB',border:'#378ADD',tagBg:'#B5D4F4',tagTxt:'#0C447C',lbl:'hoje'},
-            previsto:{bg:'#f8fafc',border:'#e2e8f0',tagBg:'#f1f5f9',tagTxt:'#94a3b8',lbl:'prev.'},
+            pago:    {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)',lbl:'pago'},
+            vencendo:{bg:'var(--color-danger-bg)',border:'var(--color-danger-border)',tagBg:'var(--color-danger-border)',tagTxt:'var(--color-danger-text)',lbl:''},
+            hoje:    {bg:'var(--color-info-bg)',border:'var(--color-info-border)',tagBg:'var(--color-info-border)',tagTxt:'var(--color-info-text)',lbl:'hoje'},
+            previsto:{bg:'var(--color-bg-card-alt)',border:'var(--color-border-light)',tagBg:'var(--color-bg-subtle)',tagTxt:'var(--color-text-muted)',lbl:'prev.'},
           };
           const tipoBadge={
-            fixa:    {bg:'#E6F1FB',txt:'#185FA5',lbl:'Fixa'},
-            variavel:{bg:'#EEEDFE',txt:'#3C3489',lbl:'Variável'},
-            imposto: {bg:'#FAEEDA',txt:'#854F0B',lbl:'Imposto'},
+            fixa:    {bg:'var(--color-info-bg)',txt:'var(--color-info-text)',lbl:'Fixa'},
+            variavel:{bg:'var(--color-purple-bg)',txt:'var(--color-purple-text)',lbl:'Variável'},
+            imposto: {bg:'var(--color-warning-bg)',txt:'var(--color-warning-text)',lbl:'Imposto'},
           };
           const statusBadge={
-            pago:    {bg:'#EAF3DE',txt:'#3B6D11',lbl:'Pago'},
-            aberto:  {bg:'#FAEEDA',txt:'#854F0B',lbl:'Em aberto'},
-            atrasado:{bg:'#FCEBEB',txt:'#A32D2D',lbl:'Vencida'},
-            agendado:{bg:'#E6F1FB',txt:'#185FA5',lbl:'Agendado'},
+            pago:    {bg:'var(--color-success-bg)',txt:'var(--color-success-text)',lbl:'Pago'},
+            aberto:  {bg:'var(--color-warning-bg)',txt:'var(--color-warning-text)',lbl:'Em aberto'},
+            atrasado:{bg:'var(--color-danger-bg)',txt:'var(--color-danger-text)',lbl:'Vencida'},
+            agendado:{bg:'var(--color-info-bg)',txt:'var(--color-info-text)',lbl:'Agendado'},
           };
           const CpTip=({active,payload,label})=>{
             if(!active||!payload?.length)return null;
             return(<div style={{background:'var(--color-bg-card)',border:'1px solid',borderColor:'var(--color-border-light)',borderRadius:12,padding:'8px 12px',boxShadow:'0 4px 16px rgba(0,0,0,.1)'}}>
-              <p style={{fontSize:10,fontWeight:700,color:'#64748b',marginBottom:4}}>{label}</p>
+              <p style={{fontSize:10,fontWeight:700,color:'var(--color-text-secondary)',marginBottom:4}}>{label}</p>
               {payload.map(p=><p key={p.dataKey} style={{fontSize:10,color:p.fill}}>{p.name}: {formatBRL(p.value)}</p>)}
             </div>);
           };
@@ -2531,49 +2531,49 @@ const App = () => {
               {/* 1. HEADER */}
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:12}}>
                 <div>
-                  <p style={{fontSize:12,color:'#64748b',fontWeight:500}}>Gestão financeira</p>
-                  <h1 style={{fontSize:20,fontWeight:500,color:'#05121b',marginTop:2}}>Contas a pagar</h1>
+                  <p style={{fontSize:12,color:'var(--color-text-secondary)',fontWeight:500}}>Gestão financeira</p>
+                  <h1 style={{fontSize:20,fontWeight:500,color:'var(--color-text-primary)',marginTop:2}}>Contas a pagar</h1>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:4,background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,padding:'4px 8px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:4,background:'var(--color-bg-card-alt)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:'4px 8px'}}>
                     <button onClick={()=>setCpMes(prevMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:CC.text,display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
-                    <span style={{fontSize:12,color:'#64748b',minWidth:130,textAlign:'center'}}>{cpMesLabel}</span>
+                    <span style={{fontSize:12,color:'var(--color-text-secondary)',minWidth:130,textAlign:'center'}}>{cpMesLabel}</span>
                     <button onClick={()=>setCpMes(nextMesCP)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:CC.text,display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
                   </div>
-                  <button onClick={()=>setModalImport({stage:'upload',tipoImport:'contas_pagar'})} style={{background:'var(--color-bg-card)',border:'1px solid',borderColor:'var(--color-border-light)',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'#05121b',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Upload size={12}/>Importar</button>
-                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo_custo:'variavel',status:'pendente',taxa_valor:''})} style={{background:'#05121b',color:'#fff',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
+                  <button onClick={()=>setModalImport({stage:'upload',tipoImport:'contas_pagar'})} style={{background:'var(--color-bg-card)',border:'1px solid',borderColor:'var(--color-border-light)',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'var(--color-text-primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Upload size={12}/>Importar</button>
+                  <button onClick={()=>setModalCP({descricao:'',valor:'',vencimento:today,categoria:'',tipo_custo:'variavel',status:'pendente',taxa_valor:''})} style={{background:'var(--color-bg-elevated)',color:'var(--color-text-inverse)',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Plus size={12}/>Nova conta</button>
                 </div>
               </div>
               {/* 2. METRIC CARDS */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:12}}>
                 <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #F7C1C1',background:'var(--color-danger-bg)'}}>
-                  <p style={{fontSize:11,fontWeight:500,color:'#993C1D',marginBottom:6}}>Em aberto</p>
+                  <p style={{fontSize:11,fontWeight:500,color:'var(--color-danger-text2)',marginBottom:6}}>Em aberto</p>
                   <p style={{fontSize:19,fontWeight:500,color:'var(--color-danger-text)',lineHeight:1.2}}>{formatBRL(totalEmAberto)}</p>
-                  <p style={{fontSize:11,color:'#993C1D',marginTop:4}}>{vencidas.length+emAberto.length} contas</p>
+                  <p style={{fontSize:11,color:'var(--color-danger-text2)',marginTop:4}}>{vencidas.length+emAberto.length} contas</p>
                 </div>
                 <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #F7C1C1',background:'var(--color-danger-bg)'}}>
-                  <p style={{fontSize:11,fontWeight:500,color:'#993C1D',marginBottom:6}}>Vencidas</p>
+                  <p style={{fontSize:11,fontWeight:500,color:'var(--color-danger-text2)',marginBottom:6}}>Vencidas</p>
                   <p style={{fontSize:19,fontWeight:500,color:'var(--color-danger-text)',lineHeight:1.2}}>{formatBRL(totalVencidas)}</p>
-                  <p style={{fontSize:11,color:'#993C1D',marginTop:4}}>{vencidas.length} contas atrasadas</p>
+                  <p style={{fontSize:11,color:'var(--color-danger-text2)',marginTop:4}}>{vencidas.length} contas atrasadas</p>
                 </div>
                 <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #FAC775',background:'var(--color-warning-bg)'}}>
-                  <p style={{fontSize:11,fontWeight:500,color:'#854F0B',marginBottom:6}}>Vencem em 7 dias</p>
+                  <p style={{fontSize:11,fontWeight:500,color:'var(--color-warning-text)',marginBottom:6}}>Vencem em 7 dias</p>
                   <p style={{fontSize:19,fontWeight:500,color:'var(--color-warning-text)',lineHeight:1.2}}>{formatBRL(totalVencendo)}</p>
-                  <p style={{fontSize:11,color:'#854F0B',marginTop:4}}>{emAberto.length} contas</p>
+                  <p style={{fontSize:11,color:'var(--color-warning-text)',marginTop:4}}>{emAberto.length} contas</p>
                 </div>
                 <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #C0DD97',background:'var(--color-success-bg)'}}>
                   <p style={{fontSize:11,fontWeight:500,color:'var(--color-success-text)',marginBottom:6}}>Pagas no mês</p>
-                  <p style={{fontSize:19,fontWeight:500,color:'#27500A',lineHeight:1.2}}>{formatBRL(totalPagas)}</p>
+                  <p style={{fontSize:19,fontWeight:500,color:'var(--color-success-text)',lineHeight:1.2}}>{formatBRL(totalPagas)}</p>
                   <p style={{fontSize:11,color:'var(--color-success-text)',marginTop:4}}>{pagas.length} contas</p>
                 </div>
-                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #B5D4F4',background:'#E6F1FB'}}>
-                  <p style={{fontSize:11,fontWeight:500,color:'#185FA5',marginBottom:6}}>Total do mês</p>
-                  <p style={{fontSize:19,fontWeight:500,color:'#0C447C',lineHeight:1.2}}>{formatBRL(totalMes)}</p>
-                  <p style={{fontSize:11,color:'#185FA5',marginTop:4}}>{new Date().toLocaleDateString('pt-BR',{month:'long'})}</p>
+                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid var(--color-info-border)',background:'var(--color-info-bg)'}}>
+                  <p style={{fontSize:11,fontWeight:500,color:'var(--color-info-text)',marginBottom:6}}>Total do mês</p>
+                  <p style={{fontSize:19,fontWeight:500,color:'var(--color-info-text)',lineHeight:1.2}}>{formatBRL(totalMes)}</p>
+                  <p style={{fontSize:11,color:'var(--color-info-text)',marginTop:4}}>{new Date().toLocaleDateString('pt-BR',{month:'long'})}</p>
                 </div>
-                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid #e2e8f0',background:'#fff'}}>
-                  <p style={{fontSize:11,fontWeight:500,color:'#64748b',marginBottom:6}}>Média por conta</p>
-                  <p style={{fontSize:19,fontWeight:500,color:'#05121b',lineHeight:1.2}}>{formatBRL(mediaPorConta)}</p>
+                <div style={{borderRadius:12,padding:'16px 18px',border:'1px solid var(--color-border-light)',background:'var(--color-bg-card)'}}>
+                  <p style={{fontSize:11,fontWeight:500,color:'var(--color-text-secondary)',marginBottom:6}}>Média por conta</p>
+                  <p style={{fontSize:19,fontWeight:500,color:'var(--color-text-primary)',lineHeight:1.2}}>{formatBRL(mediaPorConta)}</p>
                   <p style={{fontSize:11,color:CC.text,marginTop:4}}>{cpData.length} contas cadastradas</p>
                 </div>
               </div>
@@ -2599,15 +2599,15 @@ const App = () => {
                 </div>
               )}
               {/* 4. CALENDÁRIO */}
-              <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,padding:20}}>
-                <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Calendário de vencimentos — {cpMesLabel}</h3>
+              <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                <h3 style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:12}}>Calendário de vencimentos — {cpMesLabel}</h3>
                 <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
                   {calCells.map((c,i)=>{
                     const s=calStyle[c.status]||calStyle.previsto;
                     return(
                       <div key={i} style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:8,padding:'8px 4px',textAlign:'center'}}>
                         <p style={{fontSize:10,color:CC.text,marginBottom:2}}>{c.dow}</p>
-                        <p style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:4}}>{c.dia}</p>
+                        <p style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:4}}>{c.dia}</p>
                         <div style={{display:'inline-block',background:s.tagBg,borderRadius:99,padding:'1px 5px'}}>
                           <p style={{fontSize:9,fontWeight:500,color:s.tagTxt,whiteSpace:'nowrap',margin:0}}>
                             {c.status==='vencendo'?`R$ ${(c.valor/1000).toFixed(1)}k`:s.lbl}
@@ -2620,8 +2620,8 @@ const App = () => {
               </div>
               {/* 5. GRÁFICOS */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {donutData.length>0&&(<div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,padding:20}}>
-                  <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Contas por categoria</h3>
+                {donutData.length>0&&(<div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                  <h3 style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:12}}>Contas por categoria</h3>
                   <ResponsiveContainer width="100%" height={140}>
                     <PieChart>
                       <Pie data={donutData} dataKey="value" cx="50%" cy="50%" innerRadius="60%" outerRadius="82%" strokeWidth={0} paddingAngle={1}>
@@ -2635,15 +2635,15 @@ const App = () => {
                       <div key={d.name} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:4}}>
                         <span style={{display:'flex',alignItems:'center',gap:5}}>
                           <span style={{width:8,height:8,borderRadius:2,background:d.color,flexShrink:0,display:'inline-block'}}/>
-                          <span style={{fontSize:10,color:'#64748b'}}>{d.name}</span>
+                          <span style={{fontSize:10,color:'var(--color-text-secondary)'}}>{d.name}</span>
                         </span>
-                        <span style={{fontSize:10,fontWeight:500,color:'#05121b'}}>{formatBRL(d.value)}</span>
+                        <span style={{fontSize:10,fontWeight:500,color:'var(--color-text-primary)'}}>{formatBRL(d.value)}</span>
                       </div>
                     ))}
                   </div>
                 </div>)}
-                <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,padding:20}}>
-                  <h3 style={{fontSize:13,fontWeight:500,color:'#05121b',marginBottom:12}}>Previsto vs pago — últimos 6 meses</h3>
+                <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                  <h3 style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:12}}>Previsto vs pago — últimos 6 meses</h3>
                   <ResponsiveContainer width="100%" height={140}>
                     <BarChart data={barData} margin={{top:4,right:4,bottom:0,left:-16}}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.08)" vertical={false}/>
@@ -2655,19 +2655,19 @@ const App = () => {
                     </BarChart>
                   </ResponsiveContainer>
                   <div style={{display:'flex',gap:12,marginTop:8}}>
-                    <span style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'#64748b'}}><span style={{width:8,height:8,borderRadius:2,background:'#D3D1C7',display:'inline-block'}}/>Previsto</span>
-                    <span style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'#64748b'}}><span style={{width:8,height:8,borderRadius:2,background:CC.blue,display:'inline-block'}}/>Pago</span>
+                    <span style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'var(--color-text-secondary)'}}><span style={{width:8,height:8,borderRadius:2,background:'#D3D1C7',display:'inline-block'}}/>Previsto</span>
+                    <span style={{display:'flex',alignItems:'center',gap:5,fontSize:10,color:'var(--color-text-secondary)'}}><span style={{width:8,height:8,borderRadius:2,background:CC.blue,display:'inline-block'}}/>Pago</span>
                   </div>
                 </div>
               </div>
               {/* 6. TABELA */}
-              <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:16,overflow:'hidden'}}>
-                <div style={{padding:'16px 20px',borderBottom:'1px solid #f1f5f9',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+              <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,overflow:'hidden'}}>
+                <div style={{padding:'16px 20px',borderBottom:'1px solid var(--color-border-subtle)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                     <span style={{fontSize:10,fontWeight:700,color:CC.text,textTransform:'uppercase',letterSpacing:'0.1em'}}>{filtrados.length} contas</span>
                     <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                       {[{k:'todos',l:'Todas'},{k:'aberto',l:'Em aberto'},{k:'atrasado',l:'Vencidas'},{k:'pago',l:'Pagas'},{k:'agendado',l:'Agendadas'}].map(f=>(
-                        <button key={f.k} onClick={()=>setCpFiltro(f.k)} style={{padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,border:`1px solid ${cpFiltro===f.k?'#05121b':'#e2e8f0'}`,background:cpFiltro===f.k?'#05121b':'transparent',color:cpFiltro===f.k?'#fff':'#64748b',cursor:'pointer'}}>{f.l}</button>
+                        <button key={f.k} onClick={()=>setCpFiltro(f.k)} style={{padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,border:`1px solid ${cpFiltro===f.k?'var(--color-bg-elevated)':'var(--color-border-light)'}`,background:cpFiltro===f.k?'var(--color-bg-elevated)':'transparent',color:cpFiltro===f.k?'var(--color-text-inverse)':'var(--color-text-secondary)',cursor:'pointer'}}>{f.l}</button>
                       ))}
                     </div>
                   </div>
@@ -2680,7 +2680,7 @@ const App = () => {
                 <div style={{overflowX:'auto'}}>
                   <table style={{width:'100%',borderCollapse:'collapse',tableLayout:'fixed'}}>
                     <thead>
-                      <tr style={{borderBottom:'1px solid #f1f5f9'}}>
+                      <tr style={{borderBottom:'1px solid var(--color-border-subtle)'}}>
                         <th style={{padding:'10px 12px',width:'4%'}}></th>
                         {[{h:'Fornecedor / descrição',w:'24%'},{h:'Categoria',w:'13%'},{h:'Vencimento',w:'10%'},{h:'Tipo',w:'10%'},{h:'Status',w:'11%'},{h:'Valor',w:'10%'},{h:'Ações',w:'18%'}].map(col=>(
                           <th key={col.h} style={{padding:'10px 16px',fontSize:10,fontWeight:600,color:CC.text,textTransform:'uppercase',letterSpacing:'0.06em',textAlign:col.h==='Valor'?'right':'left',width:col.w}}>{col.h}</th>
@@ -2689,29 +2689,29 @@ const App = () => {
                     </thead>
                     <tbody>
                       {filtrados.map(c=>{
-                        const tp=tipoBadge[c.tipo_custo]||{bg:'#f1f5f9',txt:'#64748b',lbl:c.tipo_custo};
-                        const sb=statusBadge[c.status]||{bg:'#f1f5f9',txt:'#64748b',lbl:c.status};
+                        const tp=tipoBadge[c.tipo_custo]||{bg:'var(--color-bg-subtle)',txt:'var(--color-text-secondary)',lbl:c.tipo_custo};
+                        const sb=statusBadge[c.status]||{bg:'var(--color-bg-subtle)',txt:'var(--color-text-secondary)',lbl:c.status};
                         const isAtrasado=c.status==='atrasado';
                         const isPago=c.status==='pago';
-                        const valColor=isPago?'#27500A':isAtrasado?'#791F1F':'#05121b';
+                        const valColor=isPago?'var(--color-success-text)':isAtrasado?'var(--color-danger-text)':'var(--color-text-primary)';
                         const canPay=c.status==='aberto'||c.status==='atrasado';
                         const isSelected=cpSelected.has(c.id);
                         return(
-                          <tr key={c.id} style={{borderBottom:'1px solid #f8fafc',background:isSelected?'#f0f9ff':undefined}}
-                            onMouseEnter={e=>{if(!isSelected)e.currentTarget.style.background='#f8fafc';}}
+                          <tr key={c.id} style={{borderBottom:'1px solid var(--color-border-subtle)',background:isSelected?'var(--color-row-selected)':undefined}}
+                            onMouseEnter={e=>{if(!isSelected)e.currentTarget.style.background='var(--color-bg-card-alt)';}}
                             onMouseLeave={e=>{if(!isSelected)e.currentTarget.style.background='transparent';}}>
                             <td style={{padding:'10px 12px',textAlign:'center'}}>
                               <input type="checkbox" checked={isSelected} onChange={()=>toggleCpSelect(c.id)} style={{cursor:'pointer',accentColor:'#137789'}}/>
                             </td>
-                            <td style={{padding:'10px 16px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,fontWeight:500,color:'#05121b'}}>{c.desc}</td>
-                            <td style={{padding:'10px 16px',fontSize:12,color:'#64748b'}}>{c.cat}</td>
-                            <td style={{padding:'10px 16px',fontSize:12,fontWeight:isAtrasado?700:400,color:isAtrasado?'#D85A30':'#64748b',whiteSpace:'nowrap'}}>{c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'—'}</td>
+                            <td style={{padding:'10px 16px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:13,fontWeight:500,color:'var(--color-text-primary)'}}>{c.desc}</td>
+                            <td style={{padding:'10px 16px',fontSize:12,color:'var(--color-text-secondary)'}}>{c.cat}</td>
+                            <td style={{padding:'10px 16px',fontSize:12,fontWeight:isAtrasado?700:400,color:isAtrasado?'var(--color-danger-text2)':'var(--color-text-secondary)',whiteSpace:'nowrap'}}>{c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'—'}</td>
                             <td style={{padding:'10px 16px'}}><span style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:500,background:tp.bg,color:tp.txt}}>{tp.lbl}</span></td>
                             <td style={{padding:'10px 16px'}}><span style={{padding:'2px 8px',borderRadius:99,fontSize:10,fontWeight:500,background:sb.bg,color:sb.txt}}>{sb.lbl}</span></td>
                             <td style={{padding:'10px 16px',textAlign:'right',fontSize:13,fontWeight:500,color:valColor,whiteSpace:'nowrap'}}>{formatBRL(c.valor)}</td>
                             <td style={{padding:'10px 16px'}}>
                               <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                                <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:formatCurrency(String(Math.round(Number(c.valor||0)*100))),vencimento:c.venc,categoria:c.cat,tipo_custo:c.tipo_custo||'variavel',status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',cursor:'pointer',fontWeight:500}}>Editar</button>
+                                <button onClick={()=>setModalCP({...contasPagar.find(x=>x.id===c.id)||{},descricao:c.desc,valor:formatCurrency(String(Math.round(Number(c.valor||0)*100))),vencimento:c.venc,categoria:c.cat,tipo_custo:c.tipo_custo||'variavel',status:c.status,id:c.id})} style={{padding:'3px 8px',borderRadius:8,fontSize:11,background:'var(--color-bg-subtle)',color:'var(--color-text-secondary)',border:'1px solid var(--color-border-light)',cursor:'pointer',fontWeight:500}}>Editar</button>
                                 {canPay&&<button onClick={()=>setModalPagarCP({id:c.id,desc:c.desc,valor:c.valor,cat:c.cat,tipo_custo:contasPagar.find(x=>x.id===c.id)?.tipo_custo||'variavel',meioPagamento:'',bancoId:'',dataPagamento:today})} style={{padding:'3px 10px',borderRadius:99,fontSize:11,background:'var(--color-success-bg)',color:'var(--color-success-text)',border:'1px solid #9FE1CB',cursor:'pointer',fontWeight:500,whiteSpace:'nowrap'}}>Pagar</button>}
                               </div>
                             </td>
