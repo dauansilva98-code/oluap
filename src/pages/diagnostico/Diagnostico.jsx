@@ -2535,10 +2535,9 @@ const App = () => {
             return Object.values(byDay).sort((a,b)=>a.venc.localeCompare(b.venc));
           })();
           const calStyle={
-            pago:    {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)',lbl:'pago'},
-            vencendo:{bg:'var(--color-danger-bg)',border:'var(--color-danger-border)',tagBg:'var(--color-danger-border)',tagTxt:'var(--color-danger-text)',lbl:''},
-            hoje:    {bg:'var(--color-info-bg)',border:'var(--color-info-border)',tagBg:'var(--color-info-border)',tagTxt:'var(--color-info-text)',lbl:'hoje'},
-            previsto:{bg:'var(--color-bg-card-alt)',border:'var(--color-border-light)',tagBg:'var(--color-bg-subtle)',tagTxt:'var(--color-text-muted)',lbl:'prev.'},
+            pago:    {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)'},
+            vencendo:{bg:'var(--color-danger-bg)',border:'var(--color-danger-text2)',tagBg:'var(--color-danger-text2)',tagTxt:'var(--color-bg-card)'},
+            previsto:{bg:'var(--color-danger-bg)',border:'var(--color-danger-border)',tagBg:'var(--color-danger-border)',tagTxt:'var(--color-danger-text)'},
           };
           const tipoBadge={
             fixa:    {bg:'var(--color-info-bg)',txt:'var(--color-info-text)',lbl:'Fixa'},

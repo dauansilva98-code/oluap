@@ -149,6 +149,30 @@ export default function ContasReceberView({
     setCrSelected(new Set())
   }
 
+  const crDows = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+  const crMesLabel = (() => {
+    const [y,m] = crMes.split('-')
+    const n = new Date(parseInt(y), parseInt(m)-1).toLocaleString('pt-BR',{month:'long',year:'numeric'})
+    return n.charAt(0).toUpperCase()+n.slice(1)
+  })()
+  const crCalCells = (() => {
+    const byDay = {}
+    cobranças.filter(c => c.venc && c.venc.startsWith(crMes)).forEach(c => {
+      const k = c.venc
+      if (!byDay[k]) { const dt = new Date(k+'T00:00:00'); byDay[k] = {dia:k.slice(8,10),dow:crDows[dt.getDay()],valor:0,status:'previsto',venc:k} }
+      byDay[k].valor += Number(c.valor)
+      const st = (c.status==='recebido'||c.status==='parcial')?'recebido':c.status==='atrasado'?'atrasado':'previsto'
+      if (byDay[k].status==='recebido'&&st!=='recebido') byDay[k].status = st
+      else if (byDay[k].status==='previsto'&&st==='atrasado') byDay[k].status = st
+    })
+    return Object.values(byDay).sort((a,b)=>a.venc.localeCompare(b.venc))
+  })()
+  const crCalStyle = {
+    recebido: {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)'},
+    previsto:  {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)'},
+    atrasado:  {bg:'var(--color-danger-bg)', border:'var(--color-danger-border)', tagBg:'var(--color-danger-border)', tagTxt:'var(--color-danger-text)'},
+  }
+
   const card = (bg, border, children) => (
     <div style={{ background: bg, border: `0.5px solid ${border}`, borderRadius: 12, padding: '1rem 1.1rem' }}>{children}</div>
   )
@@ -446,6 +470,29 @@ export default function ContasReceberView({
                 ))}
               </div>
             </div>
+
+            {/* Calendário de recebimentos */}
+            {crCalCells.length > 0 && (
+              <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                <h3 style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:12}}>Calendário de recebimentos — {crMesLabel}</h3>
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
+                  {crCalCells.map((c,i) => {
+                    const s = crCalStyle[c.status] || crCalStyle.previsto
+                    return (
+                      <div key={i} style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:8,padding:'8px 4px',textAlign:'center'}}>
+                        <p style={{fontSize:10,color:'var(--color-text-secondary)',marginBottom:2}}>{c.dow}</p>
+                        <p style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:4}}>{c.dia}</p>
+                        <div style={{display:'inline-block',background:s.tagBg,borderRadius:99,padding:'1px 5px'}}>
+                          <p style={{fontSize:9,fontWeight:500,color:s.tagTxt,whiteSpace:'nowrap',margin:0}}>
+                            {c.valor>=1000?`R$${(c.valor/1000).toFixed(1)}k`:`R$${Math.round(c.valor)}`}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Gráficos */}
             <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 14 }}>
