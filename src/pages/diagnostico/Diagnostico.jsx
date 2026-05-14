@@ -8,7 +8,7 @@ import {
   FileSpreadsheet, PenLine, FolderOpen, ArrowRight, DollarSign,
   Shield, Brain, Cpu, AlertOctagon, X,
   TrendingDown, Trash2, Pencil, CalendarDays, Wallet, Receipt,
-  Camera, Menu
+  Camera, Menu, Banknote
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
@@ -1113,17 +1113,21 @@ const App = () => {
             )}
 
             {/* ── POSIÇÃO EM BANCOS ───────────────────────────────────────── */}
-            {bancos.length>0&&(
+            {(()=>{
+              const totalBancosDash=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
+              const dinhCaixa=saldoInicialDinheiro+lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0);
+              const totalGeral=totalBancosDash+dinhCaixa;
+              return(
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-black text-[#05121b] text-sm uppercase tracking-wide flex items-center gap-2"><Landmark size={14} className="text-[#137789]"/> Posição em Bancos</h3>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-black text-[#05121b]">Total: <span className={bancos.reduce((a,b)=>a+saldoBanco(b.id),0)>=0?'text-[#05121b]':'text-red-600'}>{formatBRL(bancos.reduce((a,b)=>a+saldoBanco(b.id),0))}</span></span>
-                    <button onClick={()=>setView('bancos')} className="text-xs font-semibold text-[#137789] hover:text-[#ff7b00] transition-colors">Ver todos →</button>
+                    <span className="text-sm font-black text-[#05121b]">Total: <span className={totalGeral>=0?'text-[#05121b]':'text-red-600'}>{formatBRL(totalGeral)}</span></span>
+                    {bancos.length>0&&<button onClick={()=>setView('bancos')} className="text-xs font-semibold text-[#137789] hover:text-[#ff7b00] transition-colors">Ver todos →</button>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {bancos.slice(0,4).map(b=>{
+                  {bancos.slice(0,3).map(b=>{
                     const s=saldoBanco(b.id);
                     const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
                     const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
@@ -1146,15 +1150,32 @@ const App = () => {
                       </div>
                     );
                   })}
-                  {bancos.length>4&&(
+                  {/* Dinheiro em caixa */}
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 bg-amber-400 rounded-xl flex items-center justify-center shrink-0">
+                        <Banknote size={13} className="text-white"/>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black text-[#05121b] truncate">Dinheiro em Caixa</p>
+                        <p className="text-[9px] text-slate-400 truncate">Espécie</p>
+                      </div>
+                    </div>
+                    <p className={`text-lg font-black mb-2 ${dinhCaixa>=0?'text-[#05121b]':'text-red-600'}`}>{formatBRL(dinhCaixa)}</p>
+                    <div className="flex justify-between text-[9px] font-bold">
+                      <span className="text-amber-600 uppercase tracking-wide">físico</span>
+                    </div>
+                  </div>
+                  {bancos.length>3&&(
                     <button onClick={()=>setView('bancos')} className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:bg-slate-100 transition-colors">
-                      <span className="text-xl font-black text-slate-300">+{bancos.length-4}</span>
+                      <span className="text-xl font-black text-slate-300">+{bancos.length-3}</span>
                       <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Ver todos</span>
                     </button>
                   )}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {/* ── CONTAS A PAGAR / RECEBER ────────────────────────────────── */}
             {(contasPagar.length>0||contasReceber.length>0)&&(()=>{
@@ -2501,7 +2522,18 @@ const App = () => {
           const barData=[];
           for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const mes=d.toISOString().slice(0,7);const label=d.toLocaleDateString('pt-BR',{month:'short'});const prev=cpData.filter(c=>c.venc.startsWith(mes)).reduce((a,c)=>a+c.valor,0);const pago=cpData.filter(c=>c.venc.startsWith(mes)&&c.status==='pago').reduce((a,c)=>a+c.valor,0);barData.push({mes:label.charAt(0).toUpperCase()+label.slice(1),Previsto:prev,Pago:pago});}
           const dows=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-          const calCells=cpData.filter(c=>c.venc.startsWith(mesAtualCP)).sort((a,b)=>a.venc.localeCompare(b.venc)).map(c=>{const dt=new Date(c.venc+'T00:00:00');return{dia:c.venc.slice(8,10),dow:dows[dt.getDay()],status:c.status==='pago'?'pago':(c.venc<today?'vencendo':'previsto'),valor:c.valor};});
+          const calCells=(()=>{
+            const byDay={};
+            cpData.filter(c=>c.venc.startsWith(mesAtualCP)).forEach(c=>{
+              const k=c.venc;
+              if(!byDay[k]){const dt=new Date(k+'T00:00:00');byDay[k]={dia:k.slice(8,10),dow:dows[dt.getDay()],valor:0,status:'pago',venc:k};}
+              byDay[k].valor+=Number(c.valor);
+              const st=c.status==='pago'?'pago':(k<today?'vencendo':'previsto');
+              if(byDay[k].status==='pago'&&st!=='pago')byDay[k].status=st;
+              else if(byDay[k].status==='previsto'&&st==='vencendo')byDay[k].status=st;
+            });
+            return Object.values(byDay).sort((a,b)=>a.venc.localeCompare(b.venc));
+          })();
           const calStyle={
             pago:    {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)',lbl:'pago'},
             vencendo:{bg:'var(--color-danger-bg)',border:'var(--color-danger-border)',tagBg:'var(--color-danger-border)',tagTxt:'var(--color-danger-text)',lbl:''},
@@ -2579,23 +2611,45 @@ const App = () => {
               </div>
               {/* 3. ALERTAS */}
               {vencidas.length>0&&(
-                <div style={{borderRadius:12,padding:'12px 18px',border:'1px solid #F09595',background:'var(--color-danger-bg)',display:'flex',alignItems:'flex-start',gap:12}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:CC.red,marginTop:4,flexShrink:0}}/>
-                  <p style={{fontSize:12,color:'var(--color-danger-text)',lineHeight:1.6,margin:0}}>
-                    <strong style={{color:'var(--color-danger-text)'}}>{vencidas.length} contas vencidas: </strong>
-                    {vencidas.map((c,i)=><span key={c.id}>{c.desc} {formatBRL(c.valor)} ({c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'-'}){i<vencidas.length-1?', ':''}</span>)}.{' '}
-                    Total em atraso: <strong>{formatBRL(totalVencidas)}</strong>.
-                  </p>
+                <div style={{borderRadius:12,padding:'14px 18px',border:'1px solid #F09595',background:'var(--color-danger-bg)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                    <div style={{width:8,height:8,borderRadius:'50%',background:CC.red,flexShrink:0}}/>
+                    <span style={{fontSize:12,fontWeight:700,color:'var(--color-danger-text)'}}>{vencidas.length} {vencidas.length===1?'conta vencida':'contas vencidas'}</span>
+                    <span style={{marginLeft:'auto',fontSize:12,fontWeight:700,color:'var(--color-danger-text)'}}>Total: {formatBRL(totalVencidas)}</span>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:4,paddingLeft:16}}>
+                    {vencidas.slice(0,4).map(c=>(
+                      <div key={c.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:11,color:'var(--color-danger-text2)'}}>
+                        <span>{c.desc}</span>
+                        <span style={{display:'flex',gap:12,fontWeight:500,flexShrink:0,marginLeft:12}}>
+                          <span>{c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}`:'-'}</span>
+                          <span>{formatBRL(c.valor)}</span>
+                        </span>
+                      </div>
+                    ))}
+                    {vencidas.length>4&&<span style={{fontSize:10,color:'var(--color-danger-text2)',fontWeight:500}}>+ {vencidas.length-4} mais...</span>}
+                  </div>
                 </div>
               )}
               {emAberto.length>0&&(
-                <div style={{borderRadius:12,padding:'12px 18px',border:'1px solid #EF9F27',background:'var(--color-warning-bg)',display:'flex',alignItems:'flex-start',gap:12}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:'var(--color-warning-dot)',marginTop:4,flexShrink:0}}/>
-                  <p style={{fontSize:12,color:'var(--color-warning-text)',lineHeight:1.6,margin:0}}>
-                    <strong style={{color:'var(--color-warning-text)'}}>Vencimentos esta semana: </strong>
-                    {emAberto.map((c,i)=><span key={c.id}>{c.desc} {formatBRL(c.valor)} ({c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}/${c.venc.slice(0,4)}`:'-'}){i<emAberto.length-1?', ':''}</span>)}.{' '}
-                    Prepare <strong>{formatBRL(totalVencendo)}</strong>.
-                  </p>
+                <div style={{borderRadius:12,padding:'14px 18px',border:'1px solid #EF9F27',background:'var(--color-warning-bg)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                    <div style={{width:8,height:8,borderRadius:'50%',background:'var(--color-warning-dot)',flexShrink:0}}/>
+                    <span style={{fontSize:12,fontWeight:700,color:'var(--color-warning-text)'}}>{emAberto.length} {emAberto.length===1?'vencimento':'vencimentos'} esta semana</span>
+                    <span style={{marginLeft:'auto',fontSize:12,fontWeight:700,color:'var(--color-warning-text)'}}>Total: {formatBRL(totalVencendo)}</span>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:4,paddingLeft:16}}>
+                    {emAberto.slice(0,4).map(c=>(
+                      <div key={c.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:11,color:'var(--color-warning-text)'}}>
+                        <span>{c.desc}</span>
+                        <span style={{display:'flex',gap:12,fontWeight:500,flexShrink:0,marginLeft:12}}>
+                          <span>{c.venc?`${c.venc.slice(8,10)}/${c.venc.slice(5,7)}`:'-'}</span>
+                          <span>{formatBRL(c.valor)}</span>
+                        </span>
+                      </div>
+                    ))}
+                    {emAberto.length>4&&<span style={{fontSize:10,color:'var(--color-warning-text)',fontWeight:500}}>+ {emAberto.length-4} mais...</span>}
+                  </div>
                 </div>
               )}
               {/* 4. CALENDÁRIO */}
@@ -2610,7 +2664,7 @@ const App = () => {
                         <p style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:4}}>{c.dia}</p>
                         <div style={{display:'inline-block',background:s.tagBg,borderRadius:99,padding:'1px 5px'}}>
                           <p style={{fontSize:9,fontWeight:500,color:s.tagTxt,whiteSpace:'nowrap',margin:0}}>
-                            {c.status==='vencendo'?`R$ ${(c.valor/1000).toFixed(1)}k`:s.lbl}
+                            {c.valor>=1000?`R$${(c.valor/1000).toFixed(1)}k`:`R$${Math.round(c.valor)}`}
                           </p>
                         </div>
                       </div>
@@ -3400,7 +3454,7 @@ const App = () => {
         {/* Modal Lançamento (Receita) */}
         {modalReceita&&(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalReceita(null)}>
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">Nova Receita</h3><button onClick={()=>setModalReceita(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
               <div className="space-y-4">
                 <InputField label="Descrição" value={modalReceita.descricao} onChange={v=>setModalReceita({...modalReceita,descricao:v})}/>
@@ -3448,7 +3502,7 @@ const App = () => {
         {/* Modal Lançamento (Despesa) */}
         {modalDespesa&&(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalDespesa(null)}>
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6"><h3 className="text-xl font-black text-[#05121b]">Nova Despesa</h3><button onClick={()=>setModalDespesa(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button></div>
               {(()=>{
                 const isCard=modalDespesa.meio_pagamento==='Cartão de Crédito'||modalDespesa.meio_pagamento==='Cartão de Débito';
@@ -3547,8 +3601,11 @@ const App = () => {
                 const{error}=await supabase.from('contas_pagar').insert(inserts);
                 if(error)throw error;
               }else{
-                if(baseCP.id){const{id,...rest}=baseCP;const{error}=await supabase.from('contas_pagar').update(rest).eq('id',id);if(error)throw error;}
-                else{const{error}=await supabase.from('contas_pagar').insert(baseCP);if(error)throw error;}
+                if(baseCP.id){
+                  const editPayload=cleanPayload({descricao:baseCP.descricao,valor:baseCP.valor,vencimento:baseCP.vencimento,categoria:baseCP.categoria,tipo_custo:baseCP.tipo_custo});
+                  const{error}=await supabase.from('contas_pagar').update(editPayload).eq('id',baseCP.id);
+                  if(error)throw error;
+                }else{const{error}=await supabase.from('contas_pagar').insert(baseCP);if(error)throw error;}
               }
               const taxaNum=parseFloat((modalCP.taxa_valor||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0;
               if(taxaNum>0&&modalCP.vencimento){
