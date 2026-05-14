@@ -1060,7 +1060,7 @@ const App = () => {
                       </div>
                     </div>
                     <SemaforoCard icon={Clock} title="Fôlego de Caixa" value={`${metrics.folegoDias} dias`} subtitle="Sem novas vendas" status={metrics.folegoDias>=60?'green':metrics.folegoDias>=30?'yellow':'red'}/>
-                    <SemaforoCard icon={Target} title="Ponto de Equilíbrio" value={formatBRL(metrics.pontoEq)} subtitle="Necessário por mês" status={metrics.receita>=metrics.pontoEq?'green':metrics.receita>=metrics.pontoEq*0.8?'yellow':'red'}/>
+                    <SemaforoCard icon={Target} title="Ponto de Equilíbrio" value={formatBRL(pontoEquilibrioReal||metrics.pontoEq)} subtitle="Necessário por mês" status={(pontoEquilibrioReal||metrics.pontoEq)>0?(metrics.receita>=(pontoEquilibrioReal||metrics.pontoEq)?'green':metrics.receita>=(pontoEquilibrioReal||metrics.pontoEq)*0.8?'yellow':'red'):'neutral'}/>
                     <SemaforoCard icon={TrendingUp} title="Margem Líquida" value={`${metrics.margLiq.toFixed(1)}%`} subtitle="Por R$100 vendidos" status={metrics.margLiq>=15?'green':metrics.margLiq>=5?'yellow':'red'}/>
                   </div>
                   <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
@@ -2311,7 +2311,7 @@ const App = () => {
           despesasMes.forEach(l=>{const c=l.categoria||'Outros';catMap[c]=(catMap[c]||0)+Number(l.valor);});
           const catColors={'Folha de Pagamento':'#137789','Fornecedor':'#a78bfa','Fornecedores':'#a78bfa','Infraestrutura':'#ff7b00','Impostos':'#f87171','Impostos e taxas':'#f87171','Marketing':'#34d399','Aluguel':'#fbbf24','Serviços/Software':'#60a5fa'};
           const fallback=['#137789','#a78bfa','#ff7b00','#f87171','#34d399','#fbbf24','#60a5fa','#94a3b8'];
-          const donutData=Object.entries(catMap).map(([label,value],i)=>({label,value,color:catColors[label]||fallback[i%fallback.length]}));
+          const donutData=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([label,value],i)=>({label,value,color:catColors[label]||fallback[i%fallback.length]}));
           // Bar: top 5 categories, prev vs current
           const topCats=[...new Set([...Object.keys(catMap),...despesasPrev.map(l=>l.categoria||'Outros')])].slice(0,5);
           const barData=topCats.map(cat=>({
@@ -2535,9 +2535,9 @@ const App = () => {
             return Object.values(byDay).sort((a,b)=>a.venc.localeCompare(b.venc));
           })();
           const calStyle={
-            pago:    {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)'},
-            vencendo:{bg:'var(--color-danger-bg)',border:'var(--color-danger-text2)',tagBg:'var(--color-danger-text2)',tagTxt:'var(--color-bg-card)'},
-            previsto:{bg:'var(--color-danger-bg)',border:'var(--color-danger-border)',tagBg:'var(--color-danger-border)',tagTxt:'var(--color-danger-text)'},
+            pago:    {bg:'var(--color-bg-card)',border:'var(--color-border-subtle)',valTxt:'var(--color-success-text)'},
+            vencendo:{bg:'var(--color-bg-card)',border:'var(--color-border-subtle)',valTxt:'var(--color-danger-text)'},
+            previsto:{bg:'var(--color-bg-card)',border:'var(--color-border-subtle)',valTxt:'var(--color-danger-text)'},
           };
           const tipoBadge={
             fixa:    {bg:'var(--color-info-bg)',txt:'var(--color-info-text)',lbl:'Fixa'},
@@ -2659,13 +2659,11 @@ const App = () => {
                     const s=calStyle[c.status]||calStyle.previsto;
                     return(
                       <div key={i} style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:8,padding:'8px 4px',textAlign:'center'}}>
-                        <p style={{fontSize:10,color:CC.text,marginBottom:2}}>{c.dow}</p>
+                        <p style={{fontSize:10,color:'var(--color-text-muted)',marginBottom:2}}>{c.dow}</p>
                         <p style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:4}}>{c.dia}</p>
-                        <div style={{display:'inline-block',background:s.tagBg,borderRadius:99,padding:'1px 5px'}}>
-                          <p style={{fontSize:9,fontWeight:500,color:s.tagTxt,whiteSpace:'nowrap',margin:0}}>
-                            {c.valor>=1000?`R$${(c.valor/1000).toFixed(1)}k`:`R$${Math.round(c.valor)}`}
-                          </p>
-                        </div>
+                        <p style={{fontSize:9,fontWeight:600,color:s.valTxt,whiteSpace:'nowrap',margin:0}}>
+                          {c.valor>=1000?`R$${(c.valor/1000).toFixed(1)}k`:`R$${Math.round(c.valor)}`}
+                        </p>
                       </div>
                     );
                   })}

@@ -168,9 +168,9 @@ export default function ContasReceberView({
     return Object.values(byDay).sort((a,b)=>a.venc.localeCompare(b.venc))
   })()
   const crCalStyle = {
-    recebido: {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)'},
-    previsto:  {bg:'var(--color-success-bg)',border:'var(--color-success-border)',tagBg:'var(--color-success-border)',tagTxt:'var(--color-success-text)'},
-    atrasado:  {bg:'var(--color-danger-bg)', border:'var(--color-danger-border)', tagBg:'var(--color-danger-border)', tagTxt:'var(--color-danger-text)'},
+    recebido: {bg:'var(--color-bg-card)',border:'var(--color-border-subtle)',valTxt:'var(--color-success-text)'},
+    previsto:  {bg:'var(--color-bg-card)',border:'var(--color-border-subtle)',valTxt:'var(--color-success-text)'},
+    atrasado:  {bg:'var(--color-bg-card)',border:'var(--color-border-subtle)',valTxt:'var(--color-danger-text)'},
   }
 
   const card = (bg, border, children) => (
@@ -480,13 +480,11 @@ export default function ContasReceberView({
                     const s = crCalStyle[c.status] || crCalStyle.previsto
                     return (
                       <div key={i} style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:8,padding:'8px 4px',textAlign:'center'}}>
-                        <p style={{fontSize:10,color:'var(--color-text-secondary)',marginBottom:2}}>{c.dow}</p>
+                        <p style={{fontSize:10,color:'var(--color-text-muted)',marginBottom:2}}>{c.dow}</p>
                         <p style={{fontSize:13,fontWeight:500,color:'var(--color-text-primary)',marginBottom:4}}>{c.dia}</p>
-                        <div style={{display:'inline-block',background:s.tagBg,borderRadius:99,padding:'1px 5px'}}>
-                          <p style={{fontSize:9,fontWeight:500,color:s.tagTxt,whiteSpace:'nowrap',margin:0}}>
-                            {c.valor>=1000?`R$${(c.valor/1000).toFixed(1)}k`:`R$${Math.round(c.valor)}`}
-                          </p>
-                        </div>
+                        <p style={{fontSize:9,fontWeight:600,color:s.valTxt,whiteSpace:'nowrap',margin:0}}>
+                          {c.valor>=1000?`R$${(c.valor/1000).toFixed(1)}k`:`R$${Math.round(c.valor)}`}
+                        </p>
                       </div>
                     )
                   })}

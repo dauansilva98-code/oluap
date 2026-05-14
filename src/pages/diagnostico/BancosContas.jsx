@@ -590,12 +590,6 @@ export default function BancosContas({
               )}
             </div>
           </div>
-          {saldoInicialDinheiro > 0 && (
-            <div style={{ background: '#fefce8', border: '0.5px solid #fde68a', borderRadius: 8, padding: '8px 12px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <p style={{ fontSize: 11, color: '#92400e', margin: 0 }}>Saldo inicial cadastrado</p>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#92400e', margin: 0 }}>{fmtBRL(saldoInicialDinheiro)}</p>
-            </div>
-          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
             {[
               { label: 'Entradas do mês', valor: `+ ${fmtBRL(especieMov.filter(m => m.tipo === 'entrada' && lancamentos.find(l => l.id === m.id)?.data?.startsWith(mesAtual)).reduce((s, m) => s + m.valor, 0))}`, cor: 'var(--color-success-text)' },
