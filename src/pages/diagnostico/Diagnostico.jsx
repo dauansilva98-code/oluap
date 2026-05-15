@@ -2476,16 +2476,12 @@ const App = () => {
         {view==='contas_pagar'&&(()=>{
           // Normaliza contasPagar (Supabase) para formato interno da view
           const CP_STATUS_MAP={'pendente':'aberto','pending':'aberto','vencido':'atrasado','overdue':'atrasado'};
-          const cpData=contasPagar.map(cp=>({
-            id:cp.id,
-            desc:cp.descricao||'—',
-            cat:cp.categoria||'Outros',
-            cc:cp.centro_custo||'—',
-            venc:cp.vencimento||'',
-            tipo_custo:cp.tipo_custo||'variavel',
-            status:CP_STATUS_MAP[cp.status]||cp.status||'aberto',
-            valor:Number(cp.valor)||0,
-          }));
+          const cpData=contasPagar.map(cp=>{
+            const venc=cp.vencimento||'';
+            const mapped=CP_STATUS_MAP[cp.status]||cp.status||'aberto';
+            const status=mapped!=='pago'&&venc&&venc<today?'atrasado':mapped;
+            return{id:cp.id,desc:cp.descricao||'—',cat:cp.categoria||'Outros',cc:cp.centro_custo||'—',venc,tipo_custo:cp.tipo_custo||'variavel',status,valor:Number(cp.valor)||0};
+          });
           const mesAtualCP=cpMes;
           const prevMesCP=(()=>{const[y,m]=cpMes.split('-');const d=new Date(parseInt(y),parseInt(m)-2);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
           const nextMesCP=(()=>{const[y,m]=cpMes.split('-');const d=new Date(parseInt(y),parseInt(m));return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
@@ -2545,7 +2541,7 @@ const App = () => {
             imposto: {bg:'var(--color-warning-bg)',txt:'var(--color-warning-text)',lbl:'Imposto'},
           };
           const statusBadge={
-            pago:    {bg:'var(--color-success-bg)',txt:'var(--color-success-text)',lbl:'Pago'},
+            pago:    {bg:'var(--color-success-bg)',txt:'var(--color-success-text)',lbl:'Paga'},
             aberto:  {bg:'var(--color-warning-bg)',txt:'var(--color-warning-text)',lbl:'Em aberto'},
             atrasado:{bg:'var(--color-danger-bg)',txt:'var(--color-danger-text)',lbl:'Vencida'},
             agendado:{bg:'var(--color-info-bg)',txt:'var(--color-info-text)',lbl:'Agendado'},
