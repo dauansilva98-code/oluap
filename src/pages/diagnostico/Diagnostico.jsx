@@ -599,7 +599,7 @@ const App = () => {
     setSavingItem(true);
     try {
       const dp = dataPagamento || today;
-      const { error: upErr } = await supabase.from('contas_pagar').update({ status: 'pago', meio_pagamento: meioPagamento, data_pagamento: dp }).eq('id', id);
+      const { error: upErr } = await supabase.from('contas_pagar').update({ status: 'pago' }).eq('id', id);
       if (upErr) throw upErr;
       const { error: insErr } = await supabase.from('lancamentos').insert({
         descricao: desc, valor: Number(valor), data: dp,
