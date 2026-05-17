@@ -3713,8 +3713,6 @@ const App = () => {
                         </thead>
                         <tbody>
                           {(()=>{
-                            const lucroAtual=resultadoOp;
-                            const despFixaPrev=despFixaMes(prevRelMes);
                             const rows=[
                               {lbl:'Receita Bruta',prev:recPrev,atual:recAtual,higherIsBetter:true},
                               {lbl:'Custos Variáveis',prev:despVarPrev,atual:despVarAtual,higherIsBetter:false},
