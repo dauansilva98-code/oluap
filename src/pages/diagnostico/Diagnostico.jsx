@@ -178,6 +178,8 @@ const App = () => {
   const [simInvAnos, setSimInvAnos] = useState(5);
   const [filtroHistorico, setFiltroHistorico] = useState('todos');
   const [tipoNegocio, setTipoNegocio] = useState(null); // 'produto' | 'servico' | 'ambos' | null
+  const [relatorioMes, setRelatorioMes] = useState(new Date().toISOString().slice(0,7));
+  const [relatorioAba, setRelatorioAba] = useState('dre');
 
   useEffect(()=>{
     if(formMode&&view==='form'){
@@ -3406,28 +3408,327 @@ const App = () => {
 
         {/* ══════════════════════════════════════════════════════════════
             ── RELATÓRIOS (download) ─────────────────────────────────── */}
-        {view==='relatorios'&&(
-          <div className="max-w-7xl mx-auto fade-in">
-            <header className="mb-8"><p className="text-xs text-slate-500 font-medium">Documentos</p><h1 className="text-xl font-medium text-[#05121b]">Relatórios</h1></header>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                {title:'DRE — Demonstrativo de Resultado',desc:'Receitas, custos, despesas e lucro líquido do período.',icon:FileSpreadsheet,color:'text-[#137789]',bg:'bg-[#137789]/5',border:'border-[#137789]/20',status:'em breve'},
-                {title:'Fluxo de Caixa Consolidado',desc:'Entradas e saídas organizadas por período.',icon:Activity,color:'text-blue-600',bg:'bg-blue-50',border:'border-blue-200',status:'em breve'},
-                {title:'Relatório de Contas a Pagar',desc:'Lista completa de contas com status e vencimentos.',icon:Receipt,color:'text-amber-600',bg:'bg-amber-50',border:'border-amber-200',status:'em breve'},
-                {title:'Relatório de Dívidas',desc:'Posição atualizada de todas as dívidas ativas.',icon:AlertOctagon,color:'text-red-600',bg:'bg-red-50',border:'border-red-200',status:'em breve'},
-              ].map(r=>(
-                <div key={r.title} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex items-start gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${r.bg} border ${r.border}`}><r.icon size={20} className={r.color}/></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-[#05121b] mb-1">{r.title}</p>
-                    <p className="text-[10px] text-slate-400 leading-relaxed mb-3">{r.desc}</p>
-                    <span className="text-[9px] bg-slate-100 text-slate-400 px-2.5 py-1 rounded-full font-black uppercase tracking-widest">{r.status}</span>
+        {view==='relatorios'&&(()=>{
+          // ── helpers ──────────────────────────────────────────────────────────
+          const relMesLabel=(m)=>{const[y,mo]=m.split('-');const n=new Date(parseInt(y),parseInt(mo)-1).toLocaleString('pt-BR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);};
+          const prevRelMes=(()=>{const[y,m]=relatorioMes.split('-');const d=new Date(parseInt(y),parseInt(m)-2);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+          const nextRelMes=(()=>{const[y,m]=relatorioMes.split('-');const d=new Date(parseInt(y),parseInt(m));return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+
+          // ── cálculos do mês selecionado ────────────────────────────────────
+          const lancMes=(mes)=>lancamentos.filter(l=>l.data&&l.data.startsWith(mes));
+          const recMes=(mes)=>lancMes(mes).filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+          const despMes=(mes)=>lancMes(mes).filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          const despFixaMes=(mes)=>lancMes(mes).filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')==='fixa').reduce((a,l)=>a+Number(l.valor),0);
+          const despVarMes=(mes)=>lancMes(mes).filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')!=='fixa').reduce((a,l)=>a+Number(l.valor),0);
+
+          const recAtual=recMes(relatorioMes);
+          const despAtual=despMes(relatorioMes);
+          const despFixaAtual=despFixaMes(relatorioMes);
+          const despVarAtual=despVarMes(relatorioMes);
+          const lucroBruto=recAtual-despVarAtual;
+          const margBrutaPct=recAtual>0?lucroBruto/recAtual*100:0;
+          const resultadoOp=lucroBruto-despFixaAtual;
+          const margLiqPct=recAtual>0?resultadoOp/recAtual*100:0;
+
+          const recPrev=recMes(prevRelMes);
+          const despPrev=despMes(prevRelMes);
+          const lucroLiqPrev=recPrev-despPrev;
+
+          // categorias do mês
+          const catRec=lancMes(relatorioMes).filter(l=>l.tipo==='receita').reduce((acc,l)=>{const c=l.categoria||'Outros';acc[c]=(acc[c]||0)+Number(l.valor);return acc},{});
+          const catDesp=lancMes(relatorioMes).filter(l=>l.tipo==='despesa').reduce((acc,l)=>{const c=l.categoria||'Outros';acc[c]=(acc[c]||0)+Number(l.valor);return acc},{});
+
+          // ── histórico 12 meses ─────────────────────────────────────────────
+          const hist12=Array.from({length:12},(_,i)=>{
+            const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-11+i);
+            const mes=d.toISOString().slice(0,7);
+            const label=d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
+            const rec=recMes(mes);const desp=despMes(mes);
+            return{mes,label:label.charAt(0).toUpperCase()+label.slice(1),rec,desp,res:rec-desp};
+          });
+
+          // ── export Excel ──────────────────────────────────────────────────
+          const handleExportExcel=()=>{
+            const wb=XLSX.utils.book_new();
+            // DRE
+            const dreRows=[
+              ['DRE — '+relMesLabel(relatorioMes),''],
+              ['',''],
+              ['Receita Bruta',recAtual],
+              ['(-) Custos Variáveis',despVarAtual],
+              ['= Lucro Bruto',lucroBruto],
+              ['Margem Bruta %',margBrutaPct.toFixed(1)+'%'],
+              ['(-) Despesas Fixas',despFixaAtual],
+              ['= Resultado Operacional',resultadoOp],
+              ['Margem Líquida %',margLiqPct.toFixed(1)+'%'],
+            ];
+            const wsDRE=XLSX.utils.aoa_to_sheet(dreRows);
+            XLSX.utils.book_append_sheet(wb,wsDRE,'DRE');
+            // Histórico
+            const histRows=[['Mês','Receita','Despesa','Resultado'],...hist12.map(h=>[h.label,h.rec,h.desp,h.res])];
+            const wsHist=XLSX.utils.aoa_to_sheet(histRows);
+            XLSX.utils.book_append_sheet(wb,wsHist,'Histórico 12 meses');
+            // Receitas por categoria
+            const recCatRows=[['Categoria','Valor'],...Object.entries(catRec).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v])];
+            XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(recCatRows),'Receitas por Categoria');
+            // Despesas por categoria
+            const despCatRows=[['Categoria','Valor'],...Object.entries(catDesp).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v])];
+            XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(despCatRows),'Despesas por Categoria');
+            XLSX.writeFile(wb,`Relatorio_OLUAP_${relatorioMes}.xlsx`);
+          };
+
+          // ── export PDF (nova janela + print) ─────────────────────────────
+          const handleGerarPDF=()=>{
+            const fmt=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+            const pct=(v)=>`${v>=0?'+':''}${v.toFixed(1)}%`;
+            const rowColor=(v)=>v>=0?'#1D9E75':'#D85A30';
+            const dreHtml=`
+              <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700;color:#05121b">Receita Bruta</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:#05121b">${fmt(recAtual)}</td></tr>
+                <tr><td style="padding:8px 12px;color:#444;padding-left:24px">(-) Custos Variáveis</td><td style="padding:8px 12px;text-align:right;color:#D85A30">-${fmt(despVarAtual)}</td></tr>
+                <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700;color:#05121b">= Lucro Bruto</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rowColor(lucroBruto)}">${fmt(lucroBruto)}</td></tr>
+                <tr><td style="padding:8px 12px;color:#888;font-size:11px;padding-left:24px">Margem Bruta</td><td style="padding:8px 12px;text-align:right;color:#888;font-size:11px">${margBrutaPct.toFixed(1)}%</td></tr>
+                <tr><td style="padding:8px 12px;color:#444;padding-left:24px">(-) Despesas Fixas</td><td style="padding:8px 12px;text-align:right;color:#D85A30">-${fmt(despFixaAtual)}</td></tr>
+                <tr style="background:#f8fafc"><td style="padding:10px 12px;font-weight:700;color:#05121b;font-size:14px">= Resultado Operacional</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:14px;color:${rowColor(resultadoOp)}">${fmt(resultadoOp)}</td></tr>
+                <tr><td style="padding:8px 12px;color:#888;font-size:11px;padding-left:24px">Margem Líquida</td><td style="padding:8px 12px;text-align:right;color:#888;font-size:11px">${margLiqPct.toFixed(1)}%</td></tr>
+              </table>`;
+            const histHtml=`
+              <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr style="background:#05121b;color:#fff"><th style="padding:8px 10px;text-align:left">Mês</th><th style="padding:8px 10px;text-align:right">Receita</th><th style="padding:8px 10px;text-align:right">Despesa</th><th style="padding:8px 10px;text-align:right">Resultado</th></tr></thead>
+                <tbody>${hist12.map((h,i)=>`<tr style="background:${i%2===0?'#f8fafc':'#fff'}"><td style="padding:7px 10px">${h.label}</td><td style="padding:7px 10px;text-align:right;color:#1D9E75">${fmt(h.rec)}</td><td style="padding:7px 10px;text-align:right;color:#D85A30">${fmt(h.desp)}</td><td style="padding:7px 10px;text-align:right;font-weight:600;color:${rowColor(h.res)}">${fmt(h.res)}</td></tr>`).join('')}</tbody>
+              </table>`;
+            const compHtml=`
+              <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead><tr style="background:#05121b;color:#fff"><th style="padding:8px 12px;text-align:left">Indicador</th><th style="padding:8px 12px;text-align:right">${relMesLabel(prevRelMes)}</th><th style="padding:8px 12px;text-align:right">${relMesLabel(relatorioMes)}</th><th style="padding:8px 12px;text-align:right">Δ</th></tr></thead>
+                <tbody>
+                  <tr style="background:#f8fafc"><td style="padding:8px 12px">Receita</td><td style="padding:8px 12px;text-align:right">${fmt(recPrev)}</td><td style="padding:8px 12px;text-align:right">${fmt(recAtual)}</td><td style="padding:8px 12px;text-align:right;color:${rowColor(recAtual-recPrev)}">${recPrev>0?pct((recAtual-recPrev)/recPrev*100):'—'}</td></tr>
+                  <tr><td style="padding:8px 12px">Despesa</td><td style="padding:8px 12px;text-align:right">${fmt(despPrev)}</td><td style="padding:8px 12px;text-align:right">${fmt(despAtual)}</td><td style="padding:8px 12px;text-align:right;color:${rowColor(despPrev-despAtual)}">${despPrev>0?pct((despAtual-despPrev)/despPrev*100):'—'}</td></tr>
+                  <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700">Resultado</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rowColor(lucroLiqPrev)}">${fmt(lucroLiqPrev)}</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rowColor(resultadoOp)}">${fmt(resultadoOp)}</td><td style="padding:8px 12px;text-align:right;color:${rowColor(resultadoOp-lucroLiqPrev)}">${lucroLiqPrev!==0?pct((resultadoOp-lucroLiqPrev)/Math.abs(lucroLiqPrev)*100):'—'}</td></tr>
+                </tbody>
+              </table>`;
+            const w=window.open('','_blank');
+            w.document.write(`<!DOCTYPE html><html><head><title>Relatório OLUAP — ${relMesLabel(relatorioMes)}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:40px;color:#05121b;max-width:900px;margin:0 auto}h1{font-size:22px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px}h2{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#888;margin:32px 0 12px}hr{border:none;border-top:1px solid #eee;margin:8px 0}@media print{body{padding:20px}button{display:none}}</style></head><body>
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px">
+                <div><p style="font-size:11px;color:#888;margin:0">OLUAP · Relatório Financeiro</p><h1>Relatórios — ${relMesLabel(relatorioMes)}</h1><p style="font-size:11px;color:#888;margin:4px 0 0">Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</p></div>
+                <button onclick="window.print()" style="background:#05121b;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">Imprimir / Salvar PDF</button>
+              </div>
+              <h2>DRE — Demonstrativo de Resultado</h2>${dreHtml}
+              <h2>Histórico dos Últimos 12 Meses</h2>${histHtml}
+              <h2>Comparativo — Mês Anterior vs Atual</h2>${compHtml}
+            </body></html>`);
+            w.document.close();
+          };
+
+          // ── abas ──────────────────────────────────────────────────────────
+          const abas=[{id:'dre',lbl:'DRE'},{id:'historico',lbl:'Histórico 12 meses'},{id:'comparativo',lbl:'Comparativo'}];
+
+          return(
+            <div className="max-w-7xl mx-auto fade-in space-y-4">
+              {/* Header */}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:12}}>
+                <div>
+                  <p style={{fontSize:12,color:'var(--color-text-secondary)',fontWeight:500}}>Análise financeira</p>
+                  <h1 style={{fontSize:20,fontWeight:500,color:'var(--color-text-primary)',marginTop:2}}>Relatórios</h1>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:4,background:'var(--color-bg-card-alt)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:'4px 8px'}}>
+                    <button onClick={()=>setRelatorioMes(prevRelMes)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'var(--color-text-primary)',display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
+                    <span style={{fontSize:12,color:'var(--color-text-secondary)',minWidth:150,textAlign:'center'}}>{relMesLabel(relatorioMes)}</span>
+                    <button onClick={()=>setRelatorioMes(nextRelMes)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'var(--color-text-primary)',display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
+                  </div>
+                  <button onClick={handleExportExcel} style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'var(--color-text-primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><FileSpreadsheet size={12}/>Excel</button>
+                  <button onClick={handleGerarPDF} style={{background:'var(--color-bg-elevated)',color:'var(--color-text-inverse)',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Printer size={12}/>Gerar PDF</button>
+                </div>
+              </div>
+
+              {/* KPI cards */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12}}>
+                {[
+                  {lbl:'Receita',val:recAtual,color:'var(--color-success-text)',bg:'var(--color-success-bg)',border:'#C0DD97'},
+                  {lbl:'Despesa',val:despAtual,color:'var(--color-danger-text)',bg:'var(--color-danger-bg)',border:'#F7C1C1'},
+                  {lbl:'Resultado',val:resultadoOp,color:resultadoOp>=0?'var(--color-success-text)':'var(--color-danger-text)',bg:resultadoOp>=0?'var(--color-success-bg)':'var(--color-danger-bg)',border:resultadoOp>=0?'#C0DD97':'#F7C1C1'},
+                  {lbl:'Margem Líquida',val:null,extra:`${margLiqPct.toFixed(1)}%`,color:margLiqPct>=10?'var(--color-success-text)':margLiqPct>=0?'var(--color-warning-text)':'var(--color-danger-text)',bg:margLiqPct>=10?'var(--color-success-bg)':margLiqPct>=0?'var(--color-warning-bg)':'var(--color-danger-bg)',border:margLiqPct>=10?'#C0DD97':margLiqPct>=0?'#FAC775':'#F7C1C1'},
+                  {lbl:'Margem Bruta',val:null,extra:`${margBrutaPct.toFixed(1)}%`,color:margBrutaPct>=30?'var(--color-success-text)':margBrutaPct>=10?'var(--color-warning-text)':'var(--color-danger-text)',bg:margBrutaPct>=30?'var(--color-success-bg)':margBrutaPct>=10?'var(--color-warning-bg)':'var(--color-danger-bg)',border:margBrutaPct>=30?'#C0DD97':margBrutaPct>=10?'#FAC775':'#F7C1C1'},
+                ].map(k=>(
+                  <div key={k.lbl} style={{borderRadius:12,padding:'16px 18px',border:`1px solid ${k.border}`,background:k.bg}}>
+                    <p style={{fontSize:11,fontWeight:500,color:k.color,marginBottom:6}}>{k.lbl}</p>
+                    <p style={{fontSize:19,fontWeight:500,color:k.color,lineHeight:1.2}}>{k.val!=null?formatBRL(k.val):k.extra}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Abas */}
+              <div style={{display:'flex',gap:4,background:'var(--color-bg-card-alt)',padding:4,borderRadius:12,border:'1px solid var(--color-border-light)'}}>
+                {abas.map(a=>(
+                  <button key={a.id} onClick={()=>setRelatorioAba(a.id)} style={{flex:1,padding:'6px 0',borderRadius:8,border:'none',cursor:'pointer',fontSize:12,fontWeight:relatorioAba===a.id?700:400,background:relatorioAba===a.id?'var(--color-bg-elevated)':'transparent',color:relatorioAba===a.id?'var(--color-text-inverse)':'var(--color-text-secondary)',transition:'all .15s'}}>{a.lbl}</button>
+                ))}
+              </div>
+
+              {/* ABA: DRE */}
+              {relatorioAba==='dre'&&(
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  {/* DRE table */}
+                  <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20,gridColumn:'1/-1'}}>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>DRE — Demonstrativo de Resultado — {relMesLabel(relatorioMes)}</h3>
+                    <div style={{display:'flex',flexDirection:'column',gap:0}}>
+                      {[
+                        {lbl:'Receita Bruta',val:recAtual,bold:true,indent:0,color:'var(--color-text-primary)'},
+                        {lbl:'(-) Custos Variáveis',val:-despVarAtual,bold:false,indent:1,color:'var(--color-danger-text)'},
+                        {lbl:'= Lucro Bruto',val:lucroBruto,bold:true,indent:0,color:lucroBruto>=0?'var(--color-success-text)':'var(--color-danger-text)',sep:true},
+                        {lbl:`Margem Bruta: ${margBrutaPct.toFixed(1)}%`,val:null,bold:false,indent:1,color:'var(--color-text-muted)',small:true},
+                        {lbl:'(-) Despesas Fixas',val:-despFixaAtual,bold:false,indent:1,color:'var(--color-danger-text)'},
+                        {lbl:'= Resultado Operacional',val:resultadoOp,bold:true,indent:0,color:resultadoOp>=0?'var(--color-success-text)':'var(--color-danger-text)',sep:true,big:true},
+                        {lbl:`Margem Líquida: ${margLiqPct.toFixed(1)}%`,val:null,bold:false,indent:1,color:'var(--color-text-muted)',small:true},
+                      ].map((row,i)=>(
+                        <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:`${row.big?'12':'8'}px ${row.indent?24:0}px`,borderTop:row.sep?'1px solid var(--color-border-subtle)':'none',marginTop:row.sep?4:0}}>
+                          <span style={{fontSize:row.small?11:13,fontWeight:row.bold?700:400,color:row.color}}>{row.lbl}</span>
+                          {row.val!=null&&<span style={{fontSize:row.big?15:13,fontWeight:row.bold?700:500,color:row.color}}>{row.val<0?`-${formatBRL(Math.abs(row.val))}`:formatBRL(row.val)}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Receitas por categoria */}
+                  <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:12}}>Receitas por categoria</h3>
+                    {Object.entries(catRec).length===0?<p style={{fontSize:12,color:'var(--color-text-muted)'}}>Nenhuma receita no mês.</p>:
+                    Object.entries(catRec).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>(
+                      <div key={cat} style={{marginBottom:8}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                          <span style={{fontSize:11,color:'var(--color-text-secondary)'}}>{cat}</span>
+                          <span style={{fontSize:11,fontWeight:600,color:'var(--color-success-text)'}}>{formatBRL(val)}</span>
+                        </div>
+                        <div style={{height:4,background:'var(--color-border-subtle)',borderRadius:99}}><div style={{height:4,background:'var(--color-success-text)',borderRadius:99,width:`${recAtual>0?val/recAtual*100:0}%`}}/></div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Despesas por categoria */}
+                  <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:12}}>Despesas por categoria</h3>
+                    {Object.entries(catDesp).length===0?<p style={{fontSize:12,color:'var(--color-text-muted)'}}>Nenhuma despesa no mês.</p>:
+                    Object.entries(catDesp).sort((a,b)=>b[1]-a[1]).map(([cat,val])=>(
+                      <div key={cat} style={{marginBottom:8}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                          <span style={{fontSize:11,color:'var(--color-text-secondary)'}}>{cat}</span>
+                          <span style={{fontSize:11,fontWeight:600,color:'var(--color-danger-text)'}}>{formatBRL(val)}</span>
+                        </div>
+                        <div style={{height:4,background:'var(--color-border-subtle)',borderRadius:99}}><div style={{height:4,background:'var(--color-danger-text)',borderRadius:99,width:`${despAtual>0?val/despAtual*100:0}%`}}/></div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
+
+              {/* ABA: HISTÓRICO */}
+              {relatorioAba==='historico'&&(
+                <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                  <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>Faturamento dos últimos 12 meses</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <ComposedChart data={hist12} margin={{top:4,right:4,bottom:0,left:-16}}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={CC.grid} vertical={false}/>
+                        <XAxis dataKey="label" tick={{fontSize:10,fill:CC.text}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:10,fill:CC.text}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={48}/>
+                        <RTooltip formatter={(v,n)=>[formatBRL(v),n]} labelStyle={{color:CC.text,fontSize:11}} contentStyle={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-light)',borderRadius:10,fontSize:11}}/>
+                        <Bar dataKey="rec" name="Receita" fill={CC.green} radius={[3,3,0,0]} maxBarSize={16}/>
+                        <Bar dataKey="desp" name="Despesa" fill={CC.red} radius={[3,3,0,0]} maxBarSize={16}/>
+                        <Line dataKey="res" name="Resultado" stroke={CC.blue} type="monotone" dot={{r:3,fill:CC.blue}} strokeWidth={2}/>
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:12}}>Tabela de histórico</h3>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                        <thead>
+                          <tr style={{borderBottom:'1px solid var(--color-border-subtle)'}}>
+                            {['Mês','Receita','Despesa','Resultado','Margem'].map(h=><th key={h} style={{padding:'8px 12px',textAlign:h==='Mês'?'left':'right',fontSize:10,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase',letterSpacing:'0.05em'}}>{h}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {hist12.map((h,i)=>{
+                            const marg=h.rec>0?h.res/h.rec*100:0;
+                            return(<tr key={h.mes} style={{borderBottom:'1px solid var(--color-border-subtle)',background:i%2===0?'transparent':'var(--color-bg-card-alt)'}}>
+                              <td style={{padding:'9px 12px',fontWeight:500,color:'var(--color-text-primary)'}}>{h.label}</td>
+                              <td style={{padding:'9px 12px',textAlign:'right',color:'var(--color-success-text)',fontWeight:500}}>{formatBRL(h.rec)}</td>
+                              <td style={{padding:'9px 12px',textAlign:'right',color:'var(--color-danger-text)',fontWeight:500}}>{formatBRL(h.desp)}</td>
+                              <td style={{padding:'9px 12px',textAlign:'right',fontWeight:700,color:h.res>=0?'var(--color-success-text)':'var(--color-danger-text)'}}>{formatBRL(h.res)}</td>
+                              <td style={{padding:'9px 12px',textAlign:'right',color:marg>=10?'var(--color-success-text)':marg>=0?'var(--color-warning-text)':'var(--color-danger-text)',fontWeight:500}}>{marg.toFixed(1)}%</td>
+                            </tr>);
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ABA: COMPARATIVO */}
+              {relatorioAba==='comparativo'&&(
+                <div style={{display:'flex',flexDirection:'column',gap:12}}>
+                  <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>{relMesLabel(prevRelMes)} vs {relMesLabel(relatorioMes)}</h3>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                        <thead>
+                          <tr style={{borderBottom:'2px solid var(--color-border-subtle)'}}>
+                            <th style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>Indicador</th>
+                            <th style={{padding:'10px 14px',textAlign:'right',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>{relMesLabel(prevRelMes)}</th>
+                            <th style={{padding:'10px 14px',textAlign:'right',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>{relMesLabel(relatorioMes)}</th>
+                            <th style={{padding:'10px 14px',textAlign:'right',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>Variação</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(()=>{
+                            const lucroAtual=resultadoOp;
+                            const despFixaPrev=despFixaMes(prevRelMes);
+                            const despVarPrev=despVarMes(prevRelMes);
+                            const lucroBrutoPrev=recPrev-despVarPrev;
+                            const rows=[
+                              {lbl:'Receita Bruta',prev:recPrev,atual:recAtual,higherIsBetter:true},
+                              {lbl:'Custos Variáveis',prev:despVarPrev,atual:despVarAtual,higherIsBetter:false},
+                              {lbl:'Lucro Bruto',prev:lucroBrutoPrev,atual:lucroBruto,higherIsBetter:true,bold:true},
+                              {lbl:'Margem Bruta',prev:recPrev>0?lucroBrutoPrev/recPrev*100:0,atual:margBrutaPct,isPercent:true,higherIsBetter:true},
+                              {lbl:'Despesas Fixas',prev:despFixaPrev,atual:despFixaAtual,higherIsBetter:false},
+                              {lbl:'Resultado Op.',prev:lucroLiqPrev,atual:lucroAtual,higherIsBetter:true,bold:true},
+                              {lbl:'Margem Líquida',prev:recPrev>0?lucroLiqPrev/recPrev*100:0,atual:margLiqPct,isPercent:true,higherIsBetter:true},
+                            ];
+                            return rows.map((r,i)=>{
+                              const delta=r.atual-r.prev;
+                              const pctVar=r.prev!==0?delta/Math.abs(r.prev)*100:0;
+                              const good=r.higherIsBetter?(delta>=0):(delta<=0);
+                              const deltaColor=delta===0?'var(--color-text-muted)':good?'var(--color-success-text)':'var(--color-danger-text)';
+                              return(<tr key={r.lbl} style={{borderBottom:'1px solid var(--color-border-subtle)',background:i%2===0?'transparent':'var(--color-bg-card-alt)'}}>
+                                <td style={{padding:'10px 14px',fontWeight:r.bold?700:400,color:'var(--color-text-primary)'}}>{r.lbl}</td>
+                                <td style={{padding:'10px 14px',textAlign:'right',color:'var(--color-text-secondary)'}}>{r.isPercent?`${r.prev.toFixed(1)}%`:formatBRL(r.prev)}</td>
+                                <td style={{padding:'10px 14px',textAlign:'right',fontWeight:r.bold?700:500,color:'var(--color-text-primary)'}}>{r.isPercent?`${r.atual.toFixed(1)}%`:formatBRL(r.atual)}</td>
+                                <td style={{padding:'10px 14px',textAlign:'right',fontWeight:600,color:deltaColor}}>{r.prev!==0?`${delta>=0?'+':''}${r.isPercent?delta.toFixed(1)+'%':pctVar.toFixed(1)+'%'}`:'—'}</td>
+                              </tr>);
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  {/* Mini gráfico comparativo */}
+                  <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>Visão gráfica</h3>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={[{name:relMesLabel(prevRelMes).split(' ')[0],Receita:recPrev,Despesa:despPrev},{name:relMesLabel(relatorioMes).split(' ')[0],Receita:recAtual,Despesa:despAtual}]} margin={{top:4,right:4,bottom:0,left:-16}}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={CC.grid} vertical={false}/>
+                        <XAxis dataKey="name" tick={{fontSize:11,fill:CC.text}} axisLine={false} tickLine={false}/>
+                        <YAxis tick={{fontSize:10,fill:CC.text}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={48}/>
+                        <RTooltip formatter={(v,n)=>[formatBRL(v),n]} contentStyle={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-light)',borderRadius:10,fontSize:11}}/>
+                        <Legend wrapperStyle={{fontSize:11}}/>
+                        <Bar dataKey="Receita" fill={CC.green} radius={[4,4,0,0]} maxBarSize={40}/>
+                        <Bar dataKey="Despesa" fill={CC.red} radius={[4,4,0,0]} maxBarSize={40}/>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── MODAIS DE CRUD ─────────────────────────────────────────────────────── */}
 
