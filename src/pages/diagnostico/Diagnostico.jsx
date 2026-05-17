@@ -178,7 +178,9 @@ const App = () => {
   const [simInvAnos, setSimInvAnos] = useState(5);
   const [filtroHistorico, setFiltroHistorico] = useState('todos');
   const [tipoNegocio, setTipoNegocio] = useState(null); // 'produto' | 'servico' | 'ambos' | null
-  const [relatorioMes, setRelatorioMes] = useState(new Date().toISOString().slice(0,7));
+  const [relatorioFiltro, setRelatorioFiltro] = useState('3m');
+  const [relatorioCustomInicio, setRelatorioCustomInicio] = useState('');
+  const [relatorioCustomFim, setRelatorioCustomFim] = useState('');
   const [relatorioAba, setRelatorioAba] = useState('dre');
 
   useEffect(()=>{
@@ -3409,39 +3411,72 @@ const App = () => {
         {/* ══════════════════════════════════════════════════════════════
             ── RELATÓRIOS (download) ─────────────────────────────────── */}
         {view==='relatorios'&&(()=>{
-          // ── helpers ──────────────────────────────────────────────────────────
-          const relMesLabel=(m)=>{const[y,mo]=m.split('-');const n=new Date(parseInt(y),parseInt(mo)-1).toLocaleString('pt-BR',{month:'long',year:'numeric'});return n.charAt(0).toUpperCase()+n.slice(1);};
-          const prevRelMes=(()=>{const[y,m]=relatorioMes.split('-');const d=new Date(parseInt(y),parseInt(m)-2);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
-          const nextRelMes=(()=>{const[y,m]=relatorioMes.split('-');const d=new Date(parseInt(y),parseInt(m));return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;})();
+          // ── período ────────────────────────────────────────────────────────
+          const hojeRel=new Date();
+          const hojeStr=hojeRel.toISOString().slice(0,10);
+          const computePeriod=(filtro,ini,fim)=>{
+            if(filtro==='custom'){
+              const s=ini||hojeStr;const e=fim||hojeStr;
+              return{ini:s,fim:e};
+            }
+            const meses=filtro==='3m'?3:filtro==='6m'?6:12;
+            const d=new Date(hojeRel);d.setDate(1);d.setMonth(d.getMonth()-meses);
+            return{ini:d.toISOString().slice(0,10),fim:hojeStr};
+          };
+          const {ini:pIni,fim:pFim}=computePeriod(relatorioFiltro,relatorioCustomInicio,relatorioCustomFim);
+          // período anterior (mesmo comprimento)
+          const durMs=new Date(pFim)-new Date(pIni);
+          const pAntFim=new Date(new Date(pIni).getTime()-86400000).toISOString().slice(0,10);
+          const pAntIni=new Date(new Date(pIni).getTime()-durMs-86400000).toISOString().slice(0,10);
+          // label do período
+          const fmtDateLabel=(d)=>new Date(d+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'2-digit'});
+          const periodoLabel=relatorioFiltro==='3m'?'Últimos 3 meses':relatorioFiltro==='6m'?'Últimos 6 meses':relatorioFiltro==='12m'?'Últimos 12 meses':`${fmtDateLabel(pIni)} – ${fmtDateLabel(pFim)}`;
+          const periodoAntLabel=`${fmtDateLabel(pAntIni)} – ${fmtDateLabel(pAntFim)}`;
+          // meses dentro do período para o histórico
+          const mesesNoPeriodo=(()=>{
+            const list=[];const d=new Date(pIni+'T00:00:00');d.setDate(1);
+            while(d.toISOString().slice(0,7)<=pFim.slice(0,7)){
+              list.push(d.toISOString().slice(0,7));
+              d.setMonth(d.getMonth()+1);
+            }
+            return list;
+          })();
 
-          // ── cálculos do mês selecionado ────────────────────────────────────
+          // ── cálculos por range ─────────────────────────────────────────────
+          const lancRange=(s,e)=>lancamentos.filter(l=>l.data&&l.data>=s&&l.data<=e);
           const lancMes=(mes)=>lancamentos.filter(l=>l.data&&l.data.startsWith(mes));
+          const recRange=(s,e)=>lancRange(s,e).filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
+          const despRange=(s,e)=>lancRange(s,e).filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+          const despFixaRange=(s,e)=>lancRange(s,e).filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')==='fixa').reduce((a,l)=>a+Number(l.valor),0);
+          const despVarRange=(s,e)=>lancRange(s,e).filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')!=='fixa').reduce((a,l)=>a+Number(l.valor),0);
           const recMes=(mes)=>lancMes(mes).filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
           const despMes=(mes)=>lancMes(mes).filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
           const despFixaMes=(mes)=>lancMes(mes).filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')==='fixa').reduce((a,l)=>a+Number(l.valor),0);
           const despVarMes=(mes)=>lancMes(mes).filter(l=>l.tipo==='despesa'&&(l.tipo_custo||'variavel')!=='fixa').reduce((a,l)=>a+Number(l.valor),0);
 
-          const recAtual=recMes(relatorioMes);
-          const despAtual=despMes(relatorioMes);
-          const despFixaAtual=despFixaMes(relatorioMes);
-          const despVarAtual=despVarMes(relatorioMes);
+          const recAtual=recRange(pIni,pFim);
+          const despAtual=despRange(pIni,pFim);
+          const despFixaAtual=despFixaRange(pIni,pFim);
+          const despVarAtual=despVarRange(pIni,pFim);
           const lucroBruto=recAtual-despVarAtual;
           const margBrutaPct=recAtual>0?lucroBruto/recAtual*100:0;
           const resultadoOp=lucroBruto-despFixaAtual;
           const margLiqPct=recAtual>0?resultadoOp/recAtual*100:0;
 
-          const recPrev=recMes(prevRelMes);
-          const despPrev=despMes(prevRelMes);
-          const lucroLiqPrev=recPrev-despPrev;
+          const recPrev=recRange(pAntIni,pAntFim);
+          const despPrev=despRange(pAntIni,pAntFim);
+          const despVarPrev=despVarRange(pAntIni,pAntFim);
+          const despFixaPrev=despFixaRange(pAntIni,pAntFim);
+          const lucroBrutoPrev=recPrev-despVarPrev;
+          const lucroLiqPrev=lucroBrutoPrev-despFixaPrev;
 
-          // categorias do mês
-          const catRec=lancMes(relatorioMes).filter(l=>l.tipo==='receita').reduce((acc,l)=>{const c=l.categoria||'Outros';acc[c]=(acc[c]||0)+Number(l.valor);return acc},{});
-          const catDesp=lancMes(relatorioMes).filter(l=>l.tipo==='despesa').reduce((acc,l)=>{const c=l.categoria||'Outros';acc[c]=(acc[c]||0)+Number(l.valor);return acc},{});
+          // categorias do período
+          const catRec=lancRange(pIni,pFim).filter(l=>l.tipo==='receita').reduce((acc,l)=>{const c=l.categoria||'Outros';acc[c]=(acc[c]||0)+Number(l.valor);return acc},{});
+          const catDesp=lancRange(pIni,pFim).filter(l=>l.tipo==='despesa').reduce((acc,l)=>{const c=l.categoria||'Outros';acc[c]=(acc[c]||0)+Number(l.valor);return acc},{});
 
-          // ── histórico 12 meses ─────────────────────────────────────────────
-          const hist12=Array.from({length:12},(_,i)=>{
-            const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-11+i);
-            const mes=d.toISOString().slice(0,7);
+          // ── histórico por meses do período ────────────────────────────────
+          const hist12=mesesNoPeriodo.map(mes=>{
+            const d=new Date(mes+'-01T00:00:00');
             const label=d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});
             const rec=recMes(mes);const desp=despMes(mes);
             return{mes,label:label.charAt(0).toUpperCase()+label.slice(1),rec,desp,res:rec-desp};
@@ -3450,10 +3485,8 @@ const App = () => {
           // ── export Excel ──────────────────────────────────────────────────
           const handleExportExcel=()=>{
             const wb=XLSX.utils.book_new();
-            // DRE
             const dreRows=[
-              ['DRE — '+relMesLabel(relatorioMes),''],
-              ['',''],
+              ['DRE — '+periodoLabel,''],['',''],
               ['Receita Bruta',recAtual],
               ['(-) Custos Variáveis',despVarAtual],
               ['= Lucro Bruto',lucroBruto],
@@ -3462,65 +3495,57 @@ const App = () => {
               ['= Resultado Operacional',resultadoOp],
               ['Margem Líquida %',margLiqPct.toFixed(1)+'%'],
             ];
-            const wsDRE=XLSX.utils.aoa_to_sheet(dreRows);
-            XLSX.utils.book_append_sheet(wb,wsDRE,'DRE');
-            // Histórico
+            XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(dreRows),'DRE');
             const histRows=[['Mês','Receita','Despesa','Resultado'],...hist12.map(h=>[h.label,h.rec,h.desp,h.res])];
-            const wsHist=XLSX.utils.aoa_to_sheet(histRows);
-            XLSX.utils.book_append_sheet(wb,wsHist,'Histórico 12 meses');
-            // Receitas por categoria
+            XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(histRows),'Histórico');
             const recCatRows=[['Categoria','Valor'],...Object.entries(catRec).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v])];
             XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(recCatRows),'Receitas por Categoria');
-            // Despesas por categoria
             const despCatRows=[['Categoria','Valor'],...Object.entries(catDesp).sort((a,b)=>b[1]-a[1]).map(([k,v])=>[k,v])];
             XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(despCatRows),'Despesas por Categoria');
-            XLSX.writeFile(wb,`Relatorio_OLUAP_${relatorioMes}.xlsx`);
+            XLSX.writeFile(wb,`Relatorio_OLUAP_${pIni}_${pFim}.xlsx`);
           };
 
           // ── export PDF (nova janela + print) ─────────────────────────────
           const handleGerarPDF=()=>{
             const fmt=(v)=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
             const pct=(v)=>`${v>=0?'+':''}${v.toFixed(1)}%`;
-            const rowColor=(v)=>v>=0?'#1D9E75':'#D85A30';
-            const dreHtml=`
-              <table style="width:100%;border-collapse:collapse;font-size:13px;">
-                <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700;color:#05121b">Receita Bruta</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:#05121b">${fmt(recAtual)}</td></tr>
-                <tr><td style="padding:8px 12px;color:#444;padding-left:24px">(-) Custos Variáveis</td><td style="padding:8px 12px;text-align:right;color:#D85A30">-${fmt(despVarAtual)}</td></tr>
-                <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700;color:#05121b">= Lucro Bruto</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rowColor(lucroBruto)}">${fmt(lucroBruto)}</td></tr>
-                <tr><td style="padding:8px 12px;color:#888;font-size:11px;padding-left:24px">Margem Bruta</td><td style="padding:8px 12px;text-align:right;color:#888;font-size:11px">${margBrutaPct.toFixed(1)}%</td></tr>
-                <tr><td style="padding:8px 12px;color:#444;padding-left:24px">(-) Despesas Fixas</td><td style="padding:8px 12px;text-align:right;color:#D85A30">-${fmt(despFixaAtual)}</td></tr>
-                <tr style="background:#f8fafc"><td style="padding:10px 12px;font-weight:700;color:#05121b;font-size:14px">= Resultado Operacional</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:14px;color:${rowColor(resultadoOp)}">${fmt(resultadoOp)}</td></tr>
-                <tr><td style="padding:8px 12px;color:#888;font-size:11px;padding-left:24px">Margem Líquida</td><td style="padding:8px 12px;text-align:right;color:#888;font-size:11px">${margLiqPct.toFixed(1)}%</td></tr>
-              </table>`;
-            const histHtml=`
-              <table style="width:100%;border-collapse:collapse;font-size:12px;">
-                <thead><tr style="background:#05121b;color:#fff"><th style="padding:8px 10px;text-align:left">Mês</th><th style="padding:8px 10px;text-align:right">Receita</th><th style="padding:8px 10px;text-align:right">Despesa</th><th style="padding:8px 10px;text-align:right">Resultado</th></tr></thead>
-                <tbody>${hist12.map((h,i)=>`<tr style="background:${i%2===0?'#f8fafc':'#fff'}"><td style="padding:7px 10px">${h.label}</td><td style="padding:7px 10px;text-align:right;color:#1D9E75">${fmt(h.rec)}</td><td style="padding:7px 10px;text-align:right;color:#D85A30">${fmt(h.desp)}</td><td style="padding:7px 10px;text-align:right;font-weight:600;color:${rowColor(h.res)}">${fmt(h.res)}</td></tr>`).join('')}</tbody>
-              </table>`;
-            const compHtml=`
-              <table style="width:100%;border-collapse:collapse;font-size:13px;">
-                <thead><tr style="background:#05121b;color:#fff"><th style="padding:8px 12px;text-align:left">Indicador</th><th style="padding:8px 12px;text-align:right">${relMesLabel(prevRelMes)}</th><th style="padding:8px 12px;text-align:right">${relMesLabel(relatorioMes)}</th><th style="padding:8px 12px;text-align:right">Δ</th></tr></thead>
-                <tbody>
-                  <tr style="background:#f8fafc"><td style="padding:8px 12px">Receita</td><td style="padding:8px 12px;text-align:right">${fmt(recPrev)}</td><td style="padding:8px 12px;text-align:right">${fmt(recAtual)}</td><td style="padding:8px 12px;text-align:right;color:${rowColor(recAtual-recPrev)}">${recPrev>0?pct((recAtual-recPrev)/recPrev*100):'—'}</td></tr>
-                  <tr><td style="padding:8px 12px">Despesa</td><td style="padding:8px 12px;text-align:right">${fmt(despPrev)}</td><td style="padding:8px 12px;text-align:right">${fmt(despAtual)}</td><td style="padding:8px 12px;text-align:right;color:${rowColor(despPrev-despAtual)}">${despPrev>0?pct((despAtual-despPrev)/despPrev*100):'—'}</td></tr>
-                  <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700">Resultado</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rowColor(lucroLiqPrev)}">${fmt(lucroLiqPrev)}</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rowColor(resultadoOp)}">${fmt(resultadoOp)}</td><td style="padding:8px 12px;text-align:right;color:${rowColor(resultadoOp-lucroLiqPrev)}">${lucroLiqPrev!==0?pct((resultadoOp-lucroLiqPrev)/Math.abs(lucroLiqPrev)*100):'—'}</td></tr>
-                </tbody>
-              </table>`;
+            const rc=(v)=>v>=0?'#1D9E75':'#D85A30';
+            const dreHtml=`<table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700;color:#05121b">Receita Bruta</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:#05121b">${fmt(recAtual)}</td></tr>
+              <tr><td style="padding:8px 12px;color:#444;padding-left:24px">(-) Custos Variáveis</td><td style="padding:8px 12px;text-align:right;color:#D85A30">-${fmt(despVarAtual)}</td></tr>
+              <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700;color:#05121b">= Lucro Bruto</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rc(lucroBruto)}">${fmt(lucroBruto)}</td></tr>
+              <tr><td style="padding:8px 12px;color:#888;font-size:11px;padding-left:24px">Margem Bruta</td><td style="padding:8px 12px;text-align:right;color:#888;font-size:11px">${margBrutaPct.toFixed(1)}%</td></tr>
+              <tr><td style="padding:8px 12px;color:#444;padding-left:24px">(-) Despesas Fixas</td><td style="padding:8px 12px;text-align:right;color:#D85A30">-${fmt(despFixaAtual)}</td></tr>
+              <tr style="background:#f0fdf4"><td style="padding:10px 12px;font-weight:700;color:#05121b;font-size:14px">= Resultado Operacional</td><td style="padding:10px 12px;text-align:right;font-weight:700;font-size:14px;color:${rc(resultadoOp)}">${fmt(resultadoOp)}</td></tr>
+              <tr><td style="padding:8px 12px;color:#888;font-size:11px;padding-left:24px">Margem Líquida</td><td style="padding:8px 12px;text-align:right;color:#888;font-size:11px">${margLiqPct.toFixed(1)}%</td></tr>
+            </table>`;
+            const histHtml=`<table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead><tr style="background:#05121b;color:#fff"><th style="padding:8px 10px;text-align:left">Mês</th><th style="padding:8px 10px;text-align:right">Receita</th><th style="padding:8px 10px;text-align:right">Despesa</th><th style="padding:8px 10px;text-align:right">Resultado</th></tr></thead>
+              <tbody>${hist12.map((h,i)=>`<tr style="background:${i%2===0?'#f8fafc':'#fff'}"><td style="padding:7px 10px">${h.label}</td><td style="padding:7px 10px;text-align:right;color:#1D9E75">${fmt(h.rec)}</td><td style="padding:7px 10px;text-align:right;color:#D85A30">${fmt(h.desp)}</td><td style="padding:7px 10px;text-align:right;font-weight:600;color:${rc(h.res)}">${fmt(h.res)}</td></tr>`).join('')}</tbody>
+            </table>`;
+            const compHtml=`<table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead><tr style="background:#05121b;color:#fff"><th style="padding:8px 12px;text-align:left">Indicador</th><th style="padding:8px 12px;text-align:right">${periodoAntLabel}</th><th style="padding:8px 12px;text-align:right">${periodoLabel}</th><th style="padding:8px 12px;text-align:right">Δ</th></tr></thead>
+              <tbody>
+                <tr style="background:#f8fafc"><td style="padding:8px 12px">Receita</td><td style="padding:8px 12px;text-align:right">${fmt(recPrev)}</td><td style="padding:8px 12px;text-align:right">${fmt(recAtual)}</td><td style="padding:8px 12px;text-align:right;color:${rc(recAtual-recPrev)}">${recPrev>0?pct((recAtual-recPrev)/recPrev*100):'—'}</td></tr>
+                <tr><td style="padding:8px 12px">Despesa</td><td style="padding:8px 12px;text-align:right">${fmt(despPrev)}</td><td style="padding:8px 12px;text-align:right">${fmt(despAtual)}</td><td style="padding:8px 12px;text-align:right;color:${rc(despPrev-despAtual)}">${despPrev>0?pct((despAtual-despPrev)/despPrev*100):'—'}</td></tr>
+                <tr style="background:#f8fafc"><td style="padding:8px 12px;font-weight:700">Resultado</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rc(lucroLiqPrev)}">${fmt(lucroLiqPrev)}</td><td style="padding:8px 12px;text-align:right;font-weight:700;color:${rc(resultadoOp)}">${fmt(resultadoOp)}</td><td style="padding:8px 12px;text-align:right;color:${rc(resultadoOp-lucroLiqPrev)}">${lucroLiqPrev!==0?pct((resultadoOp-lucroLiqPrev)/Math.abs(lucroLiqPrev)*100):'—'}</td></tr>
+              </tbody>
+            </table>`;
             const w=window.open('','_blank');
-            w.document.write(`<!DOCTYPE html><html><head><title>Relatório OLUAP — ${relMesLabel(relatorioMes)}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:40px;color:#05121b;max-width:900px;margin:0 auto}h1{font-size:22px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px}h2{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#888;margin:32px 0 12px}hr{border:none;border-top:1px solid #eee;margin:8px 0}@media print{body{padding:20px}button{display:none}}</style></head><body>
+            w.document.write(`<!DOCTYPE html><html><head><title>Relatório OLUAP — ${periodoLabel}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:40px;color:#05121b;max-width:900px;margin:0 auto}h1{font-size:22px;font-weight:900;letter-spacing:-0.5px;margin-bottom:4px}h2{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:#888;margin:32px 0 12px}@media print{body{padding:20px}button{display:none}}</style></head><body>
               <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px">
-                <div><p style="font-size:11px;color:#888;margin:0">OLUAP · Relatório Financeiro</p><h1>Relatórios — ${relMesLabel(relatorioMes)}</h1><p style="font-size:11px;color:#888;margin:4px 0 0">Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</p></div>
+                <div><p style="font-size:11px;color:#888;margin:0">OLUAP · Relatório Financeiro</p><h1>${periodoLabel}</h1><p style="font-size:11px;color:#888;margin:4px 0 0">Gerado em ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</p></div>
                 <button onclick="window.print()" style="background:#05121b;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">Imprimir / Salvar PDF</button>
               </div>
               <h2>DRE — Demonstrativo de Resultado</h2>${dreHtml}
-              <h2>Histórico dos Últimos 12 Meses</h2>${histHtml}
-              <h2>Comparativo — Mês Anterior vs Atual</h2>${compHtml}
+              <h2>Histórico do Período</h2>${histHtml}
+              <h2>Comparativo — Período Anterior vs Atual</h2>${compHtml}
             </body></html>`);
             w.document.close();
           };
 
           // ── abas ──────────────────────────────────────────────────────────
-          const abas=[{id:'dre',lbl:'DRE'},{id:'historico',lbl:'Histórico 12 meses'},{id:'comparativo',lbl:'Comparativo'}];
+          const abas=[{id:'dre',lbl:'DRE'},{id:'historico',lbl:'Histórico'},{id:'comparativo',lbl:'Comparativo'}];
 
           return(
             <div className="max-w-7xl mx-auto fade-in space-y-4">
@@ -3531,11 +3556,20 @@ const App = () => {
                   <h1 style={{fontSize:20,fontWeight:500,color:'var(--color-text-primary)',marginTop:2}}>Relatórios</h1>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:4,background:'var(--color-bg-card-alt)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:'4px 8px'}}>
-                    <button onClick={()=>setRelatorioMes(prevRelMes)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'var(--color-text-primary)',display:'flex',alignItems:'center'}}><ChevronLeft size={14}/></button>
-                    <span style={{fontSize:12,color:'var(--color-text-secondary)',minWidth:150,textAlign:'center'}}>{relMesLabel(relatorioMes)}</span>
-                    <button onClick={()=>setRelatorioMes(nextRelMes)} style={{background:'none',border:'none',cursor:'pointer',padding:'2px 4px',color:'var(--color-text-primary)',display:'flex',alignItems:'center'}}><ChevronRight size={14}/></button>
+                  {/* Filtros de período */}
+                  <div style={{display:'flex',gap:4,background:'var(--color-bg-card-alt)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:4}}>
+                    {[{k:'3m',l:'3 meses'},{k:'6m',l:'6 meses'},{k:'12m',l:'12 meses'},{k:'custom',l:'Personalizado'}].map(f=>(
+                      <button key={f.k} onClick={()=>setRelatorioFiltro(f.k)} style={{padding:'5px 10px',borderRadius:7,border:'none',cursor:'pointer',fontSize:11,fontWeight:relatorioFiltro===f.k?700:400,background:relatorioFiltro===f.k?'var(--color-bg-elevated)':'transparent',color:relatorioFiltro===f.k?'var(--color-text-inverse)':'var(--color-text-secondary)',transition:'all .15s',whiteSpace:'nowrap'}}>{f.l}</button>
+                    ))}
                   </div>
+                  {/* Custom date range */}
+                  {relatorioFiltro==='custom'&&(
+                    <div style={{display:'flex',alignItems:'center',gap:6,background:'var(--color-bg-card)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:'4px 10px'}}>
+                      <input type="date" value={relatorioCustomInicio} onChange={e=>setRelatorioCustomInicio(e.target.value)} style={{border:'none',background:'transparent',fontSize:11,color:'var(--color-text-primary)',outline:'none'}}/>
+                      <span style={{fontSize:11,color:'var(--color-text-muted)'}}>até</span>
+                      <input type="date" value={relatorioCustomFim} onChange={e=>setRelatorioCustomFim(e.target.value)} style={{border:'none',background:'transparent',fontSize:11,color:'var(--color-text-primary)',outline:'none'}}/>
+                    </div>
+                  )}
                   <button onClick={handleExportExcel} style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-light)',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,color:'var(--color-text-primary)',cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><FileSpreadsheet size={12}/>Excel</button>
                   <button onClick={handleGerarPDF} style={{background:'var(--color-bg-elevated)',color:'var(--color-text-inverse)',border:'none',borderRadius:10,padding:'6px 14px',fontSize:12,fontWeight:500,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}><Printer size={12}/>Gerar PDF</button>
                 </div>
@@ -3569,7 +3603,7 @@ const App = () => {
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                   {/* DRE table */}
                   <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20,gridColumn:'1/-1'}}>
-                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>DRE — Demonstrativo de Resultado — {relMesLabel(relatorioMes)}</h3>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>DRE — Demonstrativo de Resultado — {periodoLabel}</h3>
                     <div style={{display:'flex',flexDirection:'column',gap:0}}>
                       {[
                         {lbl:'Receita Bruta',val:recAtual,bold:true,indent:0,color:'var(--color-text-primary)'},
@@ -3666,14 +3700,14 @@ const App = () => {
               {relatorioAba==='comparativo'&&(
                 <div style={{display:'flex',flexDirection:'column',gap:12}}>
                   <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
-                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>{relMesLabel(prevRelMes)} vs {relMesLabel(relatorioMes)}</h3>
+                    <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>{periodoAntLabel} vs {periodoLabel}</h3>
                     <div style={{overflowX:'auto'}}>
                       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
                         <thead>
                           <tr style={{borderBottom:'2px solid var(--color-border-subtle)'}}>
                             <th style={{padding:'10px 14px',textAlign:'left',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>Indicador</th>
-                            <th style={{padding:'10px 14px',textAlign:'right',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>{relMesLabel(prevRelMes)}</th>
-                            <th style={{padding:'10px 14px',textAlign:'right',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>{relMesLabel(relatorioMes)}</th>
+                            <th style={{padding:'10px 14px',textAlign:'right',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>{periodoAntLabel}</th>
+                            <th style={{padding:'10px 14px',textAlign:'right',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>{periodoLabel}</th>
                             <th style={{padding:'10px 14px',textAlign:'right',fontSize:11,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase'}}>Variação</th>
                           </tr>
                         </thead>
@@ -3681,15 +3715,13 @@ const App = () => {
                           {(()=>{
                             const lucroAtual=resultadoOp;
                             const despFixaPrev=despFixaMes(prevRelMes);
-                            const despVarPrev=despVarMes(prevRelMes);
-                            const lucroBrutoPrev=recPrev-despVarPrev;
                             const rows=[
                               {lbl:'Receita Bruta',prev:recPrev,atual:recAtual,higherIsBetter:true},
                               {lbl:'Custos Variáveis',prev:despVarPrev,atual:despVarAtual,higherIsBetter:false},
                               {lbl:'Lucro Bruto',prev:lucroBrutoPrev,atual:lucroBruto,higherIsBetter:true,bold:true},
                               {lbl:'Margem Bruta',prev:recPrev>0?lucroBrutoPrev/recPrev*100:0,atual:margBrutaPct,isPercent:true,higherIsBetter:true},
                               {lbl:'Despesas Fixas',prev:despFixaPrev,atual:despFixaAtual,higherIsBetter:false},
-                              {lbl:'Resultado Op.',prev:lucroLiqPrev,atual:lucroAtual,higherIsBetter:true,bold:true},
+                              {lbl:'Resultado Op.',prev:lucroLiqPrev,atual:resultadoOp,higherIsBetter:true,bold:true},
                               {lbl:'Margem Líquida',prev:recPrev>0?lucroLiqPrev/recPrev*100:0,atual:margLiqPct,isPercent:true,higherIsBetter:true},
                             ];
                             return rows.map((r,i)=>{
@@ -3713,7 +3745,7 @@ const App = () => {
                   <div style={{background:'var(--color-bg-card)',border:'1px solid var(--color-border-subtle)',borderRadius:16,padding:20}}>
                     <h3 style={{fontSize:13,fontWeight:600,color:'var(--color-text-primary)',marginBottom:16}}>Visão gráfica</h3>
                     <ResponsiveContainer width="100%" height={180}>
-                      <BarChart data={[{name:relMesLabel(prevRelMes).split(' ')[0],Receita:recPrev,Despesa:despPrev},{name:relMesLabel(relatorioMes).split(' ')[0],Receita:recAtual,Despesa:despAtual}]} margin={{top:4,right:4,bottom:0,left:-16}}>
+                      <BarChart data={[{name:'Período anterior',Receita:recPrev,Despesa:despPrev},{name:'Período atual',Receita:recAtual,Despesa:despAtual}]} margin={{top:4,right:4,bottom:0,left:-16}}>
                         <CartesianGrid strokeDasharray="3 3" stroke={CC.grid} vertical={false}/>
                         <XAxis dataKey="name" tick={{fontSize:11,fill:CC.text}} axisLine={false} tickLine={false}/>
                         <YAxis tick={{fontSize:10,fill:CC.text}} axisLine={false} tickLine={false} tickFormatter={v=>v>=1000?`R$${Math.round(v/1000)}k`:`R$${v}`} width={48}/>
