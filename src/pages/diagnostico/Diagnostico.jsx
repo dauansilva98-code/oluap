@@ -670,6 +670,58 @@ const App = () => {
   const handleResumeDraft=()=>{try{const s=JSON.parse(localStorage.getItem(DRAFT_KEY));if(s){setFormData(s.formData);setFormMode(s.formMode);setFormStep(s.formStep||0);setView('form');setHasDraft(false);}}catch(e){}};
   const handleDiscardDraft=()=>{try{localStorage.removeItem(DRAFT_KEY);}catch(e){}setHasDraft(false);};
 
+  const handleAutoFillFromPlatform=()=>{
+    const hoje=new Date();
+    const hojeStr=hoje.toISOString().slice(0,10);
+    const d12=new Date(hoje);d12.setMonth(d12.getMonth()-12);d12.setDate(1);
+    const d12Str=d12.toISOString().slice(0,10);
+    const d6=new Date(hoje);d6.setMonth(d6.getMonth()-6);d6.setDate(1);
+    const d6Str=d6.toISOString().slice(0,10);
+    const rec12=lancamentos.filter(l=>l.tipo==='receita'&&l.data>=d12Str&&l.data<=hojeStr).reduce((a,l)=>a+Number(l.valor),0);
+    const rec6=lancamentos.filter(l=>l.tipo==='receita'&&l.data>=d6Str&&l.data<=hojeStr).reduce((a,l)=>a+Number(l.valor),0);
+    const avgRec6=rec6/6;
+    const desp6=lancamentos.filter(l=>l.tipo==='despesa'&&l.data>=d6Str&&l.data<=hojeStr);
+    const catAvg=kws=>desp6.filter(l=>kws.some(k=>(l.categoria||'').toLowerCase().includes(k))).reduce((a,l)=>a+Number(l.valor),0)/6;
+    const folha=catAvg(['folha','funcionário','funcionarios','salário','salario']);
+    const prolabore=catAvg(['pró-labore','pro-labore','prolabore','sócio','socio']);
+    const mkt=catAvg(['marketing','publicidade','anúncio','anuncio','propaganda']);
+    const estrutura=catAvg(['aluguel','locação','locacao','estrutura','energia','água','internet']);
+    const custoDir=catAvg(['mercadoria','fornecedor','matéria','materia','custo direto']);
+    const totalSaldo=bancos.reduce((a,b)=>{
+      const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0);
+      const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0);
+      return a+Number(b.saldo_inicial||0)+ent-sai;
+    },0)+saldoInicialDinheiro;
+    const divAtivas=dividas.filter(d=>!d.status||d.status==='ativa');
+    const totalDiv=divAtivas.reduce((a,d)=>a+Number(d.saldo_devedor||d.valor_total||0),0);
+    const parcDiv=divAtivas.reduce((a,d)=>a+Number(d.valor_parcela||0),0);
+    const fmtF=v=>v>0?`R$ ${new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v)}`:'';
+    setFormData(prev=>({
+      ...prev,
+      v1_razao:        profileData.razao_social||prev.v1_razao,
+      v1_cnpj:         profileData.cnpj||prev.v1_cnpj,
+      v1_responsavel:  profileData.full_name||prev.v1_responsavel,
+      v1_email:        profileData.email||prev.v1_email,
+      v1_phone:        profileData.phone||prev.v1_phone,
+      v1_fatMedio:     fmtF(avgRec6)||prev.v1_fatMedio,
+      v1_fat12:        fmtF(rec12)||prev.v1_fat12,
+      v1_folha:        fmtF(folha)||prev.v1_folha,
+      v1_prolabore:    fmtF(prolabore)||prev.v1_prolabore,
+      v1_mkt:          fmtF(mkt)||prev.v1_mkt,
+      v1_estrutura:    fmtF(estrutura)||prev.v1_estrutura,
+      v1_custosDiretos:fmtF(custoDir)||prev.v1_custosDiretos,
+      v1_saldo:        fmtF(totalSaldo)||prev.v1_saldo,
+      v1_valorTotalDividas:fmtF(totalDiv)||prev.v1_valorTotalDividas,
+      v1_pesoDivida:   fmtF(parcDiv)||prev.v1_pesoDivida,
+    }));
+    setModalSolicitarAnalise(false);
+    setFormMode('standard');
+    setFormStep(0);
+    setFormError('');
+    setFieldErrors({});
+    setView('form');
+  };
+
   const getStepRequiredFields=(isV1,step)=>{
     if(isV1){const sf=[["v1_razao","v1_cnpj","v1_responsavel","v1_email","v1_phone","v1_segmento","v1_tempoOperacao","v1_numFuncionarios","v1_controleFinanceiro"],["v1_fatMedio","v1_fat12","v1_mixFaturamento","v1_numVendas","v1_lucra","v1_meios","v1_inadimplencia"],["v1_custosDiretos","v1_taxaRecebimento","v1_folha","v1_prolabore","v1_mkt","v1_estrutura"],["v1_descricaoDividas","v1_saldo","v1_reserva","v1_detalhesCredito"],["v1_desafio","v1_objetivo"]];return sf[step]||[];}
     else{const sf=[["g_razao","g_cnpj","g_responsavel","g_email","g_phone"],["g_oqueVende","g_tempoExistencia","g_pessoas","g_faturamento","g_mixFaturamento","g_meioVenda","g_frequencia","g_sobrePreco","g_produtoLucrativo"],["g_aluguel","g_gastoFunc","g_prolabore","g_custosDiretos","g_taxaMaquininha","g_outrosFixos","g_raloDinheiro"],["g_descricaoDividas","g_contasEmDia","g_misturaContas","g_folegoCaixa"],["g_desafio","g_futuro"]];return sf[step]||[];}
@@ -4373,11 +4425,11 @@ const App = () => {
               </div>
               <p className="text-[11px] text-slate-400 mb-7">Escolha como deseja trazer os dados para esta análise.</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode('standard');setFormStep(0);setFormError('');setFieldErrors({});setView('form');}} className="flex flex-col items-start gap-3 bg-[#05121b] text-white p-6 rounded-2xl text-left hover:bg-slate-800 transition-colors group">
+                <button onClick={handleAutoFillFromPlatform} className="flex flex-col items-start gap-3 bg-[#05121b] text-white p-6 rounded-2xl text-left hover:bg-slate-800 transition-colors group">
                   <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><LayoutDashboard size={18} className="text-white"/></div>
                   <div>
                     <p className="font-black text-sm uppercase tracking-tight mb-1">Dados da Plataforma</p>
-                    <p className="text-white/60 text-[10px] leading-relaxed">Use os lançamentos, bancos e dados que você já cadastrou aqui.</p>
+                    <p className="text-white/60 text-[10px] leading-relaxed">Preenche automaticamente com seus lançamentos, bancos e dados cadastrados.</p>
                   </div>
                   {(lancamentos.length>0||bancos.length>0)&&<span className="text-[8px] bg-emerald-500 text-white font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{lancamentos.length} lançamentos disponíveis</span>}
                 </button>
@@ -4389,13 +4441,13 @@ const App = () => {
                   </div>
                   <span className="text-[8px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-full uppercase tracking-widest">PDF · XLSX · CSV</span>
                 </button>
-                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode('guided');setFormStep(0);setFormError('');setFieldErrors({});setView('form');}} className="flex flex-col items-start gap-3 bg-white border border-slate-200 p-6 rounded-2xl text-left hover:border-[#ff7b00]/50 hover:shadow transition-all group">
+                <button onClick={()=>{setModalSolicitarAnalise(false);setFormMode(null);setFormStep(0);setFormError('');setFieldErrors({});setView('form');}} className="flex flex-col items-start gap-3 bg-white border border-slate-200 p-6 rounded-2xl text-left hover:border-[#ff7b00]/50 hover:shadow transition-all group">
                   <div className="w-10 h-10 bg-[#ff7b00]/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><PenLine size={18} className="text-[#ff7b00]"/></div>
                   <div>
                     <p className="font-black text-sm uppercase tracking-tight text-[#05121b] mb-1">Preencher Manualmente</p>
-                    <p className="text-slate-400 text-[10px] leading-relaxed">Responda o formulário guiado com as informações da empresa.</p>
+                    <p className="text-slate-400 text-[10px] leading-relaxed">Escolha entre formulário guiado ou estruturado e preencha as informações.</p>
                   </div>
-                  <span className="text-[8px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-full uppercase tracking-widest">Formulário guiado</span>
+                  <span className="text-[8px] bg-slate-100 text-slate-500 font-black px-2 py-0.5 rounded-full uppercase tracking-widest">Guiado ou estruturado</span>
                 </button>
               </div>
             </div>

@@ -149,12 +149,18 @@ const HubCliente = () => {
                     <span>Acessar Plataforma</span><ArrowRight size={14} />
                   </button>
                 ) : (
-                  <div className="flex gap-2">
-                    <button onClick={() => setModalInfo(prod)} className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-colors">Saber mais</button>
-                    <button onClick={() => prod.id === 'diagnostico' ? window.location.href = 'planos-diagnostico.html' : handleContratar(prod)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white flex items-center justify-center gap-1 transition-colors ${prod.bgBtn}`}>
-                      {prod.isFree ? 'Simular' : 'Contratar'} <ArrowRight size={12} />
+                  {prod.id === 'diagnostico' ? (
+                    <button onClick={() => window.location.href = 'planos-diagnostico.html'} className={`w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white flex items-center justify-center gap-1 transition-colors ${prod.bgBtn}`}>
+                      Contratar <ArrowRight size={12} />
                     </button>
-                  </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button onClick={() => setModalInfo(prod)} className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-colors">Saber mais</button>
+                      <button onClick={() => handleContratar(prod)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white flex items-center justify-center gap-1 transition-colors ${prod.bgBtn}`}>
+                        {prod.isFree ? 'Simular' : 'Contratar'} <ArrowRight size={12} />
+                      </button>
+                    </div>
+                  )}
                 )}
               </div>
             )
