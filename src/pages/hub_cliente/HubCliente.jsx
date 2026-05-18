@@ -151,7 +151,7 @@ const HubCliente = () => {
                 ) : (
                   <div className="flex gap-2">
                     <button onClick={() => setModalInfo(prod)} className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-colors">Saber mais</button>
-                    <button onClick={() => handleContratar(prod)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white flex items-center justify-center gap-1 transition-colors ${prod.bgBtn}`}>
+                    <button onClick={() => prod.id === 'diagnostico' ? window.location.href = 'planos-diagnostico.html' : handleContratar(prod)} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white flex items-center justify-center gap-1 transition-colors ${prod.bgBtn}`}>
                       {prod.isFree ? 'Simular' : 'Contratar'} <ArrowRight size={12} />
                     </button>
                   </div>
@@ -218,7 +218,7 @@ const HubCliente = () => {
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button onClick={() => setModalInfo(null)} className="flex-1 py-3.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white border border-white/10 hover:border-white/20 transition-colors">Fechar</button>
-                <button onClick={() => { setModalInfo(null); handleContratar(modalInfo) }} className={`flex-1 py-3.5 rounded-xl text-xs font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${modalInfo.bgBtn}`}>
+                <button onClick={() => { setModalInfo(null); modalInfo.id === 'diagnostico' ? window.location.href = 'planos-diagnostico.html' : handleContratar(modalInfo) }} className={`flex-1 py-3.5 rounded-xl text-xs font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 transition-colors ${modalInfo.bgBtn}`}>
                   {modalInfo.isFree ? 'Simular' : 'Contratar'} <ArrowRight size={13} />
                 </button>
               </div>

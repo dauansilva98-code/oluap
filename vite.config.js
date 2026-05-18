@@ -26,6 +26,7 @@ export default defineConfig({
         receitas:              resolve(__dirname, 'receitas.html'),
         'recuperar-senha':     resolve(__dirname, 'recuperar-senha.html'),
         'nova-senha':          resolve(__dirname, 'nova-senha.html'),
+        'planos-diagnostico':  resolve(__dirname, 'planos-diagnostico.html'),
       },
     },
   },
