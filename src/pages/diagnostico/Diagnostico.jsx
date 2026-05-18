@@ -1841,7 +1841,7 @@ const App = () => {
           const alertas=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento&&cp.vencimento>=today&&cp.vencimento<=d7str);
           const alertTotal=alertas.reduce((a,cp)=>a+Number(cp.valor),0);
           // Running balance for table
-          const sortedLanc=[...filteredLanc].sort((a,b)=>a.data>b.data?1:a.data<b.data?-1:0);
+          const sortedLanc=[...filteredLanc].sort((a,b)=>b.data>a.data?1:b.data<a.data?-1:0);
           let runBal=saldoInic;
           const tableRows=sortedLanc.map(l=>{
             const delta=l.tipo==='receita'?Number(l.valor):-Number(l.valor);
@@ -2500,11 +2500,11 @@ const App = () => {
           const totalPagas=pagas.reduce((a,c)=>a+c.valor,0);
           const totalMes=cpDataFiltradaMes.reduce((a,c)=>a+c.valor,0);
           const mediaPorConta=cpDataFiltradaMes.length>0?totalMes/cpDataFiltradaMes.length:0;
-          const filtrados=cpFiltro==='todos'?cpDataFiltradaMes:cpDataFiltradaMes.filter(c=>
+          const filtrados=(cpFiltro==='todos'?cpDataFiltradaMes:cpDataFiltradaMes.filter(c=>
             cpFiltro==='aberto'?c.status==='aberto':
             cpFiltro==='atrasado'?c.status==='atrasado':
             cpFiltro==='pago'?c.status==='pago':
-            c.status==='agendado');
+            c.status==='agendado')).sort((a,b)=>b.venc.localeCompare(a.venc));
           const handleBulkDeleteCP=async()=>{
             if(cpSelected.size===0)return;
             if(!confirm(`Excluir ${cpSelected.size} conta(s)? Essa ação não pode ser desfeita.`))return;
@@ -3775,7 +3775,7 @@ const App = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalReceita.categoria} onChange={e=>setModalReceita({...modalReceita,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['Venda de Produto','Venda de Serviço','Mensalidade','Comissão','Juros','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Recebimento</label><select value={modalReceita.meio_pagamento||''} onChange={e=>setModalReceita({...modalReceita,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalReceita.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Recebimento</label><select value={modalReceita.meio_pagamento||''} onChange={e=>setModalReceita({...modalReceita,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalReceita.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Transferência Bancária','Débito Automático','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                 </div>
                 {modalReceita.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalReceita.banco_id} onChange={e=>setModalReceita({...modalReceita,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
@@ -3840,7 +3840,7 @@ const App = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value,categoria_custom:''})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Fornecedor','Folha de Pagamento','Aluguel','Água/Saneamento','Luz/Energia','Internet/Telefone','Marketing','Serviços/Software','Impostos','Estorno','Outros','Personalizado'].map(c=><option key={c}>{c}</option>)}</select></div>
-                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalDespesa.meio_pagamento||''} onChange={e=>setModalDespesa({...modalDespesa,meio_pagamento:e.target.value,taxa_cartao:'',banco_id:e.target.value==='Dinheiro'?'':modalDespesa.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Boleto Bancário','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalDespesa.meio_pagamento||''} onChange={e=>setModalDespesa({...modalDespesa,meio_pagamento:e.target.value,taxa_cartao:'',banco_id:e.target.value==='Dinheiro'?'':modalDespesa.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Boleto Bancário','Transferência Bancária','Débito Automático','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                   </div>
                   {modalDespesa.categoria==='Personalizado'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Nome da despesa específica</label><input type="text" placeholder="Ex: Manutenção, Seguro, Licença..." value={modalDespesa.categoria_custom||''} onChange={e=>setModalDespesa({...modalDespesa,categoria_custom:e.target.value})} className="w-full bg-white border border-red-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>}
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
@@ -4002,7 +4002,7 @@ const App = () => {
                   </div>
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Status</label><select value={modalCP.status} onChange={e=>setModalCP({...modalCP,status:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="pendente">Pendente</option><option value="pago">Pago</option><option value="atrasado">Atrasado</option></select></div>
                 </div>
-                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalCP.meio_pagamento||''} onChange={e=>setModalCP({...modalCP,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalCP.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['PIX','Boleto Bancário','Transferência Bancária','Cartão de Crédito','Cartão de Débito','Dinheiro','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
+                <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalCP.meio_pagamento||''} onChange={e=>setModalCP({...modalCP,meio_pagamento:e.target.value,banco_id:e.target.value==='Dinheiro'?'':modalCP.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">Selecione...</option>{['PIX','Boleto Bancário','Transferência Bancária','Débito Automático','Cartão de Crédito','Cartão de Débito','Dinheiro','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                 {modalCP.meio_pagamento!=='Dinheiro'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Conta Bancária (opcional)</label><select value={modalCP.banco_id} onChange={e=>setModalCP({...modalCP,banco_id:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"><option value="">— Nenhuma —</option>{bancos.map(b=><option key={b.id} value={b.id}>{b.nome}</option>)}</select></div>}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Taxa / Encargo (opcional)</p>
@@ -4038,7 +4038,7 @@ const App = () => {
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de pagamento</label>
                   <select value={modalPagarCP.meioPagamento} onChange={e=>setModalPagarCP({...modalPagarCP,meioPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500">
                     <option value="">Selecione...</option>
-                    {['PIX','Boleto Bancário','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Dinheiro','Cheque','Outros'].map(m=><option key={m}>{m}</option>)}
+                    {['PIX','Boleto Bancário','Transferência Bancária','Débito Automático','Cartão de Débito','Cartão de Crédito','Dinheiro','Cheque','Outros'].map(m=><option key={m}>{m}</option>)}
                   </select>
                 </div>
                 {modalPagarCP.meioPagamento&&modalPagarCP.meioPagamento!=='Dinheiro'&&(
@@ -4076,7 +4076,7 @@ const App = () => {
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de recebimento</label>
                   <select value={modalPagarCR.meioPagamento} onChange={e=>setModalPagarCR({...modalPagarCR,meioPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]">
                     <option value="">Selecione...</option>
-                    {['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros'].map(m=><option key={m}>{m}</option>)}
+                    {['PIX','Dinheiro','Transferência Bancária','Débito Automático','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros'].map(m=><option key={m}>{m}</option>)}
                   </select>
                 </div>
                 {modalPagarCR.meioPagamento&&modalPagarCR.meioPagamento!=='Dinheiro'&&(

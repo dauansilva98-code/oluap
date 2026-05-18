@@ -20,7 +20,7 @@ const FILTROS = [
 ]
 
 const DONUT_COLORS = ['#1D9E75','#378ADD','#7F77DD','#BA7517','#D85A30','#137789','#888780']
-const MEIOS = ['PIX','Dinheiro','Transferência Bancária','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros']
+const MEIOS = ['PIX','Dinheiro','Transferência Bancária','Débito Automático','Cartão de Débito','Cartão de Crédito','Cheque','Boleto','Outros']
 
 export default function ContasReceberView({
   contasReceber = [],
@@ -82,7 +82,7 @@ export default function ContasReceberView({
   const pctInad      = totalEmitido ? inadimplente / totalEmitido * 100 : 0
   const pctVencer    = totalEmitido ? totalVencer7 / totalEmitido * 100 : 0
 
-  const filtrados = filtro === 'todos' ? cobranças : cobranças.filter(c => c.status === filtro)
+  const filtrados = (filtro === 'todos' ? cobranças : cobranças.filter(c => c.status === filtro)).sort((a,b)=>b.venc.localeCompare(a.venc))
 
   const lineData = (() => {
     const labels = [], emitido = [], recebidoData = []
