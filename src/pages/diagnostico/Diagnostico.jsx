@@ -162,6 +162,8 @@ const App = () => {
   const [filtroDespesas, setFiltroDespesas] = useState('todos');
   const [fluxoTabFilter, setFluxoTabFilter] = useState('todos');
   const [cpFiltro, setCpFiltro] = useState('todos');
+  const [cpCatFiltro, setCpCatFiltro] = useState('todos');
+  const [despCatFiltro, setDespCatFiltro] = useState('todos');
   const [cpMes, setCpMes] = useState(new Date().toISOString().slice(0,7));
   const [cpSelected, setCpSelected] = useState(new Set());
   const [recSelected, setRecSelected] = useState(new Set());
@@ -2346,7 +2348,7 @@ const App = () => {
           const despesasPrev=despesasAll.filter(l=>l.data?.startsWith(prevKey));
           // Type from categoria
           const tipoFromCat=cat=>{
-            if(['Folha de Pagamento','Aluguel','Serviços/Software','Boleto Bancário'].includes(cat))return'fixa';
+            if(['Folha de Pagamento','Pró-labore','Aluguel','Serviços/Software','Boleto Bancário'].includes(cat))return'fixa';
             if(['Impostos','Impostos e taxas','Imposto / DAS'].includes(cat))return'imposto';
             return'variavel';
           };
@@ -2376,7 +2378,8 @@ const App = () => {
           }));
           // Table
           const filtroFnD={todos:()=>true,fixa:l=>getTipoCusto(l)==='fixa',variavel:l=>getTipoCusto(l)==='variavel',imposto:l=>getTipoCusto(l)==='imposto'};
-          const filtradosD=despesasMes.filter(filtroFnD[filtroDespesas]||filtroFnD.todos);
+          const despCatsDisponiveis=['todos',...new Set(despesasMes.map(l=>l.categoria||'Outros'))];
+          const filtradosD=despesasMes.filter(l=>(filtroFnD[filtroDespesas]||filtroFnD.todos)(l)&&(despCatFiltro==='todos'||(l.categoria||'Outros')===despCatFiltro));
           const TIPO_STYLE={fixa:'bg-cyan-50 text-cyan-700 border-cyan-200',variavel:'bg-violet-50 text-violet-700 border-violet-200',imposto:'bg-amber-50 text-amber-700 border-amber-200'};
           const TIPO_LABEL={fixa:'Fixa',variavel:'Variável',imposto:'Imposto'};
           const DonutTip=({active,payload})=>{if(!active||!payload?.length)return null;return(<div className="bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-lg"><p className="text-xs font-semibold text-[#05121b]">{payload[0].name}</p><p className="text-xs text-slate-500 mt-0.5">{formatBRL(payload[0].value)}</p></div>);};
@@ -2484,10 +2487,22 @@ const App = () => {
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {[{key:'todos',label:'Todos'},{key:'fixa',label:'Fixas'},{key:'variavel',label:'Variáveis'},{key:'imposto',label:'Impostos'}].map(f=>(
-                      <button key={f.key} onClick={()=>setFiltroDespesas(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${filtroDespesas===f.key?'bg-[#05121b] text-white border-[#05121b]':'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{f.label}</button>
-                    ))}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {[{key:'todos',label:'Todos'},{key:'fixa',label:'Fixas'},{key:'variavel',label:'Variáveis'},{key:'imposto',label:'Impostos'}].map(f=>(
+                        <button key={f.key} onClick={()=>setFiltroDespesas(f.key)} className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${filtroDespesas===f.key?'bg-[#05121b] text-white border-[#05121b]':'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50'}`}>{f.label}</button>
+                      ))}
+                    </div>
+                    {despCatsDisponiveis.length>1&&(
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mr-1">Categoria:</span>
+                        {despCatsDisponiveis.map(cat=>(
+                          <button key={cat} onClick={()=>setDespCatFiltro(cat)} className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${despCatFiltro===cat?'bg-[#137789] text-white border-[#137789]':'bg-transparent text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
+                            {cat==='todos'?'Todas':cat}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -2552,11 +2567,13 @@ const App = () => {
           const totalPagas=pagas.reduce((a,c)=>a+c.valor,0);
           const totalMes=cpDataFiltradaMes.reduce((a,c)=>a+c.valor,0);
           const mediaPorConta=cpDataFiltradaMes.length>0?totalMes/cpDataFiltradaMes.length:0;
-          const filtrados=(cpFiltro==='todos'?cpDataFiltradaMes:cpDataFiltradaMes.filter(c=>
+          const cpCatBase=cpCatFiltro==='todos'?cpDataFiltradaMes:cpDataFiltradaMes.filter(c=>(c.cat||'Outros')===cpCatFiltro);
+          const filtrados=(cpFiltro==='todos'?cpCatBase:cpCatBase.filter(c=>
             cpFiltro==='aberto'?c.status==='aberto':
             cpFiltro==='atrasado'?c.status==='atrasado':
             cpFiltro==='pago'?c.status==='pago':
             c.status==='agendado')).sort((a,b)=>b.venc.localeCompare(a.venc));
+          const cpCatsDisponiveis=['todos',...new Set(cpDataFiltradaMes.map(c=>c.cat||'Outros'))];
           const handleBulkDeleteCP=async()=>{
             if(cpSelected.size===0)return;
             if(!confirm(`Excluir ${cpSelected.size} conta(s)? Essa ação não pode ser desfeita.`))return;
@@ -2755,10 +2772,22 @@ const App = () => {
                 <div style={{padding:'16px 20px',borderBottom:'1px solid var(--color-border-subtle)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                     <span style={{fontSize:10,fontWeight:700,color:CC.text,textTransform:'uppercase',letterSpacing:'0.1em'}}>{filtrados.length} contas</span>
-                    <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                      {[{k:'todos',l:'Todas'},{k:'aberto',l:'Em aberto'},{k:'atrasado',l:'Vencidas'},{k:'pago',l:'Pagas'},{k:'agendado',l:'Agendadas'}].map(f=>(
-                        <button key={f.k} onClick={()=>setCpFiltro(f.k)} style={{padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,border:`1px solid ${cpFiltro===f.k?'var(--color-bg-elevated)':'var(--color-border-light)'}`,background:cpFiltro===f.k?'var(--color-bg-elevated)':'transparent',color:cpFiltro===f.k?'var(--color-text-inverse)':'var(--color-text-secondary)',cursor:'pointer'}}>{f.l}</button>
-                      ))}
+                    <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                      <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                        {[{k:'todos',l:'Todas'},{k:'aberto',l:'Em aberto'},{k:'atrasado',l:'Vencidas'},{k:'pago',l:'Pagas'},{k:'agendado',l:'Agendadas'}].map(f=>(
+                          <button key={f.k} onClick={()=>setCpFiltro(f.k)} style={{padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,border:`1px solid ${cpFiltro===f.k?'var(--color-bg-elevated)':'var(--color-border-light)'}`,background:cpFiltro===f.k?'var(--color-bg-elevated)':'transparent',color:cpFiltro===f.k?'var(--color-text-inverse)':'var(--color-text-secondary)',cursor:'pointer'}}>{f.l}</button>
+                        ))}
+                      </div>
+                      {cpCatsDisponiveis.length>1&&(
+                        <div style={{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}}>
+                          <span style={{fontSize:9,fontWeight:700,color:'var(--color-text-muted)',textTransform:'uppercase',letterSpacing:'0.08em',marginRight:2}}>Categoria:</span>
+                          {cpCatsDisponiveis.map(cat=>(
+                            <button key={cat} onClick={()=>setCpCatFiltro(cat)} style={{padding:'2px 9px',borderRadius:99,fontSize:10,fontWeight:700,border:`1px solid ${cpCatFiltro===cat?'#137789':'var(--color-border-light)'}`,background:cpCatFiltro===cat?'#137789':'transparent',color:cpCatFiltro===cat?'#fff':'var(--color-text-secondary)',cursor:'pointer'}}>
+                              {cat==='todos'?'Todas':cat}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {cpSelected.size>0&&(
@@ -3891,7 +3920,7 @@ const App = () => {
                     <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalDespesa.data} onChange={e=>setModalDespesa({...modalDespesa,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value,categoria_custom:''})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Fornecedor','Folha de Pagamento','Aluguel','Água/Saneamento','Luz/Energia','Internet/Telefone','Marketing','Serviços/Software','Impostos','Estorno','Outros','Personalizado'].map(c=><option key={c}>{c}</option>)}</select></div>
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value,categoria_custom:''})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Fornecedor','Folha de Pagamento','Pró-labore','Aluguel','Água/Saneamento','Luz/Energia','Internet/Telefone','Marketing','Serviços/Software','Impostos','Estorno','Outros','Personalizado'].map(c=><option key={c}>{c}</option>)}</select></div>
                     <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Meio de Pagamento</label><select value={modalDespesa.meio_pagamento||''} onChange={e=>setModalDespesa({...modalDespesa,meio_pagamento:e.target.value,taxa_cartao:'',banco_id:e.target.value==='Dinheiro'?'':modalDespesa.banco_id})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['PIX','Dinheiro','Boleto Bancário','Transferência Bancária','Débito Automático','Cartão de Débito','Cartão de Crédito','Cheque','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
                   </div>
                   {modalDespesa.categoria==='Personalizado'&&<div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Nome da despesa específica</label><input type="text" placeholder="Ex: Manutenção, Seguro, Licença..." value={modalDespesa.categoria_custom||''} onChange={e=>setModalDespesa({...modalDespesa,categoria_custom:e.target.value})} className="w-full bg-white border border-red-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>}
@@ -4046,7 +4075,7 @@ const App = () => {
                     <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label>
                     <select value={modalCP.categoria==='Personalizado'?'Personalizado':(modalCP.categoria||'')} onChange={e=>setModalCP({...modalCP,categoria:e.target.value,categoriaCustom:e.target.value!=='Personalizado'?'':modalCP.categoriaCustom})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]">
                       <option value="">Selecione...</option>
-                      {['Fornecedor','Aluguel','Folha de Pagamento','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros','Personalizado'].map(c=><option key={c}>{c}</option>)}
+                      {['Fornecedor','Folha de Pagamento','Pró-labore','Aluguel','Imposto / DAS','Serviço / Assinatura','Empréstimo / Parcela','Outros','Personalizado'].map(c=><option key={c}>{c}</option>)}
                     </select>
                     {modalCP.categoria==='Personalizado'&&(
                       <input type="text" value={modalCP.categoriaCustom||''} onChange={e=>setModalCP({...modalCP,categoriaCustom:e.target.value})} placeholder="Digite a categoria..." className="w-full mt-1.5 bg-white border border-[#ff7b00] px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#ff7b00]"/>
