@@ -2006,10 +2006,23 @@ const App = () => {
               </div>
               {/* 2. METRIC CARDS */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:'12px'}}>
-                <div className="bg-white border border-slate-100 rounded-2xl p-4">
+                <div className="bg-white border border-slate-100 rounded-2xl p-4 relative group">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Saldo inicial</p>
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoInic)}</p>
                   <p className="text-[11px] text-slate-400 mt-1">1º de {now.toLocaleString('pt-BR',{month:'long'})}</p>
+                  <button
+                    title="Editar saldo inicial"
+                    onClick={()=>{
+                      setAjusteSaldoForm([
+                        ...bancos.map(b=>({id:b.id,nome:b.nome,saldo:Number(b.saldo_inicial||0)})),
+                        {id:'dinheiro',nome:'Dinheiro em espécie',saldo:saldoInicialDinheiro},
+                      ]);
+                      setModalAjusteSaldo(true);
+                    }}
+                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-lg bg-slate-100 hover:bg-[#137789] hover:text-white text-slate-400 flex items-center justify-center"
+                  >
+                    <Pencil size={11}/>
+                  </button>
                 </div>
                 <div className="rounded-2xl p-4 border" style={{background:'var(--color-success-bg)',borderColor:'var(--color-success-border)'}}>
                   <p className="text-[11px] font-medium mb-1.5" style={{color:'var(--color-success-text)'}}>Total entradas</p>
@@ -4545,7 +4558,7 @@ const App = () => {
                 <h3 className="text-xl font-black text-[#05121b]">Ajustar Saldo</h3>
                 <button onClick={()=>setModalAjusteSaldo(false)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
               </div>
-              <p className="text-[11px] text-slate-400 mb-6 leading-relaxed">Corrija o saldo atual de cada conta. O valor informado passa a ser o <strong>novo saldo inicial</strong> — transações futuras serão somadas a partir dele.</p>
+              <p className="text-[11px] text-slate-400 mb-6 leading-relaxed">Informe o saldo correto de cada conta. O valor salvo vira o <strong>novo saldo inicial</strong> e os lançamentos do período serão calculados a partir dele.</p>
               <div className="space-y-3 mb-5">
                 {ajusteSaldoForm.map((f,i)=>(
                   <div key={f.id} className="space-y-1">
