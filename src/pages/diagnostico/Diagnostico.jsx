@@ -2052,7 +2052,11 @@ const App = () => {
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Saldo inicial</p>
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoInic)}</p>
-                  <p className="text-[11px] text-slate-400 mt-1">1º de {now.toLocaleString('pt-BR',{month:'long'})}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    {periodoInicio
+                      ? new Date(periodoInicio+'T12:00:00').toLocaleDateString('pt-BR',{day:'numeric',month:'long'})
+                      : `1º de ${now.toLocaleString('pt-BR',{month:'long'})}`}
+                  </p>
                 </div>
                 <div className="rounded-2xl p-4 border" style={{background:'var(--color-success-bg)',borderColor:'var(--color-success-border)'}}>
                   <p className="text-[11px] font-medium mb-1.5" style={{color:'var(--color-success-text)'}}>Total entradas</p>
@@ -2067,17 +2071,10 @@ const App = () => {
                   <p className="text-[19px] font-medium leading-tight" style={{color:saldoOperacional>=0?'#085041':'#791F1F'}}>{saldoOperacional>=0?'+':''}{formatBRL(saldoOperacional)}</p>
                   <p className="text-[10px] font-bold mt-1" style={{color:saldoOperacional>=0?'#1D9E75':'#D85A30'}}>{saldoOperacional>=0?'✓ Mês no verde':'✗ Mês no vermelho'}</p>
                 </div>
-                <div className="bg-white border border-slate-100 rounded-2xl p-4 relative group">
+                <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 mb-1.5">Saldo final</p>
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoFinal)}</p>
                   <p className="text-[11px] text-slate-400 mt-1">Inicial + Operacional</p>
-                  <button
-                    title="Corrigir saldo final"
-                    onClick={()=>setModalEditarSaldoFinal({saldoFinalAtual:saldoFinal,saldoOperacional,novoValor:formatBRL(saldoFinal).replace('R$ ','').replace('R$ ','')})}
-                    className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-lg bg-slate-100 hover:bg-[#137789] hover:text-white text-slate-400 flex items-center justify-center"
-                  >
-                    <Pencil size={11}/>
-                  </button>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
                   <p className="text-[11px] font-medium text-slate-500 leading-tight">Burn Rate</p>
@@ -3566,6 +3563,22 @@ const App = () => {
             ── BANCOS ────────────────────────────────────────────────── */}
         {view==='bancos'&&(
           <div className="fade-in">
+            <div className="flex items-center justify-end mb-4">
+              <button
+                onClick={()=>{
+                  const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                  const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                  setAjusteSaldoForm([
+                    ...bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoBanco(b.id)})),
+                    {id:'dinheiro',nome:'Dinheiro em espécie',saldo:saldoInicialDinheiro+dinEnt-dinSai},
+                  ]);
+                  setModalAjusteSaldo(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <Pencil size={12}/> Ajustar Saldo dos Bancos
+              </button>
+            </div>
             <BancosContas
               bancos={bancos}
               lancamentos={lancamentos}
