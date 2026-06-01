@@ -8,7 +8,7 @@ import {
   FileSpreadsheet, PenLine, FolderOpen, ArrowRight, DollarSign,
   Shield, Brain, Cpu, AlertOctagon, X,
   TrendingDown, Trash2, Pencil, CalendarDays, Wallet, Receipt,
-  Camera, Menu, Banknote
+  Camera, Menu, Banknote, Lock
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
@@ -436,6 +436,9 @@ const App = () => {
 
   const fmtDate=d=>d&&d.length>=10?`${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`:'—';
   const today=new Date().toISOString().split('T')[0];
+  // Meses fechados: transações com data <= ultimoFechamento são somente leitura
+  const isLocked=(data)=>!!(ultimoFechamento&&data&&data<=ultimoFechamento);
+  const minDate=ultimoFechamento?(()=>{const d=new Date(ultimoFechamento+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10);})():undefined;
 
   // Saldo calculado por banco
   const saldoBanco=(bancoId)=>{
@@ -1946,6 +1949,8 @@ const App = () => {
             return bancosBase+signedSum(movAntes)-signedSum(movInBase);
           })();
           const saldoFinal=saldoInic+saldoOperacional;
+          // Período está totalmente dentro de meses já fechados?
+          const periodoFechado=ultimoFechamento&&periodoInicio&&periodoInicio<=ultimoFechamento&&(fluxoFiltro!=='mensal'&&fluxoFiltro!=='diario'&&fluxoFiltro!=='semanal'&&fluxoFiltro!=='anual');
           const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
           const _dinSaiAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
           const saldoAtual=bancos.reduce((a,b)=>a+saldoBanco(b.id),0)+(saldoInicialDinheiro+_dinEntAll-_dinSaiAll);
@@ -2047,6 +2052,20 @@ const App = () => {
                   )}
                 </div>
               </div>
+              {/* Banner: período fechado */}
+              {periodoFechado&&(
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 font-medium">
+                  <Lock size={13} className="text-slate-400 shrink-0"/>
+                  <span>Período fechado em <strong>{new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}</strong> — dados históricos, nenhuma alteração afeta este período.</span>
+                </div>
+              )}
+              {/* Banner: mês atual aberto */}
+              {!periodoFechado&&ultimoFechamento&&(fluxoFiltro==='mensal'||fluxoFiltro==='diario'||fluxoFiltro==='semanal')&&(
+                <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-emerald-100 bg-emerald-50 text-xs text-emerald-700 font-medium">
+                  <CheckCircle size={13} className="text-emerald-500 shrink-0"/>
+                  <span>Período atual — aberto para lançamentos. Saldo inicial: <strong>{formatBRL(saldoInic)}</strong> (foto do fechamento em {new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}).</span>
+                </div>
+              )}
               {/* 2. METRIC CARDS */}
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))',gap:'12px'}}>
                 <div className="bg-white border border-slate-100 rounded-2xl p-4">
@@ -2365,7 +2384,14 @@ const App = () => {
                   <div className="flex items-center gap-3">
                     <h3 className="text-sm font-semibold text-[#05121b]">Lançamentos</h3>
                     {recSelected.size>0&&(
-                      <button onClick={async()=>{if(!confirm(`Excluir ${recSelected.size} receita(s)?`))return;setSavingItem(true);await supabase.from('lancamentos').delete().in('id',Array.from(recSelected));await fetchFinanceiro(user.id);setRecSelected(new Set());setSavingItem(false);}} className="px-3 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors">
+                      <button onClick={async()=>{
+                        const desbloqueados=filtrados.filter(l=>recSelected.has(l.id)&&!isLocked(l.data)).map(l=>l.id);
+                        const bloqueados=filtrados.filter(l=>recSelected.has(l.id)&&isLocked(l.data)).length;
+                        if(desbloqueados.length===0){alert('Todas as receitas selecionadas são de meses fechados e não podem ser excluídas.');return;}
+                        const msg=bloqueados>0?`Excluir ${desbloqueados.length} receita(s)? (${bloqueados} do mês fechado serão ignoradas)`:(`Excluir ${desbloqueados.length} receita(s)?`);
+                        if(!confirm(msg))return;
+                        setSavingItem(true);await supabase.from('lancamentos').delete().in('id',desbloqueados);await fetchFinanceiro(user.id);setRecSelected(new Set());setSavingItem(false);
+                      }} className="px-3 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors">
                         Excluir {recSelected.size} selecionada(s)
                       </button>
                     )}
@@ -2397,14 +2423,14 @@ const App = () => {
                           const isSelR=recSelected.has(l.id);
                           return(
                             <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtrados.length-1?'border-b border-slate-100':''}`} style={{background:isSelR?'var(--color-row-selected)':undefined}}>
-                              <td className="px-4 py-3.5"><input type="checkbox" checked={isSelR} onChange={()=>setRecSelected(prev=>{const n=new Set(prev);n.has(l.id)?n.delete(l.id):n.add(l.id);return n;})} style={{cursor:'pointer',accentColor:'#137789'}}/></td>
+                              <td className="px-4 py-3.5"><input type="checkbox" checked={isSelR} disabled={isLocked(l.data)} onChange={()=>setRecSelected(prev=>{const n=new Set(prev);n.has(l.id)?n.delete(l.id):n.add(l.id);return n;})} style={{cursor:isLocked(l.data)?'not-allowed':'pointer',accentColor:'#137789',opacity:isLocked(l.data)?0.3:1}}/></td>
                               <td className="px-4 py-3.5 font-medium text-[#05121b] text-sm">{l.descricao}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
                               <td className="px-4 py-3.5"><span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${tipoInfo.cls}`}>{tipoInfo.lbl}</span></td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{fmtDate(l.data)}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs">{l.meio_pagamento==='Dinheiro'?'Dinheiro':(bancos.find(b=>b.id===l.banco_id)?.nome||'—')}</td>
                               <td className="px-4 py-3.5 text-right font-medium text-emerald-700 whitespace-nowrap">+{formatBRL(l.valor)}</td>
-                              <td className="px-4 py-3.5"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
+                              <td className="px-4 py-3.5">{isLocked(l.data)?<span title="Mês fechado"><Lock size={13} className="text-slate-200"/></span>:<button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>}</td>
                             </tr>
                           );
                         })}
@@ -2572,7 +2598,14 @@ const App = () => {
                   <div className="flex items-center gap-3">
                     <h3 className="text-sm font-semibold text-[#05121b]">Lançamentos</h3>
                     {despSelected.size>0&&(
-                      <button onClick={async()=>{if(!confirm(`Excluir ${despSelected.size} despesa(s)?`))return;setSavingItem(true);await supabase.from('lancamentos').delete().in('id',Array.from(despSelected));await fetchFinanceiro(user.id);setDespSelected(new Set());setSavingItem(false);}} className="px-3 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors">
+                      <button onClick={async()=>{
+                        const desbloqueados=filtradosD.filter(l=>despSelected.has(l.id)&&!isLocked(l.data)).map(l=>l.id);
+                        const bloqueados=filtradosD.filter(l=>despSelected.has(l.id)&&isLocked(l.data)).length;
+                        if(desbloqueados.length===0){alert('Todas as despesas selecionadas são de meses fechados e não podem ser excluídas.');return;}
+                        const msg=bloqueados>0?`Excluir ${desbloqueados.length} despesa(s)? (${bloqueados} do mês fechado serão ignoradas)`:(`Excluir ${desbloqueados.length} despesa(s)?`);
+                        if(!confirm(msg))return;
+                        setSavingItem(true);await supabase.from('lancamentos').delete().in('id',desbloqueados);await fetchFinanceiro(user.id);setDespSelected(new Set());setSavingItem(false);
+                      }} className="px-3 py-1 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors">
                         Excluir {despSelected.size} selecionada(s)
                       </button>
                     )}
@@ -2612,14 +2645,14 @@ const App = () => {
                           const isSelD=despSelected.has(l.id);
                           return(
                             <tr key={l.id} className={`hover:bg-slate-50 transition-colors ${idx<filtradosD.length-1?'border-b border-slate-100':''}`} style={{background:isSelD?'var(--color-row-selected)':undefined}}>
-                              <td className="px-4 py-3.5"><input type="checkbox" checked={isSelD} onChange={()=>setDespSelected(prev=>{const n=new Set(prev);n.has(l.id)?n.delete(l.id):n.add(l.id);return n;})} style={{cursor:'pointer',accentColor:'#137789'}}/></td>
+                              <td className="px-4 py-3.5"><input type="checkbox" checked={isSelD} disabled={isLocked(l.data)} onChange={()=>setDespSelected(prev=>{const n=new Set(prev);n.has(l.id)?n.delete(l.id):n.add(l.id);return n;})} style={{cursor:isLocked(l.data)?'not-allowed':'pointer',accentColor:'#137789',opacity:isLocked(l.data)?0.3:1}}/></td>
                               <td className="px-4 py-3.5 font-medium text-[#05121b] text-sm">{l.descricao}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs">{l.categoria||'—'}</td>
                               <td className="px-4 py-3.5 text-slate-500 text-xs whitespace-nowrap">{fmtDate(l.data)}</td>
                               <td className="px-4 py-3.5"><span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${TIPO_STYLE[tipo]}`}>{TIPO_LABEL[tipo]}</span></td>
                               <td className="px-4 py-3.5"><span className="px-2.5 py-1 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">Pago</span></td>
                               <td className="px-4 py-3.5 text-right font-medium text-red-600 whitespace-nowrap">-{formatBRL(l.valor)}</td>
-                              <td className="px-4 py-3.5"><button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button></td>
+                              <td className="px-4 py-3.5">{isLocked(l.data)?<span title="Mês fechado"><Lock size={13} className="text-slate-200"/></span>:<button onClick={()=>deleteItem('lancamentos',l.id,()=>fetchFinanceiro(user.id))} className="text-slate-200 hover:text-red-400 transition-colors"><Trash2 size={13}/></button>}</td>
                             </tr>
                           );
                         })}
@@ -3959,7 +3992,7 @@ const App = () => {
                 <InputField label="Descrição" value={modalReceita.descricao} onChange={v=>setModalReceita({...modalReceita,descricao:v})}/>
                 <div className="grid grid-cols-2 gap-4">
                   <InputField label="Valor" value={modalReceita.valor} onChange={v=>setModalReceita({...modalReceita,valor:v})} maskType="currency"/>
-                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalReceita.data} onChange={e=>setModalReceita({...modalReceita,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"/></div>
+                  <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalReceita.data} min={minDate} onChange={e=>setModalReceita({...modalReceita,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalReceita.categoria} onChange={e=>setModalReceita({...modalReceita,categoria:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"><option value="">Selecione...</option>{['Venda de Produto','Venda de Serviço','Mensalidade','Comissão','Juros','Outros'].map(c=><option key={c}>{c}</option>)}</select></div>
@@ -3976,7 +4009,8 @@ const App = () => {
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalReceita(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalReceita.descricao||!modalReceita.valor} onClick={async()=>{
+                <button disabled={savingItem||!modalReceita.descricao||!modalReceita.valor||isLocked(modalReceita.data)} onClick={async()=>{
+                  if(isLocked(modalReceita.data)){alert('Este período está fechado. Lançamentos só podem ser feitos a partir de '+minDate+'.');return;}
                   const valorNum=parseFloat((modalReceita.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
                   const taxaNum=parseFloat((modalReceita.taxa_valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
                   const{taxa_valor:_tv,...recRaw}={...modalReceita,valor:valorNum,tipo:'receita',user_id:user.id};
@@ -4024,7 +4058,7 @@ const App = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <InputField label="Valor" value={modalDespesa.valor} onChange={v=>setModalDespesa({...modalDespesa,valor:v})} maskType="currency"/>
-                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalDespesa.data} onChange={e=>setModalDespesa({...modalDespesa,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>
+                    <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data</label><input type="date" value={modalDespesa.data} min={minDate} onChange={e=>setModalDespesa({...modalDespesa,data:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"/></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5"><label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Categoria</label><select value={modalDespesa.categoria} onChange={e=>setModalDespesa({...modalDespesa,categoria:e.target.value,categoria_custom:''})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-red-500"><option value="">Selecione...</option>{['Fornecedor','Folha de Pagamento','Pró-labore','Aluguel','Água/Saneamento','Luz/Energia','Internet/Telefone','Marketing','Serviços/Software','Impostos','Estorno','Outros','Personalizado'].map(c=><option key={c}>{c}</option>)}</select></div>
@@ -4044,7 +4078,8 @@ const App = () => {
               })()}
               <div className="flex gap-3 mt-6">
                 <button onClick={()=>setModalDespesa(null)} className="flex-1 py-3.5 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50 border border-slate-200 transition-colors">Cancelar</button>
-                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor||(modalDespesa.categoria==='Personalizado'&&!modalDespesa.categoria_custom)} onClick={async()=>{
+                <button disabled={savingItem||!modalDespesa.descricao||!modalDespesa.valor||(modalDespesa.categoria==='Personalizado'&&!modalDespesa.categoria_custom)||isLocked(modalDespesa.data)} onClick={async()=>{
+                  if(isLocked(modalDespesa.data)){alert('Este período está fechado. Lançamentos só podem ser feitos a partir de '+minDate+'.');return;}
                   const valorBruto=parseFloat((modalDespesa.valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
                   const taxaNum=parseFloat((modalDespesa.taxa_valor||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
                   const catFinal=modalDespesa.categoria==='Personalizado'?(modalDespesa.categoria_custom||'Outros'):modalDespesa.categoria;
@@ -4220,7 +4255,7 @@ const App = () => {
               <div className="space-y-3 mb-5">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data do pagamento</label>
-                  <input type="date" value={modalPagarCP.dataPagamento||today} onChange={e=>setModalPagarCP({...modalPagarCP,dataPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"/>
+                  <input type="date" value={modalPagarCP.dataPagamento||today} min={minDate} onChange={e=>setModalPagarCP({...modalPagarCP,dataPagamento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-emerald-500"/>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de pagamento</label>
@@ -4258,7 +4293,7 @@ const App = () => {
               <div className="space-y-3 mb-5">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Data do recebimento</label>
-                  <input type="date" value={modalPagarCR.dataRecebimento||today} onChange={e=>setModalPagarCR({...modalPagarCR,dataRecebimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"/>
+                  <input type="date" value={modalPagarCR.dataRecebimento||today} min={minDate} onChange={e=>setModalPagarCR({...modalPagarCR,dataRecebimento:e.target.value})} className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-xs outline-none focus:ring-1 focus:ring-[#137789]"/>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-wider text-[#05121b]/50">Forma de recebimento</label>
