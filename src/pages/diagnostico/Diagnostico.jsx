@@ -1927,10 +1927,24 @@ const App = () => {
             return null;
           })();
           const bancosBase=bancos.reduce((a,b)=>a+Number(b.saldo_inicial||0),0)+saldoInicialDinheiro;
-          // Apenas movimentos entre o último fechamento (exclusive) e o início do período (exclusive)
-          // Movimentos já incluídos no saldo_inicial (antes do último fechamento) não devem ser contados novamente
-          const movAntes=periodoInicio?lancamentos.filter(l=>l.data&&l.data<periodoInicio&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0):0;
-          const saldoInic=bancosBase+movAntes;
+          // Reconstrução correta do saldo no início do período filtrado:
+          //
+          // bancosBase = saldo_inicial salvo no BD = saldo no momento do último fechamento
+          // Para qualquer período [A, B]:
+          //   saldo_em_A = bancosBase
+          //              + transações (A > data > ultimoFechamento) ← pre-período, pós-fechamento, ainda não no base
+          //              - transações (data >= A AND data <= ultimoFechamento) ← pós-A, já incluídas no base → devolver
+          //
+          // Isso funciona para períodos passados (fechados) e para o mês atual aberto.
+          const saldoInic=(()=>{
+            if(!periodoInicio) return bancosBase;
+            const signedSum=(arr)=>arr.reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0);
+            // Transações pós-fechamento e pré-período (não estão no base, precisa somar)
+            const movAntes=lancamentos.filter(l=>l.data&&l.data<periodoInicio&&(!ultimoFechamento||l.data>ultimoFechamento));
+            // Transações já no base que estão dentro ou após o início do período (deve desfazer)
+            const movInBase=ultimoFechamento?lancamentos.filter(l=>l.data&&l.data>=periodoInicio&&l.data<=ultimoFechamento):[];
+            return bancosBase+signedSum(movAntes)-signedSum(movInBase);
+          })();
           const saldoFinal=saldoInic+saldoOperacional;
           const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
           const _dinSaiAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
