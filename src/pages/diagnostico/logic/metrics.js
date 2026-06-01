@@ -122,12 +122,12 @@ export const calcLiveMetrics = (lancamentos, bancos, dividas, srcOverride = null
   const _burnRateValidos = _last3Saidas.filter(v => v > 0)
   const burnRate = _burnRateValidos.length > 0 ? _burnRateValidos.reduce((a, v) => a + v, 0) / _burnRateValidos.length : totalCust
   const saldoBancos = bancos.reduce((a,b)=>{
-    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0)
-    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0)
+    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0)
+    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0)
     return a+Number(b.saldo_inicial)+ent-sai
   },0)
-  const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0)
-  const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0)
+  const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0)
+  const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0)
   const saldo = saldoBancos + saldoInicialDinheiro + dinEnt - dinSai
   const runwayMeses = burnRate>0&&saldo>0 ? saldo/burnRate : 0
   const folegoDias = Math.round(runwayMeses*30)

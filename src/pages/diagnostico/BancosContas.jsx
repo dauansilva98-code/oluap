@@ -32,8 +32,8 @@ const subSt   = color => ({ fontSize: 11, color, marginTop: 2 })
 // Após um fechamento, saldo_inicial já inclui tudo até a data de fechamento.
 // Só transações APÓS o fechamento devem ser somadas ao saldo_inicial.
 const calcSaldo = (bancoId, lancs, saldoInicial, ultimoFechamento = null) => {
-  const ent = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'receita' && (!ultimoFechamento || l.data > ultimoFechamento)).reduce((a, l) => a + Number(l.valor), 0)
-  const sai = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'despesa' && (!ultimoFechamento || l.data > ultimoFechamento)).reduce((a, l) => a + Number(l.valor), 0)
+  const ent = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'receita' && (!ultimoFechamento || l.data >= ultimoFechamento)).reduce((a, l) => a + Number(l.valor), 0)
+  const sai = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'despesa' && (!ultimoFechamento || l.data >= ultimoFechamento)).reduce((a, l) => a + Number(l.valor), 0)
   return Number(saldoInicial || 0) + ent - sai
 }
 
@@ -46,8 +46,8 @@ const balanceAtDate = (lancamentos, totalInicial, dateStr, ultimoFechamento) => 
   if (!ultimoFechamento) {
     return totalInicial + signed(lancamentos.filter(l => l.data && l.data <= dateStr))
   }
-  const add = lancamentos.filter(l => l.data && l.data > ultimoFechamento && l.data <= dateStr)
-  const sub = lancamentos.filter(l => l.data && l.data > dateStr && l.data <= ultimoFechamento)
+  const add = lancamentos.filter(l => l.data && l.data >= ultimoFechamento && l.data <= dateStr)
+  const sub = lancamentos.filter(l => l.data && l.data > dateStr && l.data < ultimoFechamento)
   return totalInicial + signed(add) - signed(sub)
 }
 
@@ -112,7 +112,7 @@ export default function BancosContas({
   // (o saldoInicialDinheiro já inclui tudo até o fechamento)
   const especieLancs = lancamentos.filter(l =>
     (l.meio_pagamento === 'Dinheiro') &&
-    (!ultimoFechamento || l.data > ultimoFechamento)
+    (!ultimoFechamento || l.data >= ultimoFechamento)
   )
   const especieMov = [...lancamentos.filter(l => l.meio_pagamento === 'Dinheiro')]
     .sort((a, b) => (b.data || '').localeCompare(a.data || ''))

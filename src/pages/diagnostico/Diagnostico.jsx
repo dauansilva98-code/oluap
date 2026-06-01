@@ -445,8 +445,8 @@ const App = () => {
   const saldoBanco=(bancoId)=>{
     const b=bancos.find(x=>x.id===bancoId);
     if(!b)return 0;
-    const ent=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
-    const sai=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+    const ent=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+    const sai=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
     return Number(b.saldo_inicial)+ent-sai;
   };
 
@@ -757,8 +757,8 @@ const App = () => {
     const estrutura=catAvg(['aluguel','locação','locacao','estrutura','energia','água','internet']);
     const custoDir=catAvg(['mercadoria','fornecedor','matéria','materia','custo direto']);
     const totalSaldo=bancos.reduce((a,b)=>{
-      const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0);
-      const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0);
+      const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0);
+      const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((s,l)=>s+Number(l.valor),0);
       return a+Number(b.saldo_inicial||0)+ent-sai;
     },0)+saldoInicialDinheiro;
     const divAtivas=dividas.filter(d=>!d.status||d.status==='ativa');
@@ -1132,7 +1132,7 @@ const App = () => {
               const entradasMes=lancMes.filter(l=>l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
               const saidasMes=lancMes.filter(l=>l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
               const totalBancos=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
-              const dinheiroCaixa=saldoInicialDinheiro+lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0);
+              const dinheiroCaixa=saldoInicialDinheiro+lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0);
               const totalInvestido=investimentos.filter(i=>i.status==='ativo').reduce((a,i)=>a+Number(i.valor_atual||i.valor_aplicado||0),0);
               return(
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -1240,7 +1240,7 @@ const App = () => {
             {/* ── POSIÇÃO EM BANCOS ───────────────────────────────────────── */}
             {(()=>{
               const totalBancosDash=bancos.reduce((a,b)=>a+saldoBanco(b.id),0);
-              const dinhCaixa=saldoInicialDinheiro+lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0);
+              const dinhCaixa=saldoInicialDinheiro+lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0);
               const totalGeral=totalBancosDash+dinhCaixa;
               return(
               <div className="mt-6">
@@ -1254,8 +1254,8 @@ const App = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {bancos.slice(0,3).map(b=>{
                     const s=saldoBanco(b.id);
-                    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
-                    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
                     return(
                       <div key={b.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={()=>setView('bancos')}>
                         <div className="flex items-center gap-2 mb-3">
@@ -1956,16 +1956,16 @@ const App = () => {
             if(!periodoInicio) return bancosBase;
             const signedSum=(arr)=>arr.reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0);
             // Transações pós-fechamento e pré-período (não estão no base, precisa somar)
-            const movAntes=lancamentos.filter(l=>l.data&&l.data<periodoInicio&&(!ultimoFechamento||l.data>ultimoFechamento));
+            const movAntes=lancamentos.filter(l=>l.data&&l.data<periodoInicio&&(!ultimoFechamento||l.data>=ultimoFechamento));
             // Transações já no base que estão dentro ou após o início do período (deve desfazer)
-            const movInBase=ultimoFechamento?lancamentos.filter(l=>l.data&&l.data>=periodoInicio&&l.data<=ultimoFechamento):[];
+            const movInBase=ultimoFechamento?lancamentos.filter(l=>l.data&&l.data>=periodoInicio&&l.data<ultimoFechamento):[];
             return bancosBase+signedSum(movAntes)-signedSum(movInBase);
           })();
           const saldoFinal=saldoInic+saldoOperacional;
           // Período está totalmente dentro de meses já fechados?
           const periodoFechado=ultimoFechamento&&periodoInicio&&periodoInicio<=ultimoFechamento&&(fluxoFiltro!=='mensal'&&fluxoFiltro!=='diario'&&fluxoFiltro!=='semanal'&&fluxoFiltro!=='anual');
-          const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
-          const _dinSaiAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+          const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+          const _dinSaiAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
           const saldoAtual=bancos.reduce((a,b)=>a+saldoBanco(b.id),0)+(saldoInicialDinheiro+_dinEntAll-_dinSaiAll);
           const daysMap={diario:1,semanal:7,mensal:30,anual:365};
           const periodoDias=fluxoFiltro==='periodo'&&fluxoDataInicio&&fluxoDataFim
@@ -2032,8 +2032,8 @@ const App = () => {
                     return(
                       <div className="flex items-center gap-2">
                         <button onClick={()=>{
-                          const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
-                          const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                          const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                          const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
                           setAjusteSaldoForm([
                             ...bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoBanco(b.id)})),
                             {id:'dinheiro',nome:'Dinheiro em espécie',saldo:saldoInicialDinheiro+dinEnt-dinSai},
@@ -3612,8 +3612,8 @@ const App = () => {
             <div className="flex items-center justify-end mb-4">
               <button
                 onClick={()=>{
-                  const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
-                  const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                  const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                  const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
                   setAjusteSaldoForm([
                     ...bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoBanco(b.id)})),
                     {id:'dinheiro',nome:'Dinheiro em espécie',saldo:saldoInicialDinheiro+dinEnt-dinSai},
