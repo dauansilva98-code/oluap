@@ -149,6 +149,8 @@ const App = () => {
   const [modalImport, setModalImport] = useState(null);
   const [modalCP, setModalCP] = useState(null);
   const [modalSolicitarAnalise, setModalSolicitarAnalise] = useState(false);
+  const [modalFecharMes, setModalFecharMes] = useState(false);
+  const [modalAjusteSaldo, setModalAjusteSaldo] = useState(false);
   const [modalCR, setModalCR] = useState(null);
   const [modalDivida, setModalDivida] = useState(null);
   const [investimentos, setInvestimentos] = useState([]);
@@ -475,7 +477,6 @@ const App = () => {
   };
 
   const handleFecharMes = async () => {
-    if (!window.confirm('Fechar mês?\n\nO saldo atual de cada banco e do caixa será definido como novo ponto de partida. Transações futuras serão calculadas a partir de hoje.\n\nVocê pode abrir um novo mês a qualquer momento.')) return;
     setSavingItem(true);
     try {
       const closeDate = today;
@@ -491,9 +492,29 @@ const App = () => {
       if (metaErr) throw metaErr;
       setUltimoFechamento(closeDate);
       setSaldoInicialDinheiro(novoDinheiro);
+      setModalFecharMes(false);
       await fetchFinanceiro(user.id);
-      alert(`Mês fechado! Saldo definido como ponto de partida em ${new Date(closeDate+'T12:00:00').toLocaleDateString('pt-BR')}.`);
     } catch(e) { console.error(e); alert(`Erro ao fechar mês: ${e.message}`); }
+    setSavingItem(false);
+  };
+
+  const handleAjustarSaldo = async (ajustes) => {
+    // ajustes: [{id: bancoId|'dinheiro', nome, saldo: number}]
+    setSavingItem(true);
+    try {
+      for (const a of ajustes) {
+        if (a.id === 'dinheiro') {
+          const {error} = await supabase.auth.updateUser({data:{saldo_inicial_dinheiro: a.saldo}});
+          if (error) throw error;
+          setSaldoInicialDinheiro(a.saldo);
+        } else {
+          const {error} = await supabase.from('bancos').update({saldo_inicial: a.saldo}).eq('id', a.id);
+          if (error) throw error;
+        }
+      }
+      await fetchFinanceiro(user.id);
+      setModalAjusteSaldo(false);
+    } catch(e) { console.error(e); alert(`Erro ao ajustar saldo: ${e.message}`); }
     setSavingItem(false);
   };
 
@@ -1941,10 +1962,21 @@ const App = () => {
                   <h1 className="text-[22px] font-medium text-[#05121b] mt-0.5">Fluxo de Caixa</h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <button onClick={handleFecharMes} disabled={savingItem} className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50">
-                    Fechar Mês
-                    {ultimoFechamento&&<span className="text-[10px] text-slate-400">· {new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}</span>}
-                  </button>
+                  {(()=>{
+                    const mesAtual=new Date().toISOString().slice(0,7);
+                    const jaFechou=ultimoFechamento?.startsWith(mesAtual);
+                    return(
+                      <div className="flex items-center gap-2">
+                        <button onClick={()=>setModalAjusteSaldo(true)} disabled={savingItem} className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50" title="Editar saldo inicial de cada conta">
+                          Ajustar Saldo
+                        </button>
+                        <button onClick={()=>setModalFecharMes(true)} disabled={savingItem||jaFechou} className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition-colors disabled:opacity-50 ${jaFechou?'border-emerald-200 bg-emerald-50 text-emerald-600 cursor-not-allowed':'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`} title={jaFechou?`Mês já fechado em ${new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}`:'Fechar mês atual'}>
+                          {jaFechou?'✓ Mês Fechado':'Fechar Mês'}
+                          {ultimoFechamento&&<span className="text-[10px] opacity-70">· {new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}</span>}
+                        </button>
+                      </div>
+                    );
+                  })()}
                   <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1">
                     {[{id:'diario',l:'Diário'},{id:'semanal',l:'Semanal'},{id:'mensal',l:'Mensal'},{id:'anual',l:'Anual'},{id:'periodo',l:'Período'}].map(f=>(
                       <button key={f.id} onClick={()=>setFluxoFiltro(f.id)} className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${fluxoFiltro===f.id?'bg-[#05121b] text-white shadow-sm':'text-slate-500 hover:text-[#05121b]'}`}>{f.l}</button>
@@ -4438,6 +4470,104 @@ const App = () => {
                 <div style={{display:'flex',gap:'10px',marginTop:'20px'}}>
                   <button onClick={()=>setModalInvestimento(null)} style={{flex:1,padding:'11px',borderRadius:'8px',fontSize:'12px',fontWeight:500,background:'transparent',border:`1px solid ${mBorder}`,color:mSecondary,cursor:'pointer'}}>Cancelar</button>
                   <button disabled={savingItem||!modalInvestimento.nome||!modalInvestimento.valor_aplicado} onClick={()=>saveItem('investimentos',{...modalInvestimento,valor_aplicado:parseFloat((modalInvestimento.valor_aplicado||'').toString().replace(/[^\d,]/g,'').replace(',','.'))||0,valor_atual:null,rentabilidade_pct:modalInvestimento.taxa?parseFloat(modalInvestimento.taxa)||null:null,user_id:user.id},setModalInvestimento,()=>fetchFinanceiro(user.id))} style={{flex:1,padding:'11px',borderRadius:'8px',fontSize:'12px',fontWeight:600,background:'#137789',color:'#ffffff',border:'none',cursor:'pointer',opacity:savingItem||!modalInvestimento.nome||!modalInvestimento.valor_aplicado?0.5:1,display:'flex',alignItems:'center',justifyContent:'center',gap:'6px'}}>{savingItem&&<Loader2 size={12} className="animate-spin"/>}Salvar</button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── Modal Fechar Mês ─────────────────────────────────────────── */}
+        {modalFecharMes&&(()=>{
+          const mesAtual=new Date().toISOString().slice(0,7);
+          const jaFechou=ultimoFechamento?.startsWith(mesAtual);
+          const bancosPreview=bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoBanco(b.id)}));
+          const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+          const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+          const novoDinheiro=saldoInicialDinheiro+dinEnt-dinSai;
+          const totalFinal=bancosPreview.reduce((a,b)=>a+b.saldo,0)+novoDinheiro;
+          return(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalFecharMes(false)}>
+              <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-black text-[#05121b]">Fechar Mês</h3>
+                  <button onClick={()=>setModalFecharMes(false)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
+                </div>
+                <p className="text-[11px] text-slate-400 mb-6 leading-relaxed">O saldo atual de cada conta vira o <strong>saldo inicial do próximo mês</strong>. Confira os valores antes de confirmar.</p>
+                {jaFechou&&(
+                  <div className="mb-4 rounded-xl px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle size={14}/> Você já fechou este mês em {new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}.
+                  </div>
+                )}
+                <div className="space-y-2 mb-5">
+                  {bancosPreview.map(b=>(
+                    <div key={b.id} className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                      <span className="text-xs font-semibold text-[#05121b]">{b.nome}</span>
+                      <span className="text-sm font-black text-[#137789]">{formatBRL(b.saldo)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                    <span className="text-xs font-semibold text-[#05121b]">Dinheiro em espécie</span>
+                    <span className="text-sm font-black text-[#137789]">{formatBRL(novoDinheiro)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3 bg-[#05121b] rounded-xl">
+                    <span className="text-xs font-black text-white uppercase tracking-wide">Saldo Final → Inicial do próximo mês</span>
+                    <span className="text-base font-black text-[#ff7b00]">{formatBRL(totalFinal)}</span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mb-5 leading-relaxed">Se os valores estiverem incorretos, use <strong>Ajustar Saldo</strong> antes de fechar.</p>
+                <div className="flex gap-3">
+                  <button onClick={()=>setModalFecharMes(false)} className="flex-1 py-3 rounded-xl text-xs font-bold text-slate-400 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+                  <button onClick={handleFecharMes} disabled={savingItem||jaFechou} className="flex-1 py-3 rounded-xl text-xs font-black text-white bg-[#05121b] hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    {savingItem?<><Loader2 size={13} className="animate-spin"/>Fechando...</>:'Confirmar Fechamento'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── Modal Ajustar Saldo Inicial ──────────────────────────────── */}
+        {modalAjusteSaldo&&(()=>{
+          const [ajusteForm, setAjusteForm] = React.useState(()=>[
+            ...bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoBanco(b.id)})),
+            {id:'dinheiro',nome:'Dinheiro em espécie',saldo:saldoInicialDinheiro+(lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0))-(lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0))},
+          ]);
+          const totalAjuste=ajusteForm.reduce((a,f)=>a+Number(f.saldo),0);
+          const parseSaldo=v=>parseFloat(v.toString().replace(/[^\d,.-]/g,'').replace(',','.'))||0;
+          return(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalAjusteSaldo(false)}>
+              <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-black text-[#05121b]">Ajustar Saldo</h3>
+                  <button onClick={()=>setModalAjusteSaldo(false)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
+                </div>
+                <p className="text-[11px] text-slate-400 mb-6 leading-relaxed">Corrija o saldo atual de cada conta. O valor informado passa a ser o <strong>novo saldo inicial</strong> — transações futuras serão somadas a partir dele.</p>
+                <div className="space-y-3 mb-5">
+                  {ajusteForm.map((f,i)=>(
+                    <div key={f.id} className="space-y-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{f.nome}</label>
+                      <input
+                        type="text"
+                        value={`R$ ${Number(f.saldo).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+                        onChange={e=>{
+                          const raw=e.target.value.replace(/[^\d,]/g,'');
+                          const num=parseFloat(raw.replace(',','.'))||0;
+                          setAjusteForm(prev=>prev.map((x,j)=>j===i?{...x,saldo:num}:x));
+                        }}
+                        className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-sm outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789]"
+                      />
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-4 py-3 bg-[#05121b] rounded-xl mt-2">
+                    <span className="text-xs font-black text-white uppercase tracking-wide">Total</span>
+                    <span className="text-base font-black text-[#ff7b00]">{formatBRL(totalAjuste)}</span>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={()=>setModalAjusteSaldo(false)} className="flex-1 py-3 rounded-xl text-xs font-bold text-slate-400 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+                  <button onClick={()=>handleAjustarSaldo(ajusteForm.map(f=>({...f,saldo:Number(f.saldo)})))} disabled={savingItem} className="flex-1 py-3 rounded-xl text-xs font-black text-white bg-[#137789] hover:bg-[#0e6070] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    {savingItem?<><Loader2 size={13} className="animate-spin"/>Salvando...</>:'Salvar Ajuste'}
+                  </button>
                 </div>
               </div>
             </div>
