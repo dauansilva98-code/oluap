@@ -1238,8 +1238,8 @@ const App = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {bancos.slice(0,3).map(b=>{
                     const s=saldoBanco(b.id);
-                    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita').reduce((a,l)=>a+Number(l.valor),0);
-                    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa').reduce((a,l)=>a+Number(l.valor),0);
+                    const ent=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                    const sai=lancamentos.filter(l=>l.banco_id===b.id&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
                     return(
                       <div key={b.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={()=>setView('bancos')}>
                         <div className="flex items-center gap-2 mb-3">
