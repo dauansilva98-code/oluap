@@ -436,9 +436,10 @@ const App = () => {
 
   const fmtDate=d=>d&&d.length>=10?`${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`:'—';
   const today=new Date().toISOString().split('T')[0];
-  // Meses fechados: transações com data <= ultimoFechamento são somente leitura
-  const isLocked=(data)=>!!(ultimoFechamento&&data&&data<=ultimoFechamento);
-  const minDate=ultimoFechamento?(()=>{const d=new Date(ultimoFechamento+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10);})():undefined;
+  // Meses fechados: transações com data ANTES do fechamento são somente leitura
+  // Usa strict < para que o próprio dia do fechamento fique aberto para novos lançamentos
+  const isLocked=(data)=>!!(ultimoFechamento&&data&&data<ultimoFechamento);
+  const minDate=ultimoFechamento||undefined;
 
   // Saldo calculado por banco
   const saldoBanco=(bancoId)=>{
@@ -484,14 +485,26 @@ const App = () => {
   const handleFecharMes = async () => {
     setSavingItem(true);
     try {
-      const closeDate = today;
+      // closeDate = primeiro dia do mês atual (= abertura do período corrente)
+      // Isso garante que o mês atual inteiro fica aberto para novos lançamentos
+      const d = new Date(today + 'T12:00:00');
+      d.setDate(1); // primeiro dia do mês atual
+      const closeDate = d.toISOString().slice(0, 10);
+      // Captura saldo de cada banco apenas com transações ANTES de closeDate
+      const saldoBancoAtClose = (bancoId) => {
+        const b = bancos.find(x => x.id === bancoId);
+        if (!b) return 0;
+        const ent = lancamentos.filter(l => l.banco_id === bancoId && l.tipo === 'receita' && (!ultimoFechamento || l.data >= ultimoFechamento) && l.data < closeDate).reduce((a,l) => a + Number(l.valor), 0);
+        const sai = lancamentos.filter(l => l.banco_id === bancoId && l.tipo === 'despesa' && (!ultimoFechamento || l.data >= ultimoFechamento) && l.data < closeDate).reduce((a,l) => a + Number(l.valor), 0);
+        return Number(b.saldo_inicial) + ent - sai;
+      };
       for (const b of bancos) {
-        const saldo = saldoBanco(b.id);
+        const saldo = saldoBancoAtClose(b.id);
         const {error} = await supabase.from('bancos').update({saldo_inicial: saldo}).eq('id', b.id);
         if (error) throw error;
       }
-      const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
-      const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+      const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)&&l.data<closeDate).reduce((a,l)=>a+Number(l.valor),0);
+      const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)&&l.data<closeDate).reduce((a,l)=>a+Number(l.valor),0);
       const novoDinheiro = saldoInicialDinheiro + dinEnt - dinSai;
       const {error:metaErr} = await supabase.auth.updateUser({data:{saldo_inicial_dinheiro:novoDinheiro, ultimo_fechamento:closeDate}});
       if (metaErr) throw metaErr;
@@ -4590,9 +4603,13 @@ const App = () => {
         {modalFecharMes&&(()=>{
           const mesAtual=new Date().toISOString().slice(0,7);
           const jaFechou=ultimoFechamento?.startsWith(mesAtual);
-          const bancosPreview=bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoBanco(b.id)}));
-          const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
-          const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+          // Preview usa a mesma lógica do handleFecharMes: closeDate = primeiro dia do mês atual
+          const dPreview=new Date(today+'T12:00:00');dPreview.setDate(1);
+          const closeDatePreview=dPreview.toISOString().slice(0,10);
+          const saldoAtClose=(bancoId)=>{const b=bancos.find(x=>x.id===bancoId);if(!b)return 0;const ent=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)&&l.data<closeDatePreview).reduce((a,l)=>a+Number(l.valor),0);const sai=lancamentos.filter(l=>l.banco_id===bancoId&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)&&l.data<closeDatePreview).reduce((a,l)=>a+Number(l.valor),0);return Number(b.saldo_inicial)+ent-sai;};
+          const bancosPreview=bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoAtClose(b.id)}));
+          const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>=ultimoFechamento)&&l.data<closeDatePreview).reduce((a,l)=>a+Number(l.valor),0);
+          const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>=ultimoFechamento)&&l.data<closeDatePreview).reduce((a,l)=>a+Number(l.valor),0);
           const novoDinheiro=saldoInicialDinheiro+dinEnt-dinSai;
           const totalFinal=bancosPreview.reduce((a,b)=>a+b.saldo,0)+novoDinheiro;
           return(
