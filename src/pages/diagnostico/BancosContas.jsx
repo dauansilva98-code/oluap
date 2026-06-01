@@ -108,8 +108,13 @@ export default function BancosContas({
 
   const mesAtual = new Date().toISOString().slice(0, 7)
 
-  const especieLancs = lancamentos.filter(l => l.meio_pagamento === 'Dinheiro' || (!l.banco_id && l.meio_pagamento === 'Dinheiro'))
-  const especieMov = [...especieLancs]
+  // Só transações de dinheiro APÓS o último fechamento devem ser somadas ao saldoInicialDinheiro
+  // (o saldoInicialDinheiro já inclui tudo até o fechamento)
+  const especieLancs = lancamentos.filter(l =>
+    (l.meio_pagamento === 'Dinheiro') &&
+    (!ultimoFechamento || l.data > ultimoFechamento)
+  )
+  const especieMov = [...lancamentos.filter(l => l.meio_pagamento === 'Dinheiro')]
     .sort((a, b) => (b.data || '').localeCompare(a.data || ''))
     .map(l => ({
       id: l.id,
@@ -119,7 +124,8 @@ export default function BancosContas({
       valor: Number(l.valor),
     }))
 
-  const especieSaldo = saldoInicialDinheiro + especieMov.reduce((a, m) => m.tipo === 'entrada' ? a + m.valor : a - m.valor, 0)
+  const especieSaldoRaw = saldoInicialDinheiro + especieLancs.reduce((a, l) => l.tipo === 'receita' ? a + Number(l.valor) : a - Number(l.valor), 0)
+  const especieSaldo = Math.max(0, especieSaldoRaw)
   const saldoBancario = bancosComSaldo.reduce((a, b) => a + b.saldoCalc, 0)
   const saldoTotal    = saldoBancario + especieSaldo
 
