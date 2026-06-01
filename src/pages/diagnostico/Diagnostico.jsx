@@ -151,6 +151,7 @@ const App = () => {
   const [modalSolicitarAnalise, setModalSolicitarAnalise] = useState(false);
   const [modalFecharMes, setModalFecharMes] = useState(false);
   const [modalAjusteSaldo, setModalAjusteSaldo] = useState(false);
+  const [ajusteSaldoForm, setAjusteSaldoForm] = useState([]);
   const [modalCR, setModalCR] = useState(null);
   const [modalDivida, setModalDivida] = useState(null);
   const [investimentos, setInvestimentos] = useState([]);
@@ -1897,7 +1898,9 @@ const App = () => {
             return null;
           })();
           const bancosBase=bancos.reduce((a,b)=>a+Number(b.saldo_inicial||0),0)+saldoInicialDinheiro;
-          const movAntes=periodoInicio?lancamentos.filter(l=>l.data&&l.data<periodoInicio).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0):0;
+          // Apenas movimentos entre o último fechamento (exclusive) e o início do período (exclusive)
+          // Movimentos já incluídos no saldo_inicial (antes do último fechamento) não devem ser contados novamente
+          const movAntes=periodoInicio?lancamentos.filter(l=>l.data&&l.data<periodoInicio&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>l.tipo==='receita'?a+Number(l.valor):a-Number(l.valor),0):0;
           const saldoInic=bancosBase+movAntes;
           const saldoFinal=saldoInic+saldoOperacional;
           const _dinEntAll=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
@@ -1967,7 +1970,15 @@ const App = () => {
                     const jaFechou=ultimoFechamento?.startsWith(mesAtual);
                     return(
                       <div className="flex items-center gap-2">
-                        <button onClick={()=>setModalAjusteSaldo(true)} disabled={savingItem} className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50" title="Editar saldo inicial de cada conta">
+                        <button onClick={()=>{
+                          const dinEnt=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                          const dinSai=lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0);
+                          setAjusteSaldoForm([
+                            ...bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoBanco(b.id)})),
+                            {id:'dinheiro',nome:'Dinheiro em espécie',saldo:saldoInicialDinheiro+dinEnt-dinSai},
+                          ]);
+                          setModalAjusteSaldo(true);
+                        }} disabled={savingItem} className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50" title="Editar saldo inicial de cada conta">
                           Ajustar Saldo
                         </button>
                         <button onClick={()=>setModalFecharMes(true)} disabled={savingItem||jaFechou} className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium border transition-colors disabled:opacity-50 ${jaFechou?'border-emerald-200 bg-emerald-50 text-emerald-600 cursor-not-allowed':'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`} title={jaFechou?`Mês já fechado em ${new Date(ultimoFechamento+'T12:00:00').toLocaleDateString('pt-BR')}`:'Fechar mês atual'}>
@@ -4527,52 +4538,44 @@ const App = () => {
         })()}
 
         {/* ── Modal Ajustar Saldo Inicial ──────────────────────────────── */}
-        {modalAjusteSaldo&&(()=>{
-          const [ajusteForm, setAjusteForm] = React.useState(()=>[
-            ...bancos.map(b=>({id:b.id,nome:b.nome,saldo:saldoBanco(b.id)})),
-            {id:'dinheiro',nome:'Dinheiro em espécie',saldo:saldoInicialDinheiro+(lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='receita'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0))-(lancamentos.filter(l=>l.meio_pagamento==='Dinheiro'&&l.tipo==='despesa'&&(!ultimoFechamento||l.data>ultimoFechamento)).reduce((a,l)=>a+Number(l.valor),0))},
-          ]);
-          const totalAjuste=ajusteForm.reduce((a,f)=>a+Number(f.saldo),0);
-          const parseSaldo=v=>parseFloat(v.toString().replace(/[^\d,.-]/g,'').replace(',','.'))||0;
-          return(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalAjusteSaldo(false)}>
-              <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-black text-[#05121b]">Ajustar Saldo</h3>
-                  <button onClick={()=>setModalAjusteSaldo(false)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
-                </div>
-                <p className="text-[11px] text-slate-400 mb-6 leading-relaxed">Corrija o saldo atual de cada conta. O valor informado passa a ser o <strong>novo saldo inicial</strong> — transações futuras serão somadas a partir dele.</p>
-                <div className="space-y-3 mb-5">
-                  {ajusteForm.map((f,i)=>(
-                    <div key={f.id} className="space-y-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{f.nome}</label>
-                      <input
-                        type="text"
-                        value={`R$ ${Number(f.saldo).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
-                        onChange={e=>{
-                          const raw=e.target.value.replace(/[^\d,]/g,'');
-                          const num=parseFloat(raw.replace(',','.'))||0;
-                          setAjusteForm(prev=>prev.map((x,j)=>j===i?{...x,saldo:num}:x));
-                        }}
-                        className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-sm outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789]"
-                      />
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between px-4 py-3 bg-[#05121b] rounded-xl mt-2">
-                    <span className="text-xs font-black text-white uppercase tracking-wide">Total</span>
-                    <span className="text-base font-black text-[#ff7b00]">{formatBRL(totalAjuste)}</span>
+        {modalAjusteSaldo&&(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalAjusteSaldo(false)}>
+            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-8 max-h-[90vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xl font-black text-[#05121b]">Ajustar Saldo</h3>
+                <button onClick={()=>setModalAjusteSaldo(false)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
+              </div>
+              <p className="text-[11px] text-slate-400 mb-6 leading-relaxed">Corrija o saldo atual de cada conta. O valor informado passa a ser o <strong>novo saldo inicial</strong> — transações futuras serão somadas a partir dele.</p>
+              <div className="space-y-3 mb-5">
+                {ajusteSaldoForm.map((f,i)=>(
+                  <div key={f.id} className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{f.nome}</label>
+                    <input
+                      type="text"
+                      value={`R$ ${Number(f.saldo).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`}
+                      onChange={e=>{
+                        const raw=e.target.value.replace(/[^\d,]/g,'');
+                        const num=parseFloat(raw.replace(',','.'))||0;
+                        setAjusteSaldoForm(prev=>prev.map((x,j)=>j===i?{...x,saldo:num}:x));
+                      }}
+                      className="w-full bg-white border border-slate-200 px-4 py-2.5 rounded-xl font-medium text-[#05121b] text-sm outline-none focus:ring-1 focus:ring-[#137789] focus:border-[#137789]"
+                    />
                   </div>
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={()=>setModalAjusteSaldo(false)} className="flex-1 py-3 rounded-xl text-xs font-bold text-slate-400 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
-                  <button onClick={()=>handleAjustarSaldo(ajusteForm.map(f=>({...f,saldo:Number(f.saldo)})))} disabled={savingItem} className="flex-1 py-3 rounded-xl text-xs font-black text-white bg-[#137789] hover:bg-[#0e6070] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                    {savingItem?<><Loader2 size={13} className="animate-spin"/>Salvando...</>:'Salvar Ajuste'}
-                  </button>
+                ))}
+                <div className="flex items-center justify-between px-4 py-3 bg-[#05121b] rounded-xl mt-2">
+                  <span className="text-xs font-black text-white uppercase tracking-wide">Total</span>
+                  <span className="text-base font-black text-[#ff7b00]">{formatBRL(ajusteSaldoForm.reduce((a,f)=>a+Number(f.saldo),0))}</span>
                 </div>
               </div>
+              <div className="flex gap-3">
+                <button onClick={()=>setModalAjusteSaldo(false)} className="flex-1 py-3 rounded-xl text-xs font-bold text-slate-400 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+                <button onClick={()=>handleAjustarSaldo(ajusteSaldoForm.map(f=>({...f,saldo:Number(f.saldo)})))} disabled={savingItem} className="flex-1 py-3 rounded-xl text-xs font-black text-white bg-[#137789] hover:bg-[#0e6070] transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                  {savingItem?<><Loader2 size={13} className="animate-spin"/>Salvando...</>:'Salvar Ajuste'}
+                </button>
+              </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
 
         {/* Modal Solicitar Análise */}
         {modalSolicitarAnalise&&(
