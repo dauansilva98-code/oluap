@@ -152,6 +152,7 @@ const App = () => {
   const [modalFecharMes, setModalFecharMes] = useState(false);
   const [modalAjusteSaldo, setModalAjusteSaldo] = useState(false);
   const [ajusteSaldoForm, setAjusteSaldoForm] = useState([]);
+  const [modalEditarSaldoFinal, setModalEditarSaldoFinal] = useState(null); // {saldoFinalAtual, saldoOperacional}
   const [modalCR, setModalCR] = useState(null);
   const [modalDivida, setModalDivida] = useState(null);
   const [investimentos, setInvestimentos] = useState([]);
@@ -496,6 +497,34 @@ const App = () => {
       setModalFecharMes(false);
       await fetchFinanceiro(user.id);
     } catch(e) { console.error(e); alert(`Erro ao fechar mês: ${e.message}`); }
+    setSavingItem(false);
+  };
+
+  const handleEditarSaldoFinal = async (novoSaldoFinal, saldoOperacional) => {
+    // Saldo final = saldo_inicial + operacional
+    // Queremos: novoSaldoFinal = novo_saldo_inicial + operacional
+    // => novo_saldo_inicial_total = novoSaldoFinal - saldoOperacional
+    const saldoInicialAtualTotal = bancos.reduce((a,b)=>a+Number(b.saldo_inicial||0),0) + saldoInicialDinheiro;
+    const novoSaldoInicialTotal = novoSaldoFinal - saldoOperacional;
+    const delta = novoSaldoInicialTotal - saldoInicialAtualTotal;
+    // Distribui o delta proporcionalmente entre os bancos (se não tiver bancos, tudo no dinheiro)
+    const totalBase = saldoInicialAtualTotal || 1;
+    setSavingItem(true);
+    try {
+      for (const b of bancos) {
+        const peso = saldoInicialAtualTotal > 0 ? Number(b.saldo_inicial||0) / totalBase : 1 / (bancos.length + 1);
+        const novoSaldo = Number(b.saldo_inicial||0) + delta * peso;
+        const {error} = await supabase.from('bancos').update({saldo_inicial: Math.round(novoSaldo * 100) / 100}).eq('id', b.id);
+        if (error) throw error;
+      }
+      const pesoDinheiro = saldoInicialAtualTotal > 0 ? saldoInicialDinheiro / totalBase : 1 / (bancos.length + 1);
+      const novoDinheiro = saldoInicialDinheiro + delta * pesoDinheiro;
+      const {error:metaErr} = await supabase.auth.updateUser({data:{saldo_inicial_dinheiro: Math.round(novoDinheiro * 100) / 100}});
+      if (metaErr) throw metaErr;
+      setSaldoInicialDinheiro(Math.round(novoDinheiro * 100) / 100);
+      await fetchFinanceiro(user.id);
+      setModalEditarSaldoFinal(null);
+    } catch(e) { console.error(e); alert(`Erro ao ajustar saldo final: ${e.message}`); }
     setSavingItem(false);
   };
 
@@ -2029,14 +2058,8 @@ const App = () => {
                   <p className="text-[19px] font-medium text-[#05121b] leading-tight">{formatBRL(saldoFinal)}</p>
                   <p className="text-[11px] text-slate-400 mt-1">Inicial + Operacional</p>
                   <button
-                    title="Corrigir saldo"
-                    onClick={()=>{
-                      setAjusteSaldoForm([
-                        ...bancos.map(b=>({id:b.id,nome:b.nome,saldo:Number(b.saldo_inicial||0)})),
-                        {id:'dinheiro',nome:'Dinheiro em espécie',saldo:saldoInicialDinheiro},
-                      ]);
-                      setModalAjusteSaldo(true);
-                    }}
+                    title="Corrigir saldo final"
+                    onClick={()=>setModalEditarSaldoFinal({saldoFinalAtual:saldoFinal,saldoOperacional,novoValor:formatBRL(saldoFinal).replace('R$ ','').replace('R$ ','')})}
                     className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-lg bg-slate-100 hover:bg-[#137789] hover:text-white text-slate-400 flex items-center justify-center"
                   >
                     <Pencil size={11}/>
@@ -4589,6 +4612,53 @@ const App = () => {
             </div>
           </div>
         )}
+
+        {/* ── Modal Editar Saldo Final ─────────────────────────────────── */}
+        {modalEditarSaldoFinal&&(()=>{
+          const m=modalEditarSaldoFinal;
+          const parse=v=>parseFloat((v||'').replace(/[^\d,]/g,'').replace(',','.'))||0;
+          const novoFinal=parse(m.novoValor);
+          const novoInicial=novoFinal-m.saldoOperacional;
+          return(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4" onClick={()=>setModalEditarSaldoFinal(null)}>
+              <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8" onClick={e=>e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-black text-[#05121b]">Corrigir Saldo Final</h3>
+                  <button onClick={()=>setModalEditarSaldoFinal(null)} className="text-slate-300 hover:text-red-400 transition-colors"><X size={20}/></button>
+                </div>
+                <p className="text-[11px] text-slate-400 mb-5 leading-relaxed">Digite o valor correto do saldo final. O saldo inicial será ajustado automaticamente para bater a conta.</p>
+                <div className="space-y-4 mb-5">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">Saldo final correto</label>
+                    <input
+                      type="text"
+                      value={m.novoValor}
+                      onChange={e=>setModalEditarSaldoFinal({...m,novoValor:e.target.value})}
+                      className="w-full bg-white border-2 border-[#137789] px-4 py-3 rounded-xl font-bold text-[#05121b] text-base outline-none focus:ring-2 focus:ring-[#137789]/30"
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-2 text-xs">
+                    <div className="flex justify-between text-slate-500">
+                      <span>Saldo operacional (entradas − saídas)</span>
+                      <span className="font-bold" style={{color:m.saldoOperacional>=0?'#085041':'#791F1F'}}>{m.saldoOperacional>=0?'+':''}{formatBRL(m.saldoOperacional)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-500 border-t border-slate-200 pt-2">
+                      <span>Novo saldo inicial resultante</span>
+                      <span className="font-bold text-[#05121b]">{novoFinal!==0?formatBRL(novoInicial):'—'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={()=>setModalEditarSaldoFinal(null)} className="flex-1 py-3 rounded-xl text-xs font-bold text-slate-400 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+                  <button onClick={()=>handleEditarSaldoFinal(novoFinal,m.saldoOperacional)} disabled={savingItem||novoFinal===0} className="flex-1 py-3 rounded-xl text-xs font-black text-white bg-[#05121b] hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    {savingItem?<><Loader2 size={13} className="animate-spin"/>Salvando...</>:'Salvar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Modal Solicitar Análise */}
         {modalSolicitarAnalise&&(
