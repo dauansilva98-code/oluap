@@ -3591,6 +3591,7 @@ const App = () => {
               savingItem={savingItem}
               saldoInicialDinheiro={saldoInicialDinheiro}
               onSaveSaldoInicialDinheiro={handleSaveSaldoInicialDinheiro}
+              ultimoFechamento={ultimoFechamento}
             />
           </div>
         )}

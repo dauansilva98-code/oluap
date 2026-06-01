@@ -28,25 +28,41 @@ const labelSt = color => ({ fontSize: 11, fontWeight: 500, color, marginBottom: 
 const valueSt = color => ({ fontSize: 19, fontWeight: 500, color, lineHeight: 1.2 })
 const subSt   = color => ({ fontSize: 11, color, marginTop: 2 })
 
-const calcSaldo = (bancoId, lancs, saldoInicial) => {
-  const ent = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'receita').reduce((a, l) => a + Number(l.valor), 0)
-  const sai = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'despesa').reduce((a, l) => a + Number(l.valor), 0)
+// Calcula saldo de um banco respeitando o ultimoFechamento.
+// Após um fechamento, saldo_inicial já inclui tudo até a data de fechamento.
+// Só transações APÓS o fechamento devem ser somadas ao saldo_inicial.
+const calcSaldo = (bancoId, lancs, saldoInicial, ultimoFechamento = null) => {
+  const ent = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'receita' && (!ultimoFechamento || l.data > ultimoFechamento)).reduce((a, l) => a + Number(l.valor), 0)
+  const sai = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'despesa' && (!ultimoFechamento || l.data > ultimoFechamento)).reduce((a, l) => a + Number(l.valor), 0)
   return Number(saldoInicial || 0) + ent - sai
 }
 
-const computeLineData = (bancos, lancamentos) => {
+// Reconstrói o saldo total em uma data X usando a fórmula correta:
+// balance_at_X = saldo_inicial
+//   + signedSum(transactions após ultimoFechamento e antes/em X)   ← ainda não no base
+//   - signedSum(transactions após X e antes/em ultimoFechamento)   ← no base mas após X
+const balanceAtDate = (lancamentos, totalInicial, dateStr, ultimoFechamento) => {
+  const signed = arr => arr.reduce((a, l) => l.tipo === 'receita' ? a + Number(l.valor) : a - Number(l.valor), 0)
+  if (!ultimoFechamento) {
+    return totalInicial + signed(lancamentos.filter(l => l.data && l.data <= dateStr))
+  }
+  const add = lancamentos.filter(l => l.data && l.data > ultimoFechamento && l.data <= dateStr)
+  const sub = lancamentos.filter(l => l.data && l.data > dateStr && l.data <= ultimoFechamento)
+  return totalInicial + signed(add) - signed(sub)
+}
+
+const computeLineData = (bancos, lancamentos, ultimoFechamento = null) => {
   const labels = [], totalData = [], bancarioData = []
   const totalInicial = bancos.reduce((a, b) => a + Number(b.saldo_inicial || 0), 0)
+  const lancSemDin = lancamentos.filter(l => l.meio_pagamento !== 'Dinheiro')
   for (let i = 5; i >= 0; i--) {
     const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i)
-    const mes = d.toISOString().slice(0, 7)
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+    const mesEndStr = lastDay.toISOString().slice(0, 10)
     const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
     labels.push(label)
-    const upTo = lancamentos.filter(l => l.data && l.data.slice(0, 7) <= mes)
-    const net = upTo.reduce((a, l) => l.tipo === 'receita' ? a + Number(l.valor) : a - Number(l.valor), 0)
-    const dinNet = upTo.filter(l => l.meio_pagamento === 'Dinheiro').reduce((a, l) => l.tipo === 'receita' ? a + Number(l.valor) : a - Number(l.valor), 0)
-    totalData.push(Math.round(totalInicial + net))
-    bancarioData.push(Math.round(totalInicial + net - dinNet))
+    totalData.push(Math.round(balanceAtDate(lancamentos, totalInicial, mesEndStr, ultimoFechamento)))
+    bancarioData.push(Math.round(balanceAtDate(lancSemDin, totalInicial, mesEndStr, ultimoFechamento)))
   }
   return { labels, totalData, bancarioData }
 }
@@ -63,6 +79,7 @@ export default function BancosContas({
   savingItem = false,
   saldoInicialDinheiro = 0,
   onSaveSaldoInicialDinheiro,
+  ultimoFechamento = null,
 }) {
   const [filtroBank,          setFiltroBank]          = useState('todos')
   const [modalConta,          setModalConta]          = useState(false)
@@ -84,7 +101,7 @@ export default function BancosContas({
 
   const bancosComSaldo = bancos.map((b, i) => ({
     ...b,
-    saldoCalc: calcSaldo(b.id, lancamentos, b.saldo_inicial),
+    saldoCalc: calcSaldo(b.id, lancamentos, b.saldo_inicial, ultimoFechamento),
     color: BANK_COLORS[i % BANK_COLORS.length],
     init: (b.nome || '').substring(0, 2).toUpperCase(),
   }))
@@ -165,7 +182,7 @@ export default function BancosContas({
     '#888780',
   ]
   const hasDonutData = donutValues.some(v => v > 0)
-  const lineData = computeLineData(bancos, lancamentos)
+  const lineData = computeLineData(bancos, lancamentos, ultimoFechamento)
 
   useEffect(() => {
     let alive = true
