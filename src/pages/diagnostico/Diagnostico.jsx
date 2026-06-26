@@ -580,6 +580,43 @@ const App = () => {
     setSavingItem(false);
   };
 
+  const handleTransferirEntreBancos = async ({ fromBancoId, toBancoId, valor, data, descricao }) => {
+    setSavingItem(true);
+    try {
+      const valorNum = Math.round(Number(valor) * 100) / 100;
+      if (!valorNum || valorNum <= 0) throw new Error('Valor inválido');
+      if (fromBancoId === toBancoId) throw new Error('As contas de origem e destino devem ser diferentes');
+      const desc = descricao || 'Transferência entre contas';
+      const [errSai, errEnt] = await Promise.all([
+        supabase.from('lancamentos').insert({
+          descricao: desc,
+          valor: valorNum,
+          data,
+          categoria: 'Transferência',
+          tipo: 'despesa',
+          tipo_custo: 'variavel',
+          meio_pagamento: 'Transferência Bancária',
+          banco_id: fromBancoId || null,
+          user_id: user.id,
+        }).then(r => r.error),
+        supabase.from('lancamentos').insert({
+          descricao: desc,
+          valor: valorNum,
+          data,
+          categoria: 'Transferência',
+          tipo: 'receita',
+          meio_pagamento: 'Transferência Bancária',
+          banco_id: toBancoId || null,
+          user_id: user.id,
+        }).then(r => r.error),
+      ]);
+      if (errSai) throw errSai;
+      if (errEnt) throw errEnt;
+      await fetchFinanceiro(user.id);
+    } catch (e) { console.error(e); alert(`Erro ao transferir: ${e.message}`); }
+    setSavingItem(false);
+  };
+
   const handleDeleteLancamentos = async (ids) => {
     setSavingItem(true);
     try {
@@ -604,7 +641,7 @@ const App = () => {
     setSavingItem(false);
   };
 
-  const handleReceberCR = async (id, meioPagamento, dataPagamento, bancoId, cat) => {
+  const handleReceberCR = async (id, meioPagamento, dataPagamento, bancoId, cat, taxaCartao = 0) => {
     setSavingItem(true);
     try {
       const dp = dataPagamento || new Date().toISOString().slice(0,10);
@@ -615,9 +652,10 @@ const App = () => {
         data_pagamento: dp,
       }).eq('id', id);
       if (cr) {
+        const valorBruto = Math.round(Number(cr.valor) * 100) / 100;
         await supabase.from('lancamentos').insert({
           descricao: cr.descricao,
-          valor: Number(cr.valor),
+          valor: valorBruto,
           data: dp,
           categoria: cat || 'Receitas',
           tipo: 'receita',
@@ -625,6 +663,22 @@ const App = () => {
           banco_id: bancoId || null,
           user_id: user.id,
         });
+        if (taxaCartao > 0) {
+          const taxaValor = Math.round(valorBruto * (taxaCartao / 100) * 100) / 100;
+          if (taxaValor > 0) {
+            await supabase.from('lancamentos').insert({
+              descricao: `Taxa cartão - ${cr.descricao}`,
+              valor: taxaValor,
+              data: dp,
+              categoria: 'Taxa / Maquininha',
+              tipo: 'despesa',
+              tipo_custo: 'variavel',
+              meio_pagamento: meioPagamento,
+              banco_id: bancoId || null,
+              user_id: user.id,
+            });
+          }
+        }
       }
       await fetchFinanceiro(user.id);
     } catch (e) { console.error(e); alert(`Erro ao registrar recebimento: ${e.message}`); }
@@ -1979,13 +2033,15 @@ const App = () => {
           const d7str=d7.toISOString().split('T')[0];
           const alertas=contasPagar.filter(cp=>cp.status!=='pago'&&cp.vencimento&&cp.vencimento>=today&&cp.vencimento<=d7str);
           const alertTotal=alertas.reduce((a,cp)=>a+Number(cp.valor),0);
-          // Running balance for table
+          // Running balance for table (ordenação descendente: mais recente primeiro)
+          // Começa no saldoFinal e desfaz cada transação para mostrar o saldo após cada lançamento
           const sortedLanc=[...filteredLanc].sort((a,b)=>b.data>a.data?1:b.data<a.data?-1:0);
-          let runBal=saldoInic;
+          let runBal=Math.round(saldoFinal*100)/100;
           const tableRows=sortedLanc.map(l=>{
+            const saldoRow=runBal;
             const delta=l.tipo==='receita'?Number(l.valor):-Number(l.valor);
-            runBal+=delta;
-            return{...l,saldo:runBal,tipo_flow:l.tipo==='receita'?'entrada':'saida',met:l.meio_pagamento||'—',cat:l.categoria||'—',st:'realizado'};
+            runBal=Math.round((runBal-delta)*100)/100;
+            return{...l,saldo:saldoRow,tipo_flow:l.tipo==='receita'?'entrada':'saida',met:l.meio_pagamento||'—',cat:l.categoria||'—',st:'realizado'};
           });
           const tFiltFn={todos:()=>true,entradas:r=>r.tipo_flow==='entrada',saidas:r=>r.tipo_flow==='saida',previstos:r=>r.st==='previsto'};
           const filtrados=tableRows.filter(tFiltFn[fluxoTabFilter]||tFiltFn.todos);
@@ -3633,6 +3689,7 @@ const App = () => {
               onDeleteBanco={handleDeleteBanco}
               onSaveLancamento={handleSaveLancamentoEspecie}
               onDeleteLancamentos={handleDeleteLancamentos}
+              onTransferir={handleTransferirEntreBancos}
               onImportClick={()=>setModalImport({stage:'upload',tipoImport:'extrato'})}
               savingItem={savingItem}
               saldoInicialDinheiro={saldoInicialDinheiro}

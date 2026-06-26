@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import ReactDOM from 'react-dom'
 import { X, Upload, Pencil, Trash2 } from 'lucide-react'
 
-const fmtBRL = v => `R$ ${Number(v || 0).toLocaleString('pt-BR')}`
+const fmtBRL = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
 const TIPO_BADGE = {
   Corrente:     { bg: 'var(--color-info-bg)',    color: 'var(--color-info-text)'    },
@@ -34,7 +34,7 @@ const subSt   = color => ({ fontSize: 11, color, marginTop: 2 })
 const calcSaldo = (bancoId, lancs, saldoInicial, ultimoFechamento = null) => {
   const ent = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'receita' && (!ultimoFechamento || l.data >= ultimoFechamento)).reduce((a, l) => a + Number(l.valor), 0)
   const sai = lancs.filter(l => l.banco_id === bancoId && l.tipo === 'despesa' && (!ultimoFechamento || l.data >= ultimoFechamento)).reduce((a, l) => a + Number(l.valor), 0)
-  return Number(saldoInicial || 0) + ent - sai
+  return Math.round((Number(saldoInicial || 0) + ent - sai) * 100) / 100
 }
 
 // Reconstrói o saldo total em uma data X usando a fórmula correta:
@@ -75,6 +75,7 @@ export default function BancosContas({
   onDeleteBanco,
   onSaveLancamento,
   onDeleteLancamentos,
+  onTransferir,
   onImportClick,
   savingItem = false,
   saldoInicialDinheiro = 0,
@@ -91,6 +92,8 @@ export default function BancosContas({
   const [modalSaldoDinheiro,  setModalSaldoDinheiro]  = useState(false)
   const [saldoDinheiroInput,  setSaldoDinheiroInput]  = useState('')
   const [savingSaldoDinheiro, setSavingSaldoDinheiro] = useState(false)
+  const [modalTransferencia,  setModalTransferencia]  = useState(false)
+  const [formTransf,          setFormTransf]          = useState({ fromBancoId: '', toBancoId: '', valor: '', data: '', descricao: 'Transferência entre contas' })
 
   const donutRef   = useRef(null)
   const lineRef    = useRef(null)
@@ -495,12 +498,74 @@ export default function BancosContas({
     document.body
   ) : null
 
+  const modalTransferenciaEl = modalTransferencia ? ReactDOM.createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.4)' }}
+      onClick={e => { if (e.target === e.currentTarget) setModalTransferencia(false) }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px]">
+        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-[#05121b]">Transferência entre contas</h3>
+          <button onClick={() => setModalTransferencia(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50"><X size={16} /></button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Conta de origem</span>
+            <select className={inputCls} value={formTransf.fromBancoId} onChange={e => setFormTransf(f => ({ ...f, fromBancoId: e.target.value }))}>
+              <option value="">Selecione...</option>
+              {bancos.map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Conta de destino</span>
+            <select className={inputCls} value={formTransf.toBancoId} onChange={e => setFormTransf(f => ({ ...f, toBancoId: e.target.value }))}>
+              <option value="">Selecione...</option>
+              {bancos.filter(b => b.id !== formTransf.fromBancoId).map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-xs font-medium text-slate-500 mb-1.5 block">Valor (R$)</span>
+              <input className={inputCls} type="number" min="0" step="0.01" placeholder="0,00"
+                value={formTransf.valor} onChange={e => setFormTransf(f => ({ ...f, valor: e.target.value }))} />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-slate-500 mb-1.5 block">Data</span>
+              <input className={inputCls} type="date" value={formTransf.data}
+                onChange={e => setFormTransf(f => ({ ...f, data: e.target.value }))} />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-500 mb-1.5 block">Descrição (opcional)</span>
+            <input className={inputCls} placeholder="Ex: Transferência para reserva"
+              value={formTransf.descricao} onChange={e => setFormTransf(f => ({ ...f, descricao: e.target.value }))} />
+          </label>
+          <p className="text-[10px] text-slate-400 bg-slate-50 rounded-lg p-2">
+            Serão criados 2 lançamentos: uma saída na conta de origem e uma entrada na conta de destino.
+          </p>
+        </div>
+        <div className="flex justify-end gap-3 px-6 pb-5">
+          <button onClick={() => setModalTransferencia(false)} className="px-5 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
+          <button
+            disabled={savingItem || !formTransf.fromBancoId || !formTransf.toBancoId || !formTransf.valor || !formTransf.data || formTransf.fromBancoId === formTransf.toBancoId}
+            onClick={async () => {
+              await onTransferir?.({ ...formTransf, valor: parseFloat(formTransf.valor) || 0 })
+              setModalTransferencia(false)
+            }}
+            className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors disabled:opacity-50">
+            {savingItem ? 'Transferindo...' : 'Transferir'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null
+
   return (
     <>
       {modalContaEl}
       {modalEspecieEl}
       {modalEditMovEl}
       {modalSaldoDinheiroEl}
+      {modalTransferenciaEl}
 
       <div className="max-w-7xl mx-auto w-full" style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
@@ -517,6 +582,12 @@ export default function BancosContas({
             <button onClick={openNewMov} className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors">
               + Mov. espécie
             </button>
+            {bancos.length >= 2 && onTransferir && (
+              <button onClick={() => { setFormTransf({ fromBancoId: '', toBancoId: '', valor: '', data: today, descricao: 'Transferência entre contas' }); setModalTransferencia(true); }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors">
+                ⇄ Transferir
+              </button>
+            )}
             <button onClick={openNewBanco} className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-[#05121b] hover:bg-[#137789] transition-colors">
               + Nova conta
             </button>

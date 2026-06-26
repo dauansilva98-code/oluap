@@ -189,6 +189,7 @@ export default function ContasReceberView({
       modalReceber.dataRecebimento || todayStr,
       modalReceber.bancoId || null,
       modalReceber.cat,
+      parseFloat(modalReceber.taxaCartao) || 0,
     )
     setModalReceber(null)
   }
@@ -285,11 +286,24 @@ export default function ContasReceberView({
               </label>
               <label className="block">
                 <span className="text-xs font-medium text-slate-500 mb-1.5 block">Forma de recebimento</span>
-                <select className={inputCls} value={modalReceber.meioPagamento} onChange={e => setModalReceber(m => ({ ...m, meioPagamento: e.target.value }))}>
+                <select className={inputCls} value={modalReceber.meioPagamento} onChange={e => setModalReceber(m => ({ ...m, meioPagamento: e.target.value, taxaCartao: '' }))}>
                   <option value="">Selecione...</option>
                   {MEIOS.map(m => <option key={m}>{m}</option>)}
                 </select>
               </label>
+              {(modalReceber.meioPagamento === 'Cartão de Crédito' || modalReceber.meioPagamento === 'Cartão de Débito') && (
+                <label className="block">
+                  <span className="text-xs font-medium text-slate-500 mb-1.5 block">Taxa do cartão (%)</span>
+                  <input className={inputCls} type="number" min="0" max="100" step="0.01" placeholder="Ex: 2.5"
+                    value={modalReceber.taxaCartao || ''} onChange={e => setModalReceber(m => ({ ...m, taxaCartao: e.target.value }))} />
+                  {parseFloat(modalReceber.taxaCartao) > 0 && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Taxa: <strong className="text-orange-600">{fmtBRL(modalReceber.valor * parseFloat(modalReceber.taxaCartao) / 100)}</strong>
+                      {' '}· Líquido: <strong className="text-emerald-600">{fmtBRL(modalReceber.valor * (1 - parseFloat(modalReceber.taxaCartao) / 100))}</strong>
+                    </p>
+                  )}
+                </label>
+              )}
               {modalReceber.meioPagamento && modalReceber.meioPagamento !== 'Dinheiro' && (
                 <label className="block">
                   <span className="text-xs font-medium text-slate-500 mb-1.5 block">Conta bancária creditada</span>
@@ -299,7 +313,7 @@ export default function ContasReceberView({
                   </select>
                 </label>
               )}
-              <p className="text-[10px] text-slate-400 bg-slate-50 rounded-lg p-2">✓ Será lançado como receita no fluxo de caixa.</p>
+              <p className="text-[10px] text-slate-400 bg-slate-50 rounded-lg p-2">✓ Será lançado como receita no fluxo de caixa. Taxa do cartão (se houver) vira despesa separada.</p>
             </div>
             <div className="flex gap-3 px-6 pb-5">
               <button onClick={() => setModalReceber(null)} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-slate-500 border border-slate-200 hover:bg-slate-50 transition-colors">Cancelar</button>
@@ -612,7 +626,7 @@ export default function ContasReceberView({
                           </button>
                           {!isRecebido && (
                             <>
-                              <button onClick={() => setModalReceber({ id: c.id, desc: c.desc, valor: c.valor, cat: c.cat, meioPagamento: '', bancoId: '', dataRecebimento: todayStr })}
+                              <button onClick={() => setModalReceber({ id: c.id, desc: c.desc, valor: c.valor, cat: c.cat, meioPagamento: '', bancoId: '', dataRecebimento: todayStr, taxaCartao: '' })}
                                 style={{ padding: '3px 8px', borderRadius: 8, fontSize: 11, fontWeight: 500, background: 'var(--color-success-bg)', color: 'var(--color-success-text)', border: '0.5px solid var(--color-success-border)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 Receber
                               </button>
